@@ -9,7 +9,7 @@ const DEFAULT_DATA = {
     isOpen: false,
     openDate: null,
     closeDate: null,
-    label: 'Week of ' + new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    label: '',
   },
   vehicles: [],
   bids: [],
