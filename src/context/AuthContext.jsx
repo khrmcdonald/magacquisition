@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export const USERS = [
-  { id: 'SAG', name: 'SAG GMC', role: 'bidder', pin: '1111', color: '#1a3d76' },
+  { id: 'SAG', name: 'GMC', role: 'bidder', pin: '1111', color: '#1a3d76' },
   { id: 'KIA', name: 'KIA', role: 'bidder', pin: '2222', color: '#2a5298' },
   { id: 'CLR', name: 'Clare', role: 'bidder', pin: '3333', color: '#0f3460' },
   { id: 'MIL', name: 'Millington', role: 'bidder', pin: '4444', color: '#16213e' },
