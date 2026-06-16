@@ -15,6 +15,8 @@ import MyWins from './pages/MyWins';
 import Admin from './pages/Admin';
 import History from './pages/History';
 import Dashboard from './pages/Dashboard';
+import Leaderboard from './pages/Leaderboard';
+import Export from './pages/Export';
 
 function RequireAuth({ children }) {
   const { user } = useAuth();
@@ -46,6 +48,8 @@ export default function App() {
               <Route path="admin" element={<Admin />} />
               <Route path="history" element={<History />} />
               <Route path="dashboard" element={<Dashboard />} />
+              <Route path="leaderboard" element={<Leaderboard />} />
+              <Route path="export" element={<Export />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

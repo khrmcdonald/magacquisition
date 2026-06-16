@@ -15,6 +15,7 @@ const DEFAULT_DATA = {
   bids: [],
   transport: [],
   auctionHistory: [],
+  badges: {},
 };
 
 function loadData() {
@@ -191,6 +192,73 @@ export function DataProvider({ children }) {
     }));
   };
 
+  const BADGE_DEFS = [
+    { id: 'first_bid', label: 'First Pick', icon: '🎯', desc: 'Placed your first ever bid' },
+    { id: 'quick_draw', label: 'Quick Draw', icon: '⚡', desc: 'Bid within 5 min of auction opening' },
+    { id: 'top_buyer', label: 'Top Buyer', icon: '👑', desc: 'Most cars won in a single auction' },
+    { id: 'sharp_shooter', label: 'Sharp Shooter', icon: '🔫', desc: 'Won a car at exactly the floor price' },
+    { id: 'hat_trick', label: 'Hat Trick', icon: '🎩', desc: 'Won 3+ cars in one auction' },
+    { id: 'big_spender', label: 'Big Spender', icon: '💰', desc: 'Won a car over $30,000' },
+    { id: 'loyal_bidder', label: 'Loyal Bidder', icon: '🤝', desc: 'Placed bids in 3+ auctions' },
+    { id: 'clean_sweep', label: 'Clean Sweep', icon: '🧹', desc: 'Won every car you bid on in an auction' },
+  ];
+
+  const computeBadges = (storeId) => {
+    const d = loadData();
+    const myWins = d.vehicles.filter(v => v.status === 'awarded' && v.winnerId === storeId);
+    const myBids = d.bids.filter(b => b.storeId === storeId);
+    const earned = [];
+
+    if (myBids.length > 0) earned.push('first_bid');
+    if (myWins.some(v => v.winningBid >= 30000)) earned.push('big_spender');
+    if (myWins.some(v => v.floorPrice && v.winningBid === parseFloat(v.floorPrice))) earned.push('sharp_shooter');
+
+    // Hat trick - check any auction where store won 3+
+    const winsByAuction = {};
+    myWins.forEach(v => {
+      const ah = d.auctionHistory.find(h => h.closedDate && new Date(v.awardedAt) <= new Date(h.closedDate) && new Date(v.awardedAt) >= new Date(h.openDate || 0));
+      const key = ah?.id || 'misc';
+      winsByAuction[key] = (winsByAuction[key] || 0) + 1;
+    });
+    if (Object.values(winsByAuction).some(c => c >= 3)) earned.push('hat_trick');
+
+    // Top buyer - won the most in any auction
+    const stores = ['SAG', 'KIA', 'CLR', 'MIL', 'MAR'];
+    const allWinsByStore = {};
+    stores.forEach(s => { allWinsByStore[s] = d.vehicles.filter(v => v.status === 'awarded' && v.winnerId === s).length; });
+    const maxWins = Math.max(...Object.values(allWinsByStore));
+    if (maxWins > 0 && allWinsByStore[storeId] === maxWins) earned.push('top_buyer');
+
+    // Loyal bidder - participated in 3+ auctions (has bids spread across time)
+    const auctionParticipation = new Set(myBids.map(b => {
+      const v = d.vehicles.find(vv => vv.id === b.vehicleId);
+      return v?.listedAt?.substring(0, 10) || b.placedAt?.substring(0, 10);
+    }));
+    if (auctionParticipation.size >= 3) earned.push('loyal_bidder');
+
+    // Clean sweep
+    const myBidVehicleIds = new Set(myBids.map(b => b.vehicleId));
+    const myBidVehicles = d.vehicles.filter(v => myBidVehicleIds.has(v.id) && ['awarded','no_sale'].includes(v.status));
+    if (myBidVehicles.length > 0 && myBidVehicles.every(v => v.winnerId === storeId)) earned.push('clean_sweep');
+
+    return earned;
+  };
+
+  const checkAndAwardBadges = (storeId, bidAmount) => {
+    // Quick draw
+    if (data.auction.openDate) {
+      const openTime = new Date(data.auction.openDate);
+      if ((new Date() - openTime) < 5 * 60 * 1000) {
+        update(d => ({ ...d, badges: { ...d.badges, [storeId]: [...new Set([...(d.badges[storeId]||[]), 'quick_draw'])] } }));
+      }
+    }
+    if (data.bids.filter(b => b.storeId === storeId).length === 0) {
+      update(d => ({ ...d, badges: { ...d.badges, [storeId]: [...new Set([...(d.badges[storeId]||[]), 'first_bid'])] } }));
+    }
+  };
+
+  const computePostAuctionBadges = () => {};
+
   const fileArbitration = (vehicleId, storeId, storeName, issueType, details) => {
     update(d => ({
       ...d,
@@ -234,6 +302,9 @@ export function DataProvider({ children }) {
       updateTransport,
       fileArbitration,
       resolveArbitration,
+      checkAndAwardBadges,
+      computeBadges,
+      BADGE_DEFS,
     }}>
       {children}
     </DataContext.Provider>

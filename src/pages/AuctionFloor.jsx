@@ -41,7 +41,7 @@ import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 
 function VehicleModal({ vehicle, onClose, storeId, storeName, isOpen }) {
-  const { placeBid, getMyBid, getHighBid } = useData();
+  const { placeBid, getMyBid, getHighBid, checkAndAwardBadges } = useData();
   const myBid = getMyBid(vehicle.id, storeId);
   const highBid = getHighBid(vehicle.id);
   const [amount, setAmount] = useState('');
@@ -67,6 +67,7 @@ function VehicleModal({ vehicle, onClose, storeId, storeName, isOpen }) {
       return;
     }
     placeBid(vehicle.id, storeId, storeName, val);
+    checkAndAwardBadges(storeId, val);
     setSuccess(true);
     setAmount('');
     setTimeout(() => setSuccess(false), 2000);

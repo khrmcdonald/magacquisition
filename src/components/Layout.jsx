@@ -10,6 +10,7 @@ const NAV = {
     { to: '/wins', label: 'My Wins', icon: '🏆' },
     { to: '/transport', label: 'Transport & Title', icon: '🚚' },
     { to: '/history', label: 'History', icon: '📜' },
+    { to: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
   ],
   wholesale: [
     { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
@@ -17,6 +18,8 @@ const NAV = {
     { to: '/manage', label: 'Manage Auction', icon: '⚙️' },
     { to: '/transport', label: 'Transport & Title', icon: '🚚' },
     { to: '/history', label: 'History & Audit', icon: '📜' },
+    { to: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
+    { to: '/export', label: 'Accounting Export', icon: '📊' },
   ],
   gm: [
     { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
@@ -24,6 +27,8 @@ const NAV = {
     { to: '/auction', label: 'Auction Floor', icon: '🔨' },
     { to: '/transport', label: 'Transport & Title', icon: '🚚' },
     { to: '/history', label: 'History & Audit', icon: '📜' },
+    { to: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
+    { to: '/export', label: 'Accounting Export', icon: '📊' },
   ],
   admin: [
     { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
@@ -31,6 +36,8 @@ const NAV = {
     { to: '/overview', label: 'GM Overview', icon: '📊' },
     { to: '/auction', label: 'Auction Floor', icon: '🔨' },
     { to: '/history', label: 'History & Audit', icon: '📜' },
+    { to: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
+    { to: '/export', label: 'Accounting Export', icon: '📊' },
   ],
 };
 
