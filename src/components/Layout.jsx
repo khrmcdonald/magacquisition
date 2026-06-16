@@ -5,24 +5,28 @@ import { useData } from '../context/DataContext';
 
 const NAV = {
   bidder: [
+    { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/auction', label: 'Auction Floor', icon: '🔨' },
     { to: '/wins', label: 'My Wins', icon: '🏆' },
     { to: '/transport', label: 'Transport & Title', icon: '🚚' },
     { to: '/history', label: 'History', icon: '📜' },
   ],
   wholesale: [
+    { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/acquisitions', label: 'Acquisitions', icon: '📋' },
     { to: '/manage', label: 'Manage Auction', icon: '⚙️' },
     { to: '/transport', label: 'Transport & Title', icon: '🚚' },
     { to: '/history', label: 'History & Audit', icon: '📜' },
   ],
   gm: [
+    { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/overview', label: 'GM Overview', icon: '📊' },
     { to: '/auction', label: 'Auction Floor', icon: '🔨' },
     { to: '/transport', label: 'Transport & Title', icon: '🚚' },
     { to: '/history', label: 'History & Audit', icon: '📜' },
   ],
   admin: [
+    { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/admin', label: 'Admin', icon: '🔧' },
     { to: '/overview', label: 'GM Overview', icon: '📊' },
     { to: '/auction', label: 'Auction Floor', icon: '🔨' },

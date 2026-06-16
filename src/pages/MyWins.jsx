@@ -96,7 +96,7 @@ export default function MyWins() {
   };
 
   return (
-    <div>
+    <>
       <div className="page-header">
         <h1>My Wins</h1>
         <p>Vehicles awarded to {user.name}</p>
@@ -230,6 +230,15 @@ export default function MyWins() {
           </div>
         </div>
       )}
-    </div>
+
+    {arbitrationVehicle && (
+      <ArbitrationModal
+        vehicle={arbitrationVehicle}
+        storeId={user.id}
+        storeName={user.name}
+        onClose={() => setArbitrationVehicle(null)}
+      />
+    )}
+    </>
   );
 }

@@ -14,6 +14,7 @@ import GMOverview from './pages/GMOverview';
 import MyWins from './pages/MyWins';
 import Admin from './pages/Admin';
 import History from './pages/History';
+import Dashboard from './pages/Dashboard';
 
 function RequireAuth({ children }) {
   const { user } = useAuth();
@@ -24,10 +25,7 @@ function RequireAuth({ children }) {
 function HomeRedirect() {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role === 'wholesale') return <Navigate to="/acquisitions" replace />;
-  if (user.role === 'gm') return <Navigate to="/overview" replace />;
-  if (user.role === 'admin') return <Navigate to="/admin" replace />;
-  return <Navigate to="/auction" replace />;
+  return <Navigate to="/dashboard" replace />;
 }
 
 export default function App() {
@@ -47,6 +45,7 @@ export default function App() {
               <Route path="wins" element={<MyWins />} />
               <Route path="admin" element={<Admin />} />
               <Route path="history" element={<History />} />
+              <Route path="dashboard" element={<Dashboard />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
