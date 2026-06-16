@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import TEAM_PHOTO from '../teamPhoto';
 import { useAuth } from '../context/AuthContext';
 
-const TEAM_PHOTO = "/team.jpg";
+
 
 export default function Login() {
   const [pin, setPin] = useState('');
