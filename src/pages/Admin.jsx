@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { StoreAvatar } from '../components/StoreAvatar';
 import { useAuth, USERS } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { Navigate } from 'react-router-dom';
 
 export default function Admin() {
   const { user } = useAuth();
-  const { data } = useData();
+  const { data, updateStorePhoto } = useData();
+  const fileRefs = React.useRef({});
   const [users, setUsers] = useState(() =>
     JSON.parse(localStorage.getItem('mag_users') || 'null') || USERS
   );

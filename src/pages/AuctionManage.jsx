@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
+import { StoreAvatar } from '../components/StoreAvatar';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { USERS } from '../context/AuthContext';
@@ -158,9 +159,10 @@ export default function AuctionManage() {
                         </td>
                         <td>
                           {highBid ? (
-                            <span style={{ background: '#e8eef5', color: '#1a3d76', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
-                              {highBid.storeName}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <StoreAvatar storeId={highBid.storeId} size={28} />
+                              <span style={{ fontWeight: 700, fontSize: 13 }}>{highBid.storeName}</span>
+                            </div>
                           ) : '—'}
                         </td>
                         <td>
@@ -205,6 +207,7 @@ export default function AuctionManage() {
                                   alignItems: 'center',
                                 }}>
                                   {i === 0 && <span style={{ background: '#f1bb25', color: '#1a3d76', fontSize: 10, fontWeight: 800, padding: '2px 6px', borderRadius: 4 }}>WINNER</span>}
+                                  <StoreAvatar storeId={b.storeId} size={24} />
                                   <span style={{ fontWeight: 700 }}>{b.storeName}</span>
                                   <span style={{ fontWeight: 600 }}>${b.amount.toLocaleString()}</span>
                                   <span style={{ fontSize: 11, opacity: .7 }}>{new Date(b.updatedAt).toLocaleTimeString()}</span>

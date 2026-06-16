@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { USERS } from '../context/AuthContext';
+import { StoreAvatar } from '../components/StoreAvatar';
 import { Navigate } from 'react-router-dom';
 
 const STORES = USERS.filter(u => u.role === 'bidder');

@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { useNavigate } from 'react-router-dom';
 import { USERS } from '../context/AuthContext';
+import { StoreAvatar } from '../components/StoreAvatar';
 
 function StatCard({ label, value, sub, color, onClick }) {
   return (
@@ -264,7 +265,7 @@ function GMDashboard({ data, navigate }) {
         {storeSummary.map(store => (
           <div key={store.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '16px 20px', cursor: 'pointer' }} onClick={() => navigate('/overview')}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#1a3d76', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f1bb25', fontWeight: 800, fontSize: 12 }}>{store.id}</div>
+              <StoreAvatar storeId={store.id} size={38} />
               <div style={{ fontWeight: 700, fontSize: 15 }}>{store.name}</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
@@ -297,11 +298,14 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 14 }}>
+        <StoreAvatar storeId={user.id} size={52} />
+        <div>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#111827' }}>{greeting()}, {user.name} 👋</h1>
         <p style={{ fontSize: 14, color: '#6b7280', marginTop: 2 }}>
           {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
         </p>
+        </div>
       </div>
 
       {user.role === 'bidder' && <BidderDashboard user={user} data={data} navigate={navigate} />}

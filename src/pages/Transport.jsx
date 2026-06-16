@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { StoreAvatar } from '../components/StoreAvatar';
 import { useData } from '../context/DataContext';
 
 const STEPS = [
@@ -175,7 +176,10 @@ export default function Transport() {
                   <div>
                     <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>{t.vehicleName}</div>
                     <div style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>
-                      Going to: <strong style={{ color: '#1a3d76' }}>{t.storeName}</strong>
+                      Going to: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, verticalAlign: 'middle' }}>
+                        <StoreAvatar storeId={t.storeId} size={22} />
+                        <strong style={{ color: '#1a3d76' }}>{t.storeName}</strong>
+                      </span>
                       {' · '}Winning bid: <strong>${t.winningBid?.toLocaleString()}</strong>
                     </div>
                   </div>

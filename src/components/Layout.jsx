@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { StoreAvatar } from './StoreAvatar';
 import { useData } from '../context/DataContext';
 
 const NAV = {
@@ -134,9 +135,7 @@ export default function Layout() {
             </span>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: 12 }}>{user.id}</span>
-            </div>
+            <StoreAvatar storeId={user.id} size={30} />
             <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>{user.name}</span>
           </div>
           <button

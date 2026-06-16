@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { USERS } from '../context/AuthContext';
+import { StoreAvatar } from '../components/StoreAvatar';
 
 const STORES = USERS.filter(u => u.role === 'bidder');
 
@@ -107,7 +108,7 @@ export default function Leaderboard() {
                   marginTop: i === 0 ? 0 : 20,
                 }}>
                   <div style={{ fontSize: 32, marginBottom: 8 }}>{medals[i]}</div>
-                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: STORE_COLORS[store.id] || '#1a3d76', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: '#f1bb25', fontWeight: 800, fontSize: 14 }}>{store.id}</div>
+                  <div style={{ margin: '0 auto 10px', display: 'flex', justifyContent: 'center' }}><StoreAvatar storeId={store.id} size={48} /></div>
                   <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{store.name}</div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: '#1a3d76', margin: '6px 0 2px' }}>{store.wins}</div>
                   <div style={{ fontSize: 11, color: '#9ca3af' }}>cars won</div>
@@ -134,9 +135,7 @@ export default function Leaderboard() {
                 </div>
 
                 {/* Store avatar */}
-                <div style={{ width: 40, height: 40, borderRadius: '50%', background: STORE_COLORS[store.id] || '#1a3d76', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f1bb25', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
-                  {store.id}
-                </div>
+                <StoreAvatar storeId={store.id} size={44} />
 
                 {/* Name */}
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -216,9 +215,7 @@ export default function Leaderboard() {
                   borderRadius: 12, padding: '16px 20px',
                   display: 'flex', gap: 16, alignItems: 'flex-start',
                 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: STORE_COLORS[store.id] || '#1a3d76', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f1bb25', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
-                    {store.id}
-                  </div>
+                  <StoreAvatar storeId={store.id} size={44} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', marginBottom: 8 }}>
                       {store.name}

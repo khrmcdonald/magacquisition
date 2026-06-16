@@ -16,6 +16,7 @@ const DEFAULT_DATA = {
   transport: [],
   auctionHistory: [],
   badges: {},
+  storePhotos: {},
 };
 
 function loadData() {
@@ -259,6 +260,10 @@ export function DataProvider({ children }) {
 
   const computePostAuctionBadges = () => {};
 
+  const updateStorePhoto = (storeId, photoData) => {
+    update(d => ({ ...d, storePhotos: { ...d.storePhotos, [storeId]: photoData } }));
+  };
+
   const fileArbitration = (vehicleId, storeId, storeName, issueType, details) => {
     update(d => ({
       ...d,
@@ -302,6 +307,7 @@ export function DataProvider({ children }) {
       updateTransport,
       fileArbitration,
       resolveArbitration,
+      updateStorePhoto,
       checkAndAwardBadges,
       computeBadges,
       BADGE_DEFS,

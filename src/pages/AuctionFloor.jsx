@@ -38,6 +38,7 @@ function PhotoGallery({ photos }) {
 
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { StoreAvatar } from '../components/StoreAvatar';
 import { useData } from '../context/DataContext';
 
 function VehicleModal({ vehicle, onClose, storeId, storeName, isOpen }) {
@@ -146,8 +147,9 @@ function VehicleModal({ vehicle, onClose, storeId, storeName, isOpen }) {
                   {myBid ? `$${myBid.amount.toLocaleString()}` : '—'}
                 </div>
                 {myBid && (
-                  <div style={{ fontSize: 11, fontWeight: 600, marginTop: 2, color: isWinning ? '#065f46' : '#991b1b' }}>
-                    {isWinning ? '✓ Winning' : '✗ Outbid'}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                    <StoreAvatar storeId={storeId} size={20} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: isWinning ? '#065f46' : '#991b1b' }}>{isWinning ? '✓ Winning' : '✗ Outbid'}</span>
                   </div>
                 )}
               </div>
@@ -252,6 +254,10 @@ function VehicleCard({ vehicle, storeId, onClick }) {
             OUTBID
           </span>
         )}
+        {/* Store avatar overlay */}
+        <div style={{ position: 'absolute', bottom: 8, right: 8 }}>
+          <StoreAvatar storeId={storeId} size={28} />
+        </div>
       </div>
 
       {/* Info */}
