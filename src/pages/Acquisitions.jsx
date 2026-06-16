@@ -708,7 +708,7 @@ export default function Acquisitions() {
                       {!isReadOnly && v.status === 'active' && (
                         <button onClick={() => unlistVehicle(v.id)} style={{ background: '#fef3c7', color: '#92400e', border: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>Remove from auction</button>
                       )}
-                      {!isReadOnly && ['intake','recon','ready'].includes(v.status) && (
+                      {!isReadOnly && (
                         <button onClick={() => setConfirmDelete(v)} style={{ background: '#fee2e2', color: '#991b1b', border: 'none', padding: '8px 12px', borderRadius: 8, fontSize: 16, cursor: 'pointer', fontWeight: 700 }}>✕</button>
                       )}
                     </div>
@@ -884,9 +884,19 @@ export default function Acquisitions() {
             <div className="modal-body" style={{ textAlign: 'center', padding: 32 }}>
               <div style={{ fontSize: 36, marginBottom: 12 }}>🗑</div>
               <h2 style={{ fontSize: 17, marginBottom: 8 }}>Remove vehicle?</h2>
-              <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 24 }}>
+              <p style={{ color: '#6b7280', fontSize: 14, marginBottom: confirmDelete.status === 'awarded' ? 8 : 24 }}>
                 {confirmDelete.year} {confirmDelete.make} {confirmDelete.model} will be permanently removed.
               </p>
+              {confirmDelete.status === 'awarded' && (
+                <div className="alert alert-warning" style={{ marginBottom: 16, textAlign: 'left' }}>
+                  ⚠ This vehicle is <strong>awarded to {confirmDelete.winnerName}</strong>. Deleting it will also remove the transport record. Only do this to correct a data entry error.
+                </div>
+              )}
+              {confirmDelete.status === 'active' && (
+                <div className="alert alert-warning" style={{ marginBottom: 16, textAlign: 'left' }}>
+                  ⚠ This vehicle is <strong>live in the auction</strong>. Deleting it will remove all bids placed on it.
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
                 <button className="btn-secondary" onClick={() => setConfirmDelete(null)}>Cancel</button>
                 <button className="btn-danger" onClick={() => { deleteVehicle(confirmDelete.id); setConfirmDelete(null); }}>Remove</button>
