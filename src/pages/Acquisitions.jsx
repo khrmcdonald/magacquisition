@@ -702,7 +702,7 @@ export default function Acquisitions() {
                       {!isReadOnly && v.status === 'ready' && data.auction.isOpen && (
                         <button className="btn-primary" style={{ padding: '8px 16px', fontSize: 14 }} onClick={() => handleList(v)}>List now</button>
                       )}
-                      {!isReadOnly && ['intake','recon','ready','active'].includes(v.status) && (
+                      {!isReadOnly && ['intake','recon','ready','active','awarded','no_sale'].includes(v.status) && (
                         <button className="btn-secondary" style={{ padding: '8px 16px', fontSize: 14 }} onClick={() => { setEditing(v); setShowForm(true); }}>Edit</button>
                       )}
                       {!isReadOnly && v.status === 'active' && (
