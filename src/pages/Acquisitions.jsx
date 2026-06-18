@@ -636,9 +636,22 @@ export default function Acquisitions() {
           <p>All inventory — every vehicle TRI-STATE owns, at every stage. Cost data visible to TRI-STATE and GM only.</p>
         </div>
         {!isReadOnly && (
-          <button className="btn-navy" onClick={() => { setEditing(null); setShowForm(true); }}>
-            + Add vehicle
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <a
+              href="/MAG_Inventory_Template.xlsx"
+              download
+              className="btn-secondary"
+              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+            >
+              ⬇ Download template
+            </a>
+            <button className="btn-secondary" onClick={() => setShowUpload(true)}>
+              📤 Upload Excel
+            </button>
+            <button className="btn-navy" onClick={() => { setEditing(null); setShowForm(true); }}>
+              + Add vehicle
+            </button>
+          </div>
         )}
       </div>
 
