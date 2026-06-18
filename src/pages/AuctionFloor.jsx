@@ -1,3 +1,8 @@
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { StoreAvatar } from '../components/StoreAvatar';
+import { useData } from '../context/DataContext';
+
 function PhotoGallery({ photos }) {
   const [current, setCurrent] = React.useState(0);
   if (!photos || photos.length === 0) return null;
@@ -35,11 +40,6 @@ function PhotoGallery({ photos }) {
     </div>
   );
 }
-
-import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { StoreAvatar } from '../components/StoreAvatar';
-import { useData } from '../context/DataContext';
 
 function VehicleModal({ vehicle, onClose, storeId, storeName, isOpen }) {
   const { placeBid, getMyBid, getHighBid, checkAndAwardBadges } = useData();
@@ -316,8 +316,6 @@ export default function AuctionFloor() {
   });
 
   const filtered = filter === 'my' ? myBids : filter === 'winning' ? winning : activeVehicles;
-
-  const isMobile = window.innerWidth < 640;
 
   return (
     <div>

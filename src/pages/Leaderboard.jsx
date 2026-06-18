@@ -6,10 +6,6 @@ import { StoreAvatar } from '../components/StoreAvatar';
 
 const STORES = USERS.filter(u => u.role === 'bidder');
 
-const STORE_COLORS = {
-  SAG: '#1a3d76', KIA: '#065f46', CLR: '#92400e', MIL: '#7c3aed', MAR: '#b91c1c',
-};
-
 function BadgeShelf({ badges, badgeDefs, highlight }) {
   if (!badges || badges.length === 0) return (
     <span style={{ fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>No badges yet</span>

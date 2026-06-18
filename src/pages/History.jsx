@@ -15,14 +15,6 @@ function fmtDateTime(iso) {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-const TRANSPORT_STEPS = [
-  { key: 'awarded', label: 'Awarded' },
-  { key: 'dispatched', label: 'Dispatched' },
-  { key: 'inTransit', label: 'In Transit' },
-  { key: 'arrived', label: 'Arrived' },
-  { key: 'titleReceived', label: 'Title Received' },
-];
-
 export default function History() {
   const { user } = useAuth();
   const { data } = useData();
@@ -36,9 +28,6 @@ export default function History() {
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-
-  // All closed vehicles (awarded + no_sale)
-  const closedVehicles = data.vehicles.filter(v => ['awarded', 'no_sale', 'active'].includes(v.status) || v.awardedAt);
 
   // All bids
   const allBids = data.bids;

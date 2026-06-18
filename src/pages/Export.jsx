@@ -35,10 +35,6 @@ export default function Export() {
     setExporting(true);
 
     const wb = XLSX.utils.book_new();
-    const navy = '1a3d76', gold = 'f1bb25', white = 'FFFFFF';
-
-    const headerStyle = { font: { bold: true, color: { rgb: white }, sz: 11 }, fill: { fgColor: { rgb: navy } }, alignment: { horizontal: 'center' }, border: { bottom: { style: 'thin' } } };
-    const subHeaderStyle = { font: { bold: true, sz: 10 }, fill: { fgColor: { rgb: 'f0f4fb' } } };
 
     // ── Sheet 1: Current Inventory ──
     const invRows = [

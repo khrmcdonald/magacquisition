@@ -80,7 +80,6 @@ function BidderDashboard({ user, data, navigate }) {
   const activeVehicles = data.vehicles.filter(v => v.status === 'active');
   const myActiveBids = myBids.filter(b => data.vehicles.find(v => v.id === b.vehicleId && v.status === 'active'));
   const winning = myActiveBids.filter(b => {
-    const v = data.vehicles.find(vv => vv.id === b.vehicleId);
     const allBids = data.bids.filter(bb => bb.vehicleId === b.vehicleId);
     const high = Math.max(...allBids.map(bb => bb.amount));
     return b.amount >= high;
@@ -170,7 +169,6 @@ function TriStateDashboard({ data, navigate }) {
   const ready = data.vehicles.filter(v => v.status === 'ready').length;
   const live = data.vehicles.filter(v => v.status === 'active').length;
   const awarded = data.vehicles.filter(v => v.status === 'awarded').length;
-  const noSale = data.vehicles.filter(v => v.status === 'no_sale').length;
   const openArbitrations = data.vehicles.filter(v => v.arbitration?.status === 'open');
   const pendingTitles = data.vehicles.filter(v => ['pending','in_transit','lien','missing'].includes(v.titleStatus));
   const totalVolume = data.vehicles.filter(v => v.status === 'awarded').reduce((s, v) => s + (v.winningBid || 0), 0);

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 export const USERS = [
   { id: 'SAG', name: 'GMC', role: 'bidder', pin: '1111', color: '#1a3d76' },

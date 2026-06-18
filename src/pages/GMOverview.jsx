@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { USERS } from '../context/AuthContext';
-import { StoreAvatar } from '../components/StoreAvatar';
 import { Navigate } from 'react-router-dom';
 
 const STORES = USERS.filter(u => u.role === 'bidder');
@@ -18,7 +17,6 @@ export default function GMOverview() {
 
   const awarded = data.vehicles.filter(v => v.status === 'awarded');
   const noSale = data.vehicles.filter(v => v.status === 'no_sale');
-  const active = data.vehicles.filter(v => v.status === 'active');
 
   const totalBidVolume = awarded.reduce((sum, v) => sum + (v.winningBid || 0), 0);
   const totalCostBasis = awarded.reduce((sum, v) => sum + (parseFloat(v.totalCost) || 0), 0);

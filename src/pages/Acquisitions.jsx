@@ -663,7 +663,6 @@ export default function Acquisitions() {
   const [resolveModal, setResolveModal] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [viewVehicle, setViewVehicle] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
@@ -695,10 +694,6 @@ export default function Acquisitions() {
     if (window.confirm(`List ${v.year} ${v.make} ${v.model} in the active auction?`)) {
       listVehicle(v.id);
     }
-  };
-
-  const handleStatusChange = (v, status) => {
-    updateVehicle(v.id, { status });
   };
 
   const statusCounts = {};

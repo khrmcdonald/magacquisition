@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 
 const DataContext = createContext(null);
 
@@ -91,7 +91,6 @@ export function DataProvider({ children }) {
           }
         }));
 
-      const awarded = vehicles.filter(v => v.status === 'awarded' && !d.vehicles.find(dv => dv.id === v.id && dv.status === 'awarded'));
       const histEntry = (d.auctionHistory || []).findIndex(h => h.event === 'opened' && !h.closedDate);
       const updatedHistory = [...(d.auctionHistory || [])];
       if (histEntry >= 0) {
@@ -284,8 +283,6 @@ export function DataProvider({ children }) {
       update(d => ({ ...d, badges: { ...d.badges, [storeId]: [...new Set([...(d.badges[storeId]||[]), 'first_bid'])] } }));
     }
   };
-
-  const computePostAuctionBadges = () => {};
 
   const updateStorePhoto = (storeId, photoData) => {
     update(d => ({ ...d, storePhotos: { ...d.storePhotos, [storeId]: photoData } }));
