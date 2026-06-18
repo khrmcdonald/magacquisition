@@ -95,15 +95,15 @@ export default function Transport() {
     awarded: { label: 'Pending dispatch', bg: '#fef3c7', color: '#92400e' },
     dispatched: { label: 'Dispatched', bg: '#dbeafe', color: '#1e40af' },
     inTransit: { label: 'In transit', bg: '#e0f2fe', color: '#0369a1' },
-    arrived: { label: 'Arrived', bg: '#d1fae5', color: '#065f46' },
-    titleReceived: { label: 'Complete', bg: '#d1fae5', color: '#065f46' },
+    arrived: { label: 'Arrived at lot', bg: '#d1fae5', color: '#065f46' },
+    titleReceived: { label: 'Grounded · Arbor Plaza', bg: '#d1fae5', color: '#065f46' },
   };
 
   return (
     <div>
       <div className="page-header">
-        <h1>Transport & Title</h1>
-        <p>{isWholesale ? 'Track all vehicle movements across the group' : `Incoming vehicles for ${user.name}`}</p>
+        <h1>Logistics, Transport & Title</h1>
+        <p>{isWholesale ? 'Every vehicle in flux — from buy through transport and title until it’s grounded at Arbor Plaza' : `Incoming vehicles for ${user.name}`}</p>
       </div>
 
       {/* Stats */}
@@ -113,19 +113,19 @@ export default function Transport() {
           <div className="stat-value">{myTransport.length}</div>
         </div>
         <div className="stat-card">
+          <div className="stat-label">In flux</div>
+          <div className="stat-value" style={{ color: '#92400e' }}>
+            {myTransport.filter(t => t.status !== 'titleReceived').length}
+          </div>
+        </div>
+        <div className="stat-card">
           <div className="stat-label">In transit</div>
           <div className="stat-value" style={{ color: '#0369a1' }}>
             {myTransport.filter(t => ['dispatched', 'inTransit'].includes(t.status)).length}
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Arrived</div>
-          <div className="stat-value" style={{ color: '#065f46' }}>
-            {myTransport.filter(t => t.status === 'arrived').length}
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Title received</div>
+          <div className="stat-label">Grounded</div>
           <div className="stat-value" style={{ color: '#065f46' }}>
             {myTransport.filter(t => t.status === 'titleReceived').length}
           </div>
@@ -133,7 +133,7 @@ export default function Transport() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {[['all', 'All'], ['active', 'In progress'], ['complete', 'Complete']].map(([key, label]) => (
+        {[['all', 'All'], ['active', 'In flux'], ['complete', 'Grounded']].map(([key, label]) => (
           <button
             key={key}
             onClick={() => setFilter(key)}
@@ -185,6 +185,14 @@ export default function Transport() {
                   </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                    {(() => {
+                      const grounded = t.status === 'titleReceived';
+                      return (
+                        <span style={{ background: grounded ? '#065f46' : '#92400e', color: '#fff', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
+                          {grounded ? '⚓ Grounded' : '🔄 In flux'}
+                        </span>
+                      );
+                    })()}
                     <span style={{ background: st.bg, color: st.color, padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
                       {st.label}
                     </span>

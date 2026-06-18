@@ -87,8 +87,8 @@ export default function History() {
   });
 
   const tabs = isBidder
-    ? [['vehicles', 'Cars I Won'], ['bids', 'My Bid History'], ['transport', 'Transport & Title']]
-    : [['vehicles', 'All Vehicles'], ['bids', 'All Bids'], ['transport', 'Transport & Title'], ['stores', 'By Store']];
+    ? [['vehicles', 'Cars I Won'], ['bids', 'My Bid History'], ['transport', 'Logistics & Title']]
+    : [['vehicles', 'All Vehicles'], ['bids', 'All Bids'], ['transport', 'Logistics & Title'], ['stores', 'By Store']];
 
   return (
     <div>
