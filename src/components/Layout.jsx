@@ -8,6 +8,7 @@ const NAV = {
   bidder: [
     { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/auction', label: 'Auction Floor', icon: '🔨' },
+    { to: '/available', label: 'Available Units', icon: '🚙' },
     { to: '/wins', label: 'My Wins', icon: '🏆' },
     { to: '/transport', label: 'Transport & Title', icon: '🚚' },
     { to: '/leaderboard', label: 'Leaderboard', icon: '🏅' },
