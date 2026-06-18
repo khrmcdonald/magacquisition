@@ -3,6 +3,7 @@ import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { StatusBadge } from '../components/StatusBadge';
+import { DirectSaleModal } from '../components/DirectSaleModal';
 
 const SOURCES = ['KBB', 'VETTX', 'LBO', 'AutoHub', 'eBlock', 'ADESA', 'Private', 'Trade-in', 'Dealer trade', 'Off-lease', 'Other'];
 const CONDITIONS = ['Excellent', 'Good', 'Fair', 'Poor'];
@@ -633,7 +634,7 @@ const STATUS_LABELS = {
 
 export default function Acquisitions() {
   const { user } = useAuth();
-  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, resolveArbitration } = useData();
+  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, resolveArbitration, directSale } = useData();
   const [resolveModal, setResolveModal] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -641,6 +642,7 @@ export default function Acquisitions() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
+  const [sellVehicle, setSellVehicle] = useState(null);
 
   if (user.role !== 'wholesale' && user.role !== 'gm' && user.role !== 'admin') {
     return <Navigate to="/auction" replace />;
@@ -768,6 +770,14 @@ export default function Acquisitions() {
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                       {!isReadOnly && v.status === 'ready' && data.auction.isOpen && (
                         <button className="btn-primary" style={{ padding: '8px 16px', fontSize: 14 }} onClick={() => handleList(v)}>List now</button>
+                      )}
+                      {!isReadOnly && v.status !== 'awarded' && (
+                        <button
+                          onClick={() => setSellVehicle(v)}
+                          style={{ background: '#1a3d76', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: 600 }}
+                        >
+                          🤝 Sell now
+                        </button>
                       )}
                       {!isReadOnly && ['intake','recon','ready','active','awarded','no_sale'].includes(v.status) && (
                         <button className="btn-secondary" style={{ padding: '8px 16px', fontSize: 14 }} onClick={() => { setEditing(v); setShowForm(true); }}>Edit</button>
@@ -947,6 +957,15 @@ export default function Acquisitions() {
         <ExcelUploadModal
           onClose={() => setShowUpload(false)}
           onImport={(vehicles) => { handleBulkImport(vehicles); }}
+        />
+      )}
+
+      {/* Sell now — direct sale modal */}
+      {sellVehicle && (
+        <DirectSaleModal
+          fixedVehicle={sellVehicle}
+          onClose={() => setSellVehicle(null)}
+          onSell={(vehicleId, buyerId, buyerName, amount, note) => directSale(vehicleId, buyerId, buyerName, amount, note)}
         />
       )}
 
