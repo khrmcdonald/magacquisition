@@ -4,6 +4,33 @@ const DataContext = createContext(null);
 
 const STORAGE_KEY = 'mag_data';
 
+// Sources purchased through an auction lane — these need a gate pass / buyer
+// number to release the vehicle, and title is collected at the lot.
+export const AUCTION_SOURCES = ['eBlock', 'ADESA', 'AutoHub'];
+
+export const isAuctionSource = (source) => AUCTION_SOURCES.includes(source);
+
+// Default inbound logistics shape attached to every vehicle. Tracks getting a
+// freshly-acquired vehicle FROM its source TO our lot (distinct from the
+// post-auction outbound Transport flow that delivers awarded cars to stores).
+export const DEFAULT_INBOUND = {
+  status: 'not_scheduled', // not_scheduled | scheduled | in_transit | delivered
+  origin: '',              // where the vehicle is picked up (auction lot / seller)
+  originContact: '',       // contact name + phone at the origin
+  driver: '',              // who is doing the pickup / haul
+  driverContact: '',
+  pickupDate: '',          // scheduled pickup date (YYYY-MM-DD)
+  pickupTime: '',          // scheduled pickup time
+  gatePass: '',            // gate pass / buyer number (auction only)
+  gatePassStatus: 'na',    // na | needed | requested | received
+  notes: '',
+  steps: {                 // timestamps stamped as the pickup progresses
+    scheduled: null,
+    pickedUp: null,
+    delivered: null,
+  },
+};
+
 const DEFAULT_DATA = {
   auction: {
     isOpen: false,
@@ -118,12 +145,40 @@ export function DataProvider({ children }) {
   // --- Vehicles ---
   const addVehicle = (vehicle) => {
     const id = 'v_' + Date.now();
-    update(d => ({ ...d, vehicles: [...d.vehicles, { ...vehicle, id, createdAt: new Date().toISOString(), status: 'intake' }] }));
+    update(d => ({ ...d, vehicles: [...d.vehicles, {
+      ...vehicle,
+      id,
+      createdAt: new Date().toISOString(),
+      status: 'intake',
+      inbound: { ...DEFAULT_INBOUND, ...(vehicle.inbound || {}) },
+    }] }));
     return id;
   };
 
   const updateVehicle = (id, fields) => {
     update(d => ({ ...d, vehicles: d.vehicles.map(v => v.id === id ? { ...v, ...fields } : v) }));
+  };
+
+  // Merge fields into a vehicle's inbound logistics record, stamping step
+  // timestamps the first time the pickup reaches each milestone.
+  const updateInbound = (id, fields) => {
+    update(d => ({
+      ...d,
+      vehicles: d.vehicles.map(v => {
+        if (v.id !== id) return v;
+        const prev = { ...DEFAULT_INBOUND, ...(v.inbound || {}) };
+        const next = { ...prev, ...fields };
+        const steps = { ...prev.steps, ...(fields.steps || {}) };
+        if (fields.status && fields.status !== prev.status) {
+          const now = new Date().toISOString();
+          if (fields.status === 'scheduled' && !steps.scheduled) steps.scheduled = now;
+          if (fields.status === 'in_transit' && !steps.pickedUp) steps.pickedUp = now;
+          if (fields.status === 'delivered' && !steps.delivered) steps.delivered = now;
+        }
+        next.steps = steps;
+        return { ...v, inbound: next };
+      }),
+    }));
   };
 
   const deleteVehicle = (id) => {
@@ -297,6 +352,7 @@ export function DataProvider({ children }) {
       closeAuction,
       addVehicle,
       updateVehicle,
+      updateInbound,
       deleteVehicle,
       listVehicle,
       unlistVehicle,

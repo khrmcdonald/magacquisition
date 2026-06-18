@@ -10,6 +10,7 @@ import AuctionFloor from './pages/AuctionFloor';
 import Acquisitions from './pages/Acquisitions';
 import AuctionManage from './pages/AuctionManage';
 import Transport from './pages/Transport';
+import Inbound from './pages/Inbound';
 import GMOverview from './pages/GMOverview';
 import MyWins from './pages/MyWins';
 import Admin from './pages/Admin';
@@ -41,6 +42,7 @@ export default function App() {
               <Route index element={<HomeRedirect />} />
               <Route path="auction" element={<AuctionFloor />} />
               <Route path="acquisitions" element={<Acquisitions />} />
+              <Route path="inbound" element={<Inbound />} />
               <Route path="manage" element={<AuctionManage />} />
               <Route path="transport" element={<Transport />} />
               <Route path="overview" element={<GMOverview />} />

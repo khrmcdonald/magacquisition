@@ -16,6 +16,7 @@ const NAV = {
   wholesale: [
     { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/acquisitions', label: 'Acquisitions', icon: '📋' },
+    { to: '/inbound', label: 'Inbound Logistics', icon: '🚛' },
     { to: '/manage', label: 'Manage Auction', icon: '⚙️' },
     { to: '/transport', label: 'Transport & Title', icon: '🚚' },
     { to: '/leaderboard', label: 'Leaderboard', icon: '🏅' },
@@ -26,6 +27,7 @@ const NAV = {
     { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/overview', label: 'GM Overview', icon: '📊' },
     { to: '/auction', label: 'Auction Floor', icon: '🔨' },
+    { to: '/inbound', label: 'Inbound Logistics', icon: '🚛' },
     { to: '/transport', label: 'Transport & Title', icon: '🚚' },
     { to: '/leaderboard', label: 'Leaderboard', icon: '🏅' },
     { to: '/history', label: 'History & Audit', icon: '📜' },
@@ -36,6 +38,7 @@ const NAV = {
     { to: '/admin', label: 'Admin', icon: '🔧' },
     { to: '/overview', label: 'GM Overview', icon: '📊' },
     { to: '/auction', label: 'Auction Floor', icon: '🔨' },
+    { to: '/inbound', label: 'Inbound Logistics', icon: '🚛' },
     { to: '/leaderboard', label: 'Leaderboard', icon: '🏅' },
     { to: '/history', label: 'History & Audit', icon: '📜' },
     { to: '/export', label: 'Accounting Export', icon: '📊' },
