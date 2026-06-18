@@ -1,11 +1,25 @@
 import React, { useState, useRef } from 'react';
-import { useData } from '../context/DataContext';
+import { useData, isAuctionSource, DEFAULT_INBOUND } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 
 const SOURCES = ['KBB', 'VETTX', 'LBO', 'AutoHub', 'eBlock', 'ADESA', 'Private', 'Trade-in', 'Dealer trade', 'Off-lease', 'Other'];
 const CONDITIONS = ['Excellent', 'Good', 'Fair', 'Poor'];
 const RECON_ITEMS = ['Detail', 'Tires', 'Brakes', 'Body work', 'Mechanical', 'Glass', 'Interior', 'Paint', 'Other'];
+
+const INBOUND_STATUSES = [
+  { value: 'not_scheduled', label: 'Not Scheduled', bg: '#f3f4f6', color: '#6b7280', icon: '🗓️' },
+  { value: 'scheduled', label: 'Pickup Scheduled', bg: '#dbeafe', color: '#1e40af', icon: '📅' },
+  { value: 'in_transit', label: 'In Transit', bg: '#e0f2fe', color: '#0369a1', icon: '🚚' },
+  { value: 'delivered', label: 'Delivered', bg: '#d1fae5', color: '#065f46', icon: '✅' },
+];
+
+const GATE_PASS_STATUSES = [
+  { value: 'na', label: 'N/A' },
+  { value: 'needed', label: 'Needed' },
+  { value: 'requested', label: 'Requested' },
+  { value: 'received', label: 'Received' },
+];
 
 const TITLE_STATUSES = [
   { value: 'pending', label: 'Pending', bg: '#fef3c7', color: '#92400e' },
@@ -293,16 +307,20 @@ function ExcelUploadModal({ onClose, onImport }) {
 }
 
 function VehicleForm({ initial, onSave, onCancel }) {
-  const [form, setForm] = useState(initial || {
-    vin: '', year: '', make: '', model: '', trim: '', mileage: '', color: '',
-    source: 'Trade-in', purchasePrice: '', condition: 'Good', notes: '',
-    overheadCosts: '', reconItems: [], reconNotes: '', floorPrice: '', photos: [],
-    titleStatus: 'pending', titleNotes: '', currentLocation: 'Arbor Plaza', vendorNotes: '',
+  const [form, setForm] = useState(() => {
+    const base = initial || {
+      vin: '', year: '', make: '', model: '', trim: '', mileage: '', color: '',
+      source: 'Trade-in', purchasePrice: '', condition: 'Good', notes: '',
+      overheadCosts: '', reconItems: [], reconNotes: '', floorPrice: '', photos: [],
+      titleStatus: 'pending', titleNotes: '', currentLocation: 'Arbor Plaza', vendorNotes: '',
+    };
+    return { ...base, inbound: { ...DEFAULT_INBOUND, ...(base.inbound || {}) } };
   });
   const [reconCosts, setReconCosts] = useState(initial?.reconCosts || {});
   const fileRef = useRef();
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const setInbound = (k, v) => setForm(f => ({ ...f, inbound: { ...f.inbound, [k]: v } }));
 
   const totalCost = () => {
     const purchase = parseFloat(form.purchasePrice) || 0;
@@ -527,6 +545,73 @@ function VehicleForm({ initial, onSave, onCancel }) {
         <div className="form-group">
           <label>Vendor / work notes</label>
           <input type="text" value={form.vendorNotes || ''} onChange={e => set('vendorNotes', e.target.value)} placeholder="e.g. Arbor Auto — brakes, ETA Friday" />
+        </div>
+      </div>
+
+      {/* Inbound logistics */}
+      <div style={{ margin: '4px 0 16px', border: '1px solid #c7d6ef', borderRadius: 10, padding: '14px 16px', background: '#f7f9fd' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#1a3d76', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+            🚛 Inbound logistics — getting it to our lot
+          </div>
+          {isAuctionSource(form.source) && (
+            <span style={{ background: '#1a3d76', color: '#f1bb25', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>
+              Auction pickup
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Pickup status</label>
+            <select value={form.inbound.status} onChange={e => setInbound('status', e.target.value)}>
+              {INBOUND_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Pickup location / origin</label>
+            <input type="text" value={form.inbound.origin} onChange={e => setInbound('origin', e.target.value)} placeholder={isAuctionSource(form.source) ? 'Auction lot + lane' : 'Seller address / city'} />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Pickup date</label>
+            <input type="date" value={form.inbound.pickupDate} onChange={e => setInbound('pickupDate', e.target.value)} />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Pickup time</label>
+            <input type="time" value={form.inbound.pickupTime} onChange={e => setInbound('pickupTime', e.target.value)} />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Driver / hauler</label>
+            <input type="text" value={form.inbound.driver} onChange={e => setInbound('driver', e.target.value)} placeholder="Who is picking it up" />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Driver contact</label>
+            <input type="text" value={form.inbound.driverContact} onChange={e => setInbound('driverContact', e.target.value)} placeholder="Phone" />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Origin contact</label>
+            <input type="text" value={form.inbound.originContact} onChange={e => setInbound('originContact', e.target.value)} placeholder="Seller / lot contact + phone" />
+          </div>
+          {isAuctionSource(form.source) ? (
+            <>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Gate pass / buyer #</label>
+                <input type="text" value={form.inbound.gatePass} onChange={e => setInbound('gatePass', e.target.value)} placeholder="Gate pass or buyer number" />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Gate pass status</label>
+                <select value={form.inbound.gatePassStatus} onChange={e => setInbound('gatePassStatus', e.target.value)}>
+                  {GATE_PASS_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </div>
+            </>
+          ) : (
+            <div className="form-group" style={{ marginBottom: 0, gridColumn: '1/-1' }} />
+          )}
+        </div>
+        <div className="form-group" style={{ marginTop: 12, marginBottom: 0 }}>
+          <label>Pickup notes (timing, coordination, special instructions)</label>
+          <input type="text" value={form.inbound.notes} onChange={e => setInbound('notes', e.target.value)} placeholder={isAuctionSource(form.source) ? 'e.g. Pickup before Fri, title at gate' : 'e.g. Seller available evenings, key under mat'} />
         </div>
       </div>
 
@@ -777,6 +862,27 @@ export default function Acquisitions() {
                       )}
                       {v.vendorNotes && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>{v.vendorNotes}</div>}
                     </div>
+
+                    {/* Inbound logistics */}
+                    {(() => {
+                      const ib = v.inbound || {};
+                      const ibs = INBOUND_STATUSES.find(s => s.value === (ib.status || 'not_scheduled')) || INBOUND_STATUSES[0];
+                      const auctionBuy = isAuctionSource(v.source);
+                      return (
+                        <div style={{ minWidth: 170 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Inbound</div>
+                          <span style={{ background: ibs.bg, color: ibs.color, padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-block' }}>
+                            {ibs.icon} {ibs.label}
+                          </span>
+                          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {ib.pickupDate && <span>📅 {new Date(ib.pickupDate + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{ib.pickupTime ? ` · ${ib.pickupTime}` : ''}</span>}
+                            {ib.driver && <span>🧑‍✈️ {ib.driver}</span>}
+                            {ib.origin && <span>📍 {ib.origin}</span>}
+                            {auctionBuy && ib.gatePass && <span>🎟️ Gate {ib.gatePass}</span>}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                   </div>
 
