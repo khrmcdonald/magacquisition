@@ -25,6 +25,81 @@ const AUCTION_STATUSES = [
 
 const LOCATIONS = ['Arbor Plaza', 'In Transit', 'Mechanic'];
 
+// Intake logistics journey — tracks a vehicle physically coming into inventory,
+// from the moment it's bought at the source through to lot inspection.
+const INTAKE_STEPS = [
+  { key: 'purchased', label: 'Purchased', icon: '🧾' },
+  { key: 'pickupScheduled', label: 'Pickup Set', icon: '📅' },
+  { key: 'inTransit', label: 'In Transit', icon: '🚚' },
+  { key: 'arrived', label: 'Arrived', icon: '🏁' },
+  { key: 'inspected', label: 'Inspected', icon: '✅' },
+];
+
+function IntakeTracker({ steps, currentStatus, onUpdate, canUpdate }) {
+  const stepKeys = INTAKE_STEPS.map(s => s.key);
+  const currentIdx = stepKeys.indexOf(currentStatus || 'purchased');
+
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
+        Intake logistics
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: 4 }}>
+        {INTAKE_STEPS.map((step, i) => {
+          const done = i <= currentIdx;
+          const active = i === currentIdx;
+          const isClickable = canUpdate && i !== currentIdx;
+          return (
+            <React.Fragment key={step.key}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <div
+                  onClick={() => isClickable && onUpdate(step.key)}
+                  title={isClickable ? (i < currentIdx ? `← Back to ${step.label}` : `→ Mark as ${step.label}`) : ''}
+                  style={{
+                    width: 38, height: 38, borderRadius: '50%',
+                    background: done ? '#1a3d76' : '#f3f4f6',
+                    color: done ? '#fff' : '#9ca3af',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: done ? 15 : 17, fontWeight: 700,
+                    cursor: isClickable ? 'pointer' : 'default',
+                    border: active ? '3px solid #f1bb25' : done ? '3px solid #1a3d76' : '3px solid #e5e7eb',
+                    transition: 'all 0.15s',
+                    boxShadow: isClickable ? '0 2px 8px rgba(0,0,0,0.12)' : 'none',
+                  }}
+                  onMouseEnter={e => { if (isClickable) e.currentTarget.style.transform = 'scale(1.1)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = ''; }}
+                >
+                  {done ? '✓' : step.icon}
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 600, color: done ? '#1a3d76' : '#9ca3af', whiteSpace: 'nowrap' }}>
+                  {step.label}
+                </span>
+                {steps && steps[step.key] && (
+                  <span style={{ fontSize: 9, color: '#9ca3af' }}>
+                    {new Date(steps[step.key]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                )}
+              </div>
+              {i < INTAKE_STEPS.length - 1 && (
+                <div style={{ width: 24, height: 2, background: i < currentIdx ? '#1a3d76' : '#e5e7eb', marginTop: 18, flexShrink: 0 }} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+      {canUpdate && currentIdx < INTAKE_STEPS.length - 1 && (
+        <button
+          className="btn-navy"
+          style={{ padding: '6px 14px', fontSize: 12, marginTop: 10 }}
+          onClick={() => onUpdate(INTAKE_STEPS[currentIdx + 1].key)}
+        >
+          Mark as {INTAKE_STEPS[currentIdx + 1].label} {INTAKE_STEPS[currentIdx + 1].icon}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function InlineSelect({ options, current, onChange, minWidth, label }) {
   const [open, setOpen] = React.useState(false);
   const cur = options.find(o => o.value === current) || options[0];
@@ -584,7 +659,7 @@ const STATUS_LABELS = {
 
 export default function Acquisitions() {
   const { user } = useAuth();
-  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, resolveArbitration } = useData();
+  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, resolveArbitration, updateIntake } = useData();
   const [resolveModal, setResolveModal] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -795,6 +870,16 @@ export default function Acquisitions() {
                       {v.vendorNotes && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>{v.vendorNotes}</div>}
                     </div>
 
+                  </div>
+
+                  {/* Row 2.5: intake logistics tracker */}
+                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f3f4f6' }}>
+                    <IntakeTracker
+                      steps={v.intakeSteps}
+                      currentStatus={v.intakeStatus}
+                      onUpdate={(stepKey) => updateIntake(v.id, stepKey)}
+                      canUpdate={!isReadOnly}
+                    />
                   </div>
 
                   {/* Row 3: notes if any */}

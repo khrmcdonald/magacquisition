@@ -116,10 +116,37 @@ export function DataProvider({ children }) {
   };
 
   // --- Vehicles ---
+  const INTAKE_STEP_ORDER = ['purchased', 'pickupScheduled', 'inTransit', 'arrived', 'inspected'];
+
   const addVehicle = (vehicle) => {
     const id = 'v_' + Date.now();
-    update(d => ({ ...d, vehicles: [...d.vehicles, { ...vehicle, id, createdAt: new Date().toISOString(), status: 'intake' }] }));
+    const now = new Date().toISOString();
+    update(d => ({ ...d, vehicles: [...d.vehicles, {
+      ...vehicle,
+      id,
+      createdAt: now,
+      status: 'intake',
+      intakeStatus: vehicle.intakeStatus || 'purchased',
+      intakeSteps: vehicle.intakeSteps || { purchased: now },
+    }] }));
     return id;
+  };
+
+  // Advance (or move back) a vehicle's intake logistics step. Stamps the chosen
+  // step with the current time; moving backward clears any later step times.
+  const updateIntake = (vehicleId, stepKey) => {
+    const targetIdx = INTAKE_STEP_ORDER.indexOf(stepKey);
+    if (targetIdx === -1) return;
+    update(d => ({
+      ...d,
+      vehicles: d.vehicles.map(v => {
+        if (v.id !== vehicleId) return v;
+        const steps = { ...(v.intakeSteps || {}) };
+        steps[stepKey] = new Date().toISOString();
+        INTAKE_STEP_ORDER.forEach((k, i) => { if (i > targetIdx) steps[k] = null; });
+        return { ...v, intakeStatus: stepKey, intakeSteps: steps };
+      })
+    }));
   };
 
   const updateVehicle = (id, fields) => {
@@ -305,6 +332,7 @@ export function DataProvider({ children }) {
       getMyBid,
       getAllBidsForVehicle,
       updateTransport,
+      updateIntake,
       fileArbitration,
       resolveArbitration,
       updateStorePhoto,
