@@ -24,6 +24,14 @@ const AUCTION_STATUSES = [
 
 const LOCATIONS = ['Arbor Plaza', 'In Transit', 'Mechanic'];
 
+const INBOUND_STATUSES = [
+  { value: 'not_arranged', label: 'Not arranged yet' },
+  { value: 'scheduled', label: 'Pickup scheduled' },
+  { value: 'in_transit', label: 'In transit to lot' },
+  { value: 'arrived', label: 'Arrived at lot' },
+];
+const INBOUND_METHODS = ['Third-party hauler', 'Driving it back', 'Tow', 'Seller delivers', 'Other'];
+
 function InlineSelect({ options, current, onChange, minWidth, label }) {
   const [open, setOpen] = React.useState(false);
   const cur = options.find(o => o.value === current) || options[0];
@@ -298,6 +306,8 @@ function VehicleForm({ initial, onSave, onCancel }) {
     source: 'Trade-in', purchasePrice: '', condition: 'Good', notes: '',
     overheadCosts: '', reconItems: [], reconNotes: '', floorPrice: '', photos: [],
     titleStatus: 'pending', titleNotes: '', currentLocation: 'Arbor Plaza', vendorNotes: '',
+    inboundStatus: 'not_arranged', pickupLocation: '', inboundMethod: 'Third-party hauler',
+    inboundCarrier: '', inboundEta: '', inboundCost: '',
   });
   const [reconCosts, setReconCosts] = useState(initial?.reconCosts || {});
   const fileRef = useRef();
@@ -516,6 +526,45 @@ function VehicleForm({ initial, onSave, onCancel }) {
         </div>
       </div>
 
+      {/* Inbound logistics */}
+      <div style={{ background: '#f0f4fb', borderRadius: 8, padding: '16px', marginBottom: 16, border: '1px solid #c7d6ef' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#1a3d76', marginBottom: 4 }}>🚛 Inbound logistics — getting it to our lot</div>
+        <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 14 }}>Track the trip from where you bought it to Arbor Plaza.</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-group">
+            <label>Inbound status</label>
+            <select value={form.inboundStatus || 'not_arranged'} onChange={e => set('inboundStatus', e.target.value)}>
+              {INBOUND_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Transport method</label>
+            <select value={form.inboundMethod || 'Third-party hauler'} onChange={e => set('inboundMethod', e.target.value)}>
+              {INBOUND_METHODS.map(m => <option key={m}>{m}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Pickup location</label>
+            <input type="text" value={form.pickupLocation || ''} onChange={e => set('pickupLocation', e.target.value)} placeholder="Auction / seller address or city" />
+          </div>
+          <div className="form-group">
+            <label>Hauler / driver</label>
+            <input type="text" value={form.inboundCarrier || ''} onChange={e => set('inboundCarrier', e.target.value)} placeholder="Carrier name or contact" />
+          </div>
+          <div className="form-group">
+            <label>Expected arrival</label>
+            <input type="date" value={form.inboundEta || ''} onChange={e => set('inboundEta', e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Inbound transport cost</label>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }}>$</span>
+              <input type="number" value={form.inboundCost || ''} onChange={e => set('inboundCost', e.target.value)} placeholder="0" style={{ paddingLeft: 24 }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Location & vendor */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div className="form-group">
@@ -636,9 +685,22 @@ export default function Acquisitions() {
           <p>All inventory — every vehicle TRI-STATE owns, at every stage. Cost data visible to TRI-STATE and GM only.</p>
         </div>
         {!isReadOnly && (
-          <button className="btn-navy" onClick={() => { setEditing(null); setShowForm(true); }}>
-            + Add vehicle
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <a
+              href="/MAG_Inventory_Template.xlsx"
+              download
+              className="btn-secondary"
+              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+            >
+              ↓ Download template
+            </a>
+            <button className="btn-secondary" onClick={() => setShowUpload(true)}>
+              ↑ Upload spreadsheet
+            </button>
+            <button className="btn-navy" onClick={() => { setEditing(null); setShowForm(true); }}>
+              + Add vehicle
+            </button>
+          </div>
         )}
       </div>
 
@@ -776,6 +838,12 @@ export default function Acquisitions() {
                         <span style={{ fontSize: 14, color: '#374151' }}>{v.currentLocation || '—'}</span>
                       )}
                       {v.vendorNotes && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>{v.vendorNotes}</div>}
+                      {v.inboundStatus && v.inboundStatus !== 'arrived' && (
+                        <div style={{ fontSize: 12, color: '#1a3d76', marginTop: 6, fontWeight: 600 }}>
+                          🚛 {(INBOUND_STATUSES.find(s => s.value === v.inboundStatus) || {}).label}
+                          {v.inboundEta ? ` · ETA ${new Date(v.inboundEta + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+                        </div>
+                      )}
                     </div>
 
                   </div>
