@@ -373,6 +373,149 @@ export function DataProvider({ children }) {
     }), 'arbitration:resolve');
   };
 
+  // --- Outside (external) auctions ---
+  // Inventory sometimes goes to an outside auction (Manheim, ADESA, etc.) rather
+  // than to one of our stores, to chase a higher price or simply to move it. We
+  // track the consignment (which auction, asking price, run date), the outcome
+  // (sold + sale price, or no-sale) and — when it doesn't sell — the logistics
+  // of getting it back into our inventory. A vehicle can be consigned more than
+  // once, so each completed attempt is archived in `outsideAuctionHistory`.
+
+  const sendToOutsideAuction = (vehicleId, details) => {
+    update(d => ({
+      ...d,
+      vehicles: d.vehicles.map(v => v.id === vehicleId ? {
+        ...v,
+        status: 'at_outside_auction',
+        currentLocation: 'In Transit',
+        outsideAuction: {
+          venue: details.venue || '',
+          location: details.location || '',
+          lotNumber: details.lotNumber || '',
+          listingPrice: details.listingPrice || '',
+          reservePrice: details.reservePrice || '',
+          runDate: details.runDate || '',
+          notes: details.notes || '',
+          sentAt: new Date().toISOString(),
+          outcome: null,
+          soldPrice: null,
+          fees: null,
+          buyer: '',
+          soldAt: null,
+          return: null,
+        },
+      } : v)
+    }), 'outside:send');
+  };
+
+  const updateOutsideListing = (vehicleId, fields) => {
+    update(d => ({
+      ...d,
+      vehicles: d.vehicles.map(v => v.id === vehicleId && v.outsideAuction ? {
+        ...v, outsideAuction: { ...v.outsideAuction, ...fields }
+      } : v)
+    }), 'outside:update');
+  };
+
+  const recordOutsideSale = (vehicleId, fields) => {
+    update(d => ({
+      ...d,
+      vehicles: d.vehicles.map(v => v.id === vehicleId && v.outsideAuction ? {
+        ...v,
+        status: 'sold_outside',
+        currentLocation: 'Sold',
+        outsideAuction: {
+          ...v.outsideAuction,
+          outcome: 'sold',
+          soldPrice: fields.soldPrice || '',
+          fees: fields.fees || '',
+          buyer: fields.buyer || '',
+          notes: fields.notes != null ? fields.notes : v.outsideAuction.notes,
+          soldAt: new Date().toISOString(),
+          return: null,
+        },
+      } : v)
+    }), 'outside:sold');
+  };
+
+  const markOutsideNoSale = (vehicleId, fields) => {
+    update(d => ({
+      ...d,
+      vehicles: d.vehicles.map(v => v.id === vehicleId && v.outsideAuction ? {
+        ...v,
+        outsideAuction: {
+          ...v.outsideAuction,
+          outcome: 'not_sold',
+          notes: fields?.notes != null ? fields.notes : v.outsideAuction.notes,
+          return: v.outsideAuction.return || {
+            status: 'pending',
+            carrier: '',
+            cost: '',
+            notes: '',
+            steps: { pending: new Date().toISOString(), dispatched: null, inTransit: null, received: null },
+          },
+        },
+      } : v)
+    }), 'outside:nosale');
+  };
+
+  const updateOutsideReturn = (vehicleId, stepKey, fields) => {
+    update(d => ({
+      ...d,
+      vehicles: d.vehicles.map(v => {
+        if (v.id !== vehicleId || !v.outsideAuction) return v;
+        const ret = v.outsideAuction.return || {
+          status: 'pending', carrier: '', cost: '', notes: '',
+          steps: { pending: null, dispatched: null, inTransit: null, received: null },
+        };
+        return {
+          ...v,
+          outsideAuction: {
+            ...v.outsideAuction,
+            return: {
+              ...ret,
+              ...(fields || {}),
+              status: stepKey || ret.status,
+              steps: stepKey
+                ? { ...ret.steps, [stepKey]: ret.steps[stepKey] || new Date().toISOString() }
+                : ret.steps,
+            },
+          },
+        };
+      })
+    }), 'outside:return');
+  };
+
+  // Finalize a no-sale: the car is physically back, so it re-enters inventory as
+  // ready-to-list and the consignment attempt is archived for audit.
+  const completeOutsideReturn = (vehicleId) => {
+    update(d => ({
+      ...d,
+      vehicles: d.vehicles.map(v => {
+        if (v.id !== vehicleId || !v.outsideAuction) return v;
+        const ret = v.outsideAuction.return || {
+          status: 'received', carrier: '', cost: '', notes: '', steps: {},
+        };
+        const completed = {
+          ...v.outsideAuction,
+          return: {
+            ...ret,
+            status: 'received',
+            steps: { ...ret.steps, received: ret.steps?.received || new Date().toISOString() },
+          },
+          returnedAt: new Date().toISOString(),
+        };
+        return {
+          ...v,
+          status: 'ready',
+          currentLocation: 'Arbor Plaza',
+          outsideAuction: null,
+          outsideAuctionHistory: [...(v.outsideAuctionHistory || []), completed],
+        };
+      })
+    }), 'outside:returned');
+  };
+
   return (
     <DataContext.Provider value={{
       data,
@@ -392,6 +535,12 @@ export function DataProvider({ children }) {
       updateTransport,
       fileArbitration,
       resolveArbitration,
+      sendToOutsideAuction,
+      updateOutsideListing,
+      recordOutsideSale,
+      markOutsideNoSale,
+      updateOutsideReturn,
+      completeOutsideReturn,
       updateStorePhoto,
       checkAndAwardBadges,
       computeBadges,

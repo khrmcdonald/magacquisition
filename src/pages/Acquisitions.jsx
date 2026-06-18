@@ -110,12 +110,14 @@ function InlineSelect({ options, current, onChange, minWidth, label }) {
 }
 
 function VehicleStatusDropdown({ vehicle, onChange }) {
-  const isLocked = ['active', 'awarded', 'no_sale'].includes(vehicle.status);
+  const isLocked = ['active', 'awarded', 'no_sale', 'at_outside_auction', 'sold_outside'].includes(vehicle.status);
   if (isLocked) {
     const lockedMap = {
       active: { label: 'Live in Auction', bg: '#dbeafe', color: '#1e40af' },
       awarded: { label: 'Awarded', bg: '#d1fae5', color: '#065f46' },
       no_sale: { label: 'No Sale', bg: '#fee2e2', color: '#991b1b' },
+      at_outside_auction: { label: 'At Outside Auction', bg: '#ede9fe', color: '#5b21b6' },
+      sold_outside: { label: 'Sold (Outside)', bg: '#d1fae5', color: '#065f46' },
     };
     const s = lockedMap[vehicle.status];
     return <span style={{ background: s.bg, color: s.color, padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>{s.label}</span>;
@@ -579,18 +581,86 @@ const STATUS_LABELS = {
   active: { label: 'Live in Auction', color: '#1e40af', bg: '#dbeafe' },
   awarded: { label: 'Awarded', color: '#065f46', bg: '#d1fae5' },
   no_sale: { label: 'No Sale', color: '#991b1b', bg: '#fee2e2' },
+  at_outside_auction: { label: 'At Outside Auction', color: '#5b21b6', bg: '#ede9fe' },
+  sold_outside: { label: 'Sold (Outside)', color: '#065f46', bg: '#d1fae5' },
 };
+
+function SendOutsideModal({ vehicle, onClose, onSend }) {
+  const [form, setForm] = useState({
+    venue: '', location: '', lotNumber: '',
+    listingPrice: vehicle.floorPrice || '', reservePrice: '', runDate: '', notes: '',
+  });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
+        <div className="modal-header">
+          <h2>Send to outside auction</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, color: '#9ca3af', cursor: 'pointer' }}>×</button>
+        </div>
+        <div className="modal-body">
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 14 }}>
+            {vehicle.year} {vehicle.make} {vehicle.model}{vehicle.trim ? ` · ${vehicle.trim}` : ''}
+          </div>
+          <form onSubmit={e => { e.preventDefault(); onSend(form); }}>
+            <div className="form-group">
+              <label>Auction / venue *</label>
+              <input type="text" value={form.venue} onChange={e => set('venue', e.target.value)} placeholder="e.g. Manheim Detroit, ADESA, eBlock" required />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="form-group">
+                <label>Location</label>
+                <input type="text" value={form.location} onChange={e => set('location', e.target.value)} placeholder="City / lane" />
+              </div>
+              <div className="form-group">
+                <label>Lot / stock #</label>
+                <input type="text" value={form.lotNumber} onChange={e => set('lotNumber', e.target.value)} placeholder="Lot #" />
+              </div>
+              <div className="form-group">
+                <label>Listed / asking price *</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }}>$</span>
+                  <input type="number" value={form.listingPrice} onChange={e => set('listingPrice', e.target.value)} placeholder="0" style={{ paddingLeft: 24 }} required />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Reserve (optional)</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }}>$</span>
+                  <input type="number" value={form.reservePrice} onChange={e => set('reservePrice', e.target.value)} placeholder="0" style={{ paddingLeft: 24 }} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Run / sale date</label>
+                <input type="date" value={form.runDate} onChange={e => set('runDate', e.target.value)} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label>Notes</label>
+              <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={2} placeholder="Consignment terms, contact, lane info..." />
+            </div>
+            <div className="modal-footer" style={{ padding: '8px 0 0', borderTop: 'none' }}>
+              <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+              <button type="submit" className="btn-navy">Send to auction</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Acquisitions() {
   const { user } = useAuth();
-  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, resolveArbitration } = useData();
+  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, resolveArbitration, sendToOutsideAuction } = useData();
   const [resolveModal, setResolveModal] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [viewVehicle, setViewVehicle] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
+  const [sendOutside, setSendOutside] = useState(null);
 
   if (user.role !== 'wholesale' && user.role !== 'gm' && user.role !== 'admin') {
     return <Navigate to="/auction" replace />;
@@ -619,10 +689,6 @@ export default function Acquisitions() {
     if (window.confirm(`List ${v.year} ${v.make} ${v.model} in the active auction?`)) {
       listVehicle(v.id);
     }
-  };
-
-  const handleStatusChange = (v, status) => {
-    updateVehicle(v.id, { status });
   };
 
   const statusCounts = {};
@@ -720,6 +786,9 @@ export default function Acquisitions() {
                       )}
                       {!isReadOnly && v.status === 'active' && (
                         <button onClick={() => unlistVehicle(v.id)} style={{ background: '#fef3c7', color: '#92400e', border: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>Remove from auction</button>
+                      )}
+                      {!isReadOnly && ['intake','recon','ready','no_sale'].includes(v.status) && (
+                        <button onClick={() => setSendOutside(v)} style={{ background: '#ede9fe', color: '#5b21b6', border: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>🏷️ Send to outside auction</button>
                       )}
                       {!isReadOnly && (
                         <button onClick={() => setConfirmDelete(v)} style={{ background: '#fee2e2', color: '#991b1b', border: 'none', padding: '8px 12px', borderRadius: 8, fontSize: 16, cursor: 'pointer', fontWeight: 700 }}>✕</button>
@@ -822,6 +891,21 @@ export default function Acquisitions() {
                     </div>
                   )}
 
+                  {/* Outside auction banner */}
+                  {(v.status === 'at_outside_auction' || v.status === 'sold_outside') && v.outsideAuction && (
+                    <div style={{ marginTop: 14, background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: 8, padding: '12px 14px', fontSize: 13, color: '#5b21b6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                      <div>
+                        <strong>🏷️ {v.status === 'sold_outside' ? 'Sold at' : 'At'} {v.outsideAuction.venue || 'outside auction'}</strong>
+                        {v.status === 'sold_outside'
+                          ? <> — sold for ${parseFloat(v.outsideAuction.soldPrice || 0).toLocaleString()}</>
+                          : v.outsideAuction.outcome === 'not_sold'
+                            ? <> — no-sale, return in progress</>
+                            : <> — listed at ${parseFloat(v.outsideAuction.listingPrice || 0).toLocaleString()}</>}
+                      </div>
+                      <span style={{ fontSize: 12, opacity: 0.8 }}>Manage on the Outside Auctions page →</span>
+                    </div>
+                  )}
+
                 </div>
               );
             })}
@@ -887,6 +971,15 @@ export default function Acquisitions() {
         <ExcelUploadModal
           onClose={() => setShowUpload(false)}
           onImport={(vehicles) => { handleBulkImport(vehicles); }}
+        />
+      )}
+
+      {/* Send to outside auction modal */}
+      {sendOutside && (
+        <SendOutsideModal
+          vehicle={sendOutside}
+          onClose={() => setSendOutside(null)}
+          onSend={(details) => { sendToOutsideAuction(sendOutside.id, details); setSendOutside(null); }}
         />
       )}
 

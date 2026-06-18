@@ -15,14 +15,6 @@ function fmtDateTime(iso) {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-const TRANSPORT_STEPS = [
-  { key: 'awarded', label: 'Awarded' },
-  { key: 'dispatched', label: 'Dispatched' },
-  { key: 'inTransit', label: 'In Transit' },
-  { key: 'arrived', label: 'Arrived' },
-  { key: 'titleReceived', label: 'Title Received' },
-];
-
 export default function History() {
   const { user } = useAuth();
   const { data } = useData();
@@ -36,9 +28,6 @@ export default function History() {
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-
-  // All closed vehicles (awarded + no_sale)
-  const closedVehicles = data.vehicles.filter(v => ['awarded', 'no_sale', 'active'].includes(v.status) || v.awardedAt);
 
   // All bids
   const allBids = data.bids;
@@ -233,6 +222,8 @@ export default function History() {
                       active: { label: 'Live', bg: '#dbeafe', color: '#1e40af' },
                       awarded: { label: 'Awarded', bg: '#d1fae5', color: '#065f46' },
                       no_sale: { label: 'No Sale', bg: '#fee2e2', color: '#991b1b' },
+                      at_outside_auction: { label: 'At Outside Auction', bg: '#ede9fe', color: '#5b21b6' },
+                      sold_outside: { label: 'Sold (Outside)', bg: '#d1fae5', color: '#065f46' },
                     };
                     const st = statusMap[v.status] || statusMap.intake;
                     return (

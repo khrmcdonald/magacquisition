@@ -23,11 +23,14 @@ export default function Export() {
   const vehicles = data.vehicles;
   const awarded = vehicles.filter(v => v.status === 'awarded');
   const noSale = vehicles.filter(v => v.status === 'no_sale');
-  const active = vehicles.filter(v => !['awarded','no_sale'].includes(v.status));
+  const atOutside = vehicles.filter(v => v.status === 'at_outside_auction');
+  const soldOutside = vehicles.filter(v => v.status === 'sold_outside');
+  const active = vehicles.filter(v => !['awarded','no_sale','at_outside_auction','sold_outside'].includes(v.status));
 
   const totalInvested = vehicles.reduce((s, v) => s + fmt(v.totalCost), 0);
   const totalRecovered = awarded.reduce((s, v) => s + (v.winningBid || 0), 0);
   const totalMargin = totalRecovered - awarded.reduce((s, v) => s + fmt(v.totalCost), 0);
+  const outsideNetProceeds = soldOutside.reduce((s, v) => s + (fmt(v.outsideAuction?.soldPrice) - fmt(v.outsideAuction?.fees)), 0);
 
   const handleExport = () => {
     const XLSX = window.XLSX;
@@ -35,10 +38,6 @@ export default function Export() {
     setExporting(true);
 
     const wb = XLSX.utils.book_new();
-    const navy = '1a3d76', gold = 'f1bb25', white = 'FFFFFF';
-
-    const headerStyle = { font: { bold: true, color: { rgb: white }, sz: 11 }, fill: { fgColor: { rgb: navy } }, alignment: { horizontal: 'center' }, border: { bottom: { style: 'thin' } } };
-    const subHeaderStyle = { font: { bold: true, sz: 10 }, fill: { fgColor: { rgb: 'f0f4fb' } } };
 
     // ── Sheet 1: Current Inventory ──
     const invRows = [
@@ -144,7 +143,47 @@ export default function Export() {
     wsTrans['!cols'] = [24,22,16,14,14,14,14,14,14,30].map(w => ({ wch: w }));
     XLSX.utils.book_append_sheet(wb, wsTrans, '5. Transport Log');
 
-    // ── Sheet 6: P&L Summary ──
+    // ── Sheet 6: Outside Auctions ──
+    const outsideRows = [];
+    vehicles.forEach(v => {
+      const vehLabel = `${v.year || ''} ${v.make || ''} ${v.model || ''}`.trim();
+      const emit = (oa, statusLabel, endDate) => {
+        const sale = fmt(oa.soldPrice);
+        const fees = fmt(oa.fees);
+        const net = oa.outcome === 'sold' ? sale - fees : '';
+        const gain = oa.outcome === 'sold' ? (sale - fees) - fmt(v.totalCost) : '';
+        outsideRows.push([
+          vehLabel, v.vin || '', oa.venue || '', oa.location || '', oa.lotNumber || '',
+          fmt(oa.listingPrice), fmt(oa.reservePrice), statusLabel,
+          oa.outcome === 'sold' ? sale : '', oa.outcome === 'sold' ? fees : '',
+          net, fmt(v.totalCost), gain, oa.buyer || '',
+          fmtDate(oa.sentAt), fmtDate(endDate), oa.notes || '',
+        ]);
+      };
+      if (v.outsideAuction) {
+        const oa = v.outsideAuction;
+        const label = v.status === 'sold_outside' ? 'Sold'
+          : oa.outcome === 'not_sold' ? 'No-sale — returning'
+          : 'At auction';
+        emit(oa, label, oa.soldAt);
+      }
+      (v.outsideAuctionHistory || []).forEach(h => emit(h, 'Returned (no-sale)', h.returnedAt));
+    });
+    const outsideHeaderRows = [
+      ['MAG ACQUISITION — OUTSIDE AUCTIONS', '', '', '', '', '', '', '', '', '', ''],
+      [`Exported: ${fmtDate(new Date().toISOString())}`, '', '', '', '', '', '', '', '', '', ''],
+      [],
+      ['Vehicle', 'VIN', 'Auction', 'Location', 'Lot #', 'Listed At', 'Reserve', 'Outcome', 'Sale Price', 'Auction Fees', 'Net Proceeds', 'Cost Basis', 'Gain/Loss', 'Buyer', 'Sent', 'Sold/Returned', 'Notes'],
+      ...outsideRows,
+      [],
+      ['', '', '', '', '', '', '', 'TOTALS →', soldOutside.reduce((s,v)=>s+fmt(v.outsideAuction?.soldPrice),0), soldOutside.reduce((s,v)=>s+fmt(v.outsideAuction?.fees),0), outsideNetProceeds],
+    ];
+    const wsOutside = XLSX.utils.aoa_to_sheet(outsideHeaderRows);
+    wsOutside['!cols'] = [22,22,18,14,10,12,12,18,12,12,14,14,12,16,14,14,30].map(w => ({ wch: w }));
+    wsOutside['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 10 } }];
+    XLSX.utils.book_append_sheet(wb, wsOutside, '6. Outside Auctions');
+
+    // ── Sheet 7: P&L Summary ──
     const plRows = [
       ['MAG ACQUISITION — P&L SUMMARY', ''],
       [`As of ${fmtDate(new Date().toISOString())}`, ''],
@@ -161,6 +200,11 @@ export default function Export() {
       ['Total winning bids received', totalRecovered],
       ['Gross margin $', totalMargin],
       ['Gross margin %', awarded.reduce((s,v)=>s+fmt(v.totalCost),0) > 0 ? `${Math.round((totalMargin / awarded.reduce((s,v)=>s+fmt(v.totalCost),0)) * 100)}%` : '0%'],
+      [],
+      ['OUTSIDE AUCTIONS', ''],
+      ['Currently consigned', atOutside.length],
+      ['Sold at outside auction', soldOutside.length],
+      ['Outside net proceeds', outsideNetProceeds],
       [],
       ['BY STORE', '', '', ''],
       ['Store', 'Cars Won', 'Total Spend', 'Avg Per Car'],
@@ -181,7 +225,7 @@ export default function Export() {
 
     const wsPL = XLSX.utils.aoa_to_sheet(plRows);
     wsPL['!cols'] = [32, 20, 16, 14].map(w => ({ wch: w }));
-    XLSX.utils.book_append_sheet(wb, wsPL, '6. P&L Summary');
+    XLSX.utils.book_append_sheet(wb, wsPL, '7. P&L Summary');
 
     // Export
     XLSX.writeFile(wb, `MAG_Accounting_Export_${new Date().toISOString().substring(0,10)}.xlsx`);
@@ -235,7 +279,8 @@ export default function Export() {
             ['3. No Sales', 'Vehicles that didn\'t sell — cost basis and floor for reference'],
             ['4. Title Ledger', 'Title status on every vehicle — pending, in transit, on hand, liens'],
             ['5. Transport Log', 'Full delivery timeline — dispatched, in transit, arrived, title received dates'],
-            ['6. P&L Summary', 'Total invested, recovered, margin by store, auction history'],
+            ['6. Outside Auctions', 'External consignments — listing price, sale price, fees, net proceeds, returns'],
+            ['7. P&L Summary', 'Total invested, recovered, margin by store, auction history'],
           ].map(([title, desc]) => (
             <div key={title} style={{ background: '#f5f6f8', borderRadius: 10, padding: '14px 16px' }}>
               <div style={{ fontWeight: 700, fontSize: 13, color: '#1a3d76', marginBottom: 4 }}>{title}</div>
