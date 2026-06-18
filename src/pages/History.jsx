@@ -44,18 +44,22 @@ export default function History() {
   // All bids
   const allBids = data.bids;
 
-  // Filter bids by store
+  // Filter bids by store. Bidders are hard-scoped to their own store —
+  // Tri-State (master), GM and admin see everything.
   const filteredBids = allBids.filter(b => {
+    if (isBidder && b.storeId !== user.id) return false;
     if (storeFilter !== 'all' && b.storeId !== storeFilter) return false;
     if (search && !`${b.storeName}`.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  // Filter vehicles
+  // Filter vehicles. Bidders only ever see vehicles they won; the master
+  // roles (Tri-State / GM / admin) see the full lot and can narrow by store.
   const filteredVehicles = data.vehicles.filter(v => {
+    if (isBidder && v.winnerId !== user.id) return false;
     const name = `${v.year} ${v.make} ${v.model} ${v.vin}`.toLowerCase();
     if (search && !name.includes(search.toLowerCase())) return false;
-    if (storeFilter !== 'all' && v.winnerId !== storeFilter && tab !== 'vehicles') return false;
+    if (!isBidder && storeFilter !== 'all' && v.winnerId !== storeFilter && tab !== 'vehicles') return false;
     if (dateFrom && v.createdAt && new Date(v.createdAt) < new Date(dateFrom)) return false;
     if (dateTo && v.createdAt && new Date(v.createdAt) > new Date(dateTo)) return false;
     return true;
@@ -77,8 +81,9 @@ export default function History() {
 
   const myStore = isBidder ? storeSummary.find(s => s.id === user.id) : null;
 
-  // Transport history
+  // Transport history. Bidders see only their own incoming vehicles.
   const filteredTransport = data.transport.filter(t => {
+    if (isBidder && t.storeId !== user.id) return false;
     if (storeFilter !== 'all' && t.storeId !== storeFilter) return false;
     if (search) {
       const name = `${t.vehicleName} ${t.storeName}`.toLowerCase();
