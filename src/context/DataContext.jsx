@@ -4,6 +4,33 @@ const DataContext = createContext(null);
 
 const STORAGE_KEY = 'mag_data';
 
+// Collision-proof unique id. Date.now() alone repeats within the same
+// millisecond, so bulk operations (e.g. spreadsheet import) would hand every
+// row the same id. The counter + random suffix guarantee uniqueness even when
+// many ids are minted in a single synchronous loop.
+let _idSeq = 0;
+function uid(prefix) {
+  _idSeq = (_idSeq + 1) % 1000000;
+  return `${prefix}${Date.now().toString(36)}_${_idSeq}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// Repair data that was saved before unique ids were guaranteed: any vehicle
+// that has no id or shares an id with an earlier vehicle gets a fresh one.
+function dedupeVehicleIds(vehicles) {
+  if (!Array.isArray(vehicles)) return vehicles;
+  const seen = new Set();
+  return vehicles.map(v => {
+    if (!v) return v;
+    if (!v.id || seen.has(v.id)) {
+      const id = uid('v_');
+      seen.add(id);
+      return { ...v, id };
+    }
+    seen.add(v.id);
+    return v;
+  });
+}
+
 const DEFAULT_DATA = {
   auction: {
     isOpen: false,
@@ -22,7 +49,11 @@ const DEFAULT_DATA = {
 function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...DEFAULT_DATA, ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = { ...DEFAULT_DATA, ...JSON.parse(raw) };
+      parsed.vehicles = dedupeVehicleIds(parsed.vehicles);
+      return parsed;
+    }
   } catch {}
   return DEFAULT_DATA;
 }
@@ -33,6 +64,10 @@ function saveData(data) {
 
 export function DataProvider({ children }) {
   const [data, setData] = useState(loadData);
+
+  // Persist any load-time id repair so it survives reloads and so every later
+  // read (e.g. computeBadges) sees the same stable ids.
+  useEffect(() => { saveData(data); }, []);
 
   const update = useCallback((updater) => {
     setData(prev => {
@@ -117,7 +152,7 @@ export function DataProvider({ children }) {
 
   // --- Vehicles ---
   const addVehicle = (vehicle) => {
-    const id = 'v_' + Date.now();
+    const id = uid('v_');
     update(d => ({ ...d, vehicles: [...d.vehicles, { ...vehicle, id, createdAt: new Date().toISOString(), status: 'intake' }] }));
     return id;
   };
