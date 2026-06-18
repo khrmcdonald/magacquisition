@@ -24,6 +24,13 @@ const AUCTION_STATUSES = [
 
 const LOCATIONS = ['Arbor Plaza', 'In Transit', 'Mechanic'];
 
+// How a vehicle physically arrived at intake
+const INTAKE_METHODS = ['Driven in', 'Towed in', 'Third-party transport', 'Delivered by seller', 'Picked up by us', 'Other'];
+
+function todayISO() {
+  return new Date().toISOString().substring(0, 10);
+}
+
 function InlineSelect({ options, current, onChange, minWidth, label }) {
   const [open, setOpen] = React.useState(false);
   const cur = options.find(o => o.value === current) || options[0];
@@ -292,12 +299,13 @@ function ExcelUploadModal({ onClose, onImport }) {
   );
 }
 
-function VehicleForm({ initial, onSave, onCancel }) {
+function VehicleForm({ initial, onSave, onCancel, defaultIntakeBy }) {
   const [form, setForm] = useState(initial || {
     vin: '', year: '', make: '', model: '', trim: '', mileage: '', color: '',
     source: 'Trade-in', purchasePrice: '', condition: 'Good', notes: '',
     overheadCosts: '', reconItems: [], reconNotes: '', floorPrice: '', photos: [],
     titleStatus: 'pending', titleNotes: '', currentLocation: 'Arbor Plaza', vendorNotes: '',
+    intakeDate: todayISO(), intakeBy: defaultIntakeBy || '', intakeFrom: '', intakeMethod: 'Driven in',
   });
   const [reconCosts, setReconCosts] = useState(initial?.reconCosts || {});
   const fileRef = useRef();
@@ -407,6 +415,31 @@ function VehicleForm({ initial, onSave, onCancel }) {
           <div style={{ position: 'relative' }}>
             <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }}>$</span>
             <input type="number" value={form.overheadCosts} onChange={e => set('overheadCosts', e.target.value)} placeholder="0" style={{ paddingLeft: 24 }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Intake logistics — when / who / where / how */}
+      <div style={{ background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px', margin: '16px 0' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#1a3d76', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 12 }}>Intake logistics</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-group">
+            <label>When (intake date)</label>
+            <input type="date" value={form.intakeDate || ''} onChange={e => set('intakeDate', e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Who received it</label>
+            <input type="text" value={form.intakeBy || ''} onChange={e => set('intakeBy', e.target.value)} placeholder="e.g. Tri-State" />
+          </div>
+          <div className="form-group">
+            <label>Where it came from</label>
+            <input type="text" value={form.intakeFrom || ''} onChange={e => set('intakeFrom', e.target.value)} placeholder="Seller, lot, or pickup address" />
+          </div>
+          <div className="form-group">
+            <label>How it arrived</label>
+            <select value={form.intakeMethod || 'Driven in'} onChange={e => set('intakeMethod', e.target.value)}>
+              {INTAKE_METHODS.map(m => <option key={m}>{m}</option>)}
+            </select>
           </div>
         </div>
       </div>
@@ -714,6 +747,23 @@ export default function Acquisitions() {
                     </div>
                   </div>
 
+                  {/* Intake logistics strip: when / who / where / how */}
+                  {(v.intakeDate || v.intakeBy || v.intakeFrom || v.intakeMethod) && (
+                    <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', marginBottom: 16, background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 14px' }}>
+                      {[
+                        ['When', v.intakeDate ? new Date(v.intakeDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null],
+                        ['Who', v.intakeBy],
+                        ['Where from', v.intakeFrom],
+                        ['How', v.intakeMethod],
+                      ].filter(([, val]) => val).map(([label, val]) => (
+                        <div key={label}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>{label}</div>
+                          <div style={{ fontSize: 13, color: '#374151', fontWeight: 600 }}>{val}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Row 2: all controls side by side */}
                   <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-start' }}>
 
@@ -829,6 +879,7 @@ export default function Acquisitions() {
                 initial={editing}
                 onSave={handleSave}
                 onCancel={() => { setShowForm(false); setEditing(null); }}
+                defaultIntakeBy={user.name}
               />
             </div>
           </div>
