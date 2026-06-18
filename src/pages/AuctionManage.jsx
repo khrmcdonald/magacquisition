@@ -51,7 +51,7 @@ function DirectSaleModal({ vehicles, onClose, onSell }) {
                 {summary?.name} sold to {summary?.buyerName}
               </p>
               <p style={{ fontSize: 14, color: '#6b7280', marginTop: 6 }}>
-                Sold for ${(summary?.amount || 0).toLocaleString()}. It's now in Logistics, Transport &amp; Title and the buyer's wins.
+                Sold for ${(summary?.amount || 0).toLocaleString()}. It's now in Transport &amp; Title and the buyer's wins.
               </p>
               <button className="btn-navy" style={{ marginTop: 20 }} onClick={onClose}>Done</button>
             </div>

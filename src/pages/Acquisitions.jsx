@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
+import { StatusBadge } from '../components/StatusBadge';
 
 const SOURCES = ['KBB', 'VETTX', 'LBO', 'AutoHub', 'eBlock', 'ADESA', 'Private', 'Trade-in', 'Dealer trade', 'Off-lease', 'Other'];
 const CONDITIONS = ['Excellent', 'Good', 'Fair', 'Poor'];
@@ -734,6 +735,7 @@ export default function Acquisitions() {
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {filtered.map(v => {
               const st = STATUS_LABELS[v.status] || STATUS_LABELS.intake;
+              const transport = data.transport.find(t => t.vehicleId === v.id);
               const margin = v.floorPrice && v.totalCost ? (parseFloat(v.floorPrice) - parseFloat(v.totalCost)) : null;
               return (
                 <div key={v.id} style={{ borderBottom: '2px solid #e5e7eb', padding: '20px 24px' }}>
@@ -757,6 +759,9 @@ export default function Acquisitions() {
                           {v.mileage && <span style={{ fontSize: 13, color: '#6b7280' }}>· {parseInt(v.mileage).toLocaleString()} mi</span>}
                           {v.source && <span style={{ fontSize: 13, color: '#9ca3af' }}>· {v.source}</span>}
                           {v.vin && <span style={{ fontFamily: 'monospace', fontSize: 12, background: '#e8eef5', color: '#1a3d76', padding: '2px 10px', borderRadius: 6 }}>{v.vin}</span>}
+                        </div>
+                        <div style={{ marginTop: 8 }}>
+                          <StatusBadge vehicle={v} transport={transport} size="sm" />
                         </div>
                       </div>
                     </div>

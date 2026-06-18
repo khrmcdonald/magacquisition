@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { StatusBadge } from '../components/StatusBadge';
 
 const ARBITRATION_ISSUES = [
   'Undisclosed mechanical issue',
@@ -87,14 +88,6 @@ export default function MyWins() {
 
   const getTransport = (vehicleId) => data.transport.find(t => t.vehicleId === vehicleId);
 
-  const transportLabel = {
-    awarded: { label: 'Pending dispatch', color: '#92400e', icon: '⏳' },
-    dispatched: { label: 'Dispatched', color: '#1e40af', icon: '📦' },
-    inTransit: { label: 'In transit', color: '#0369a1', icon: '🚚' },
-    arrived: { label: 'Arrived at store', color: '#065f46', icon: '✅' },
-    titleReceived: { label: 'Title received', color: '#065f46', icon: '📄' },
-  };
-
   return (
     <>
       <div className="page-header">
@@ -134,7 +127,6 @@ export default function MyWins() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {myWins.map(v => {
             const transport = getTransport(v.id);
-            const ts = transport ? (transportLabel[transport.status] || transportLabel.awarded) : null;
             return (
               <div key={v.id} className="card" style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
                 {v.photos && v.photos[0] ? (
@@ -154,15 +146,10 @@ export default function MyWins() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
-                    {ts && (
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f5f6f8', borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, color: ts.color }}>
-                        <span>{ts.icon}</span>{ts.label}
-                      </div>
-                    )}
+                    <StatusBadge vehicle={v} transport={transport} />
                     {/* Arbitration status or button */}
-                    {v.arbitration?.status === 'open' ? (
-                      <span style={{ background: '#fee2e2', color: '#991b1b', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>⚠ Arbitration pending</span>
-                    ) : v.arbitration?.status === 'resolved' ? (
+                    {v.arbitration?.status === 'open' ? null
+                    : v.arbitration?.status === 'resolved' ? (
                       <span style={{ background: '#d1fae5', color: '#065f46', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>✓ Arbitration resolved</span>
                     ) : (
                       <button

@@ -3,6 +3,7 @@ import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { USERS } from '../context/AuthContext';
 import { StoreAvatar } from '../components/StoreAvatar';
+import { StatusBadge } from '../components/StatusBadge';
 import { Navigate } from 'react-router-dom';
 
 const STORES = USERS.filter(u => u.role === 'bidder');
@@ -241,15 +242,7 @@ export default function GMOverview() {
                 {data.vehicles.map(v => {
                   const bids = getAllBidsForVehicle(v.id);
                   const highBid = bids[0];
-                  const statusMap = {
-                    intake: { label: 'Intake', bg: '#f3f4f6', color: '#6b7280' },
-                    recon: { label: 'In Recon', bg: '#fef3c7', color: '#92400e' },
-                    ready: { label: 'Ready', bg: '#d1fae5', color: '#065f46' },
-                    active: { label: 'Live', bg: '#dbeafe', color: '#1e40af' },
-                    awarded: { label: 'Awarded', bg: '#d1fae5', color: '#065f46' },
-                    no_sale: { label: 'No Sale', bg: '#fee2e2', color: '#991b1b' },
-                  };
-                  const st = statusMap[v.status] || statusMap.intake;
+                  const transport = data.transport.find(t => t.vehicleId === v.id);
                   return (
                     <tr key={v.id}>
                       <td>
@@ -258,7 +251,7 @@ export default function GMOverview() {
                       </td>
                       <td><span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{v.condition}</span></td>
                       <td>{v.mileage ? `${parseInt(v.mileage).toLocaleString()} mi` : '—'}</td>
-                      <td><span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{st.label}</span></td>
+                      <td><StatusBadge vehicle={v} transport={transport} size="sm" useShort /></td>
                       <td>{bids.length}</td>
                       <td style={{ fontWeight: 600, color: '#1a3d76' }}>{highBid ? `$${highBid.amount.toLocaleString()}` : '—'}</td>
                       {(user.role === 'gm' || user.role === 'admin') && (

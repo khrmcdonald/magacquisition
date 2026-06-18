@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { USERS } from '../context/AuthContext';
+import { StatusBadge } from '../components/StatusBadge';
 
 const STORES = USERS.filter(u => u.role === 'bidder');
 
@@ -87,8 +88,8 @@ export default function History() {
   });
 
   const tabs = isBidder
-    ? [['vehicles', 'Cars I Won'], ['bids', 'My Bid History'], ['transport', 'Logistics & Title']]
-    : [['vehicles', 'All Vehicles'], ['bids', 'All Bids'], ['transport', 'Logistics & Title'], ['stores', 'By Store']];
+    ? [['vehicles', 'Cars I Won'], ['bids', 'My Bid History'], ['transport', 'Transport & Title']]
+    : [['vehicles', 'All Vehicles'], ['bids', 'All Bids'], ['transport', 'Transport & Title'], ['stores', 'By Store']];
 
   return (
     <div>
@@ -226,15 +227,7 @@ export default function History() {
                 <tbody>
                   {filteredVehicles.map(v => {
                     const titleMap = { pending: 'Pending', in_transit: 'In Transit', on_hand: 'On Hand', lien: 'Lien', missing: 'Missing', transferred: 'Transferred' };
-                    const statusMap = {
-                      intake: { label: 'Intake', bg: '#f3f4f6', color: '#6b7280' },
-                      recon: { label: 'In Recon', bg: '#fef3c7', color: '#92400e' },
-                      ready: { label: 'Ready', bg: '#d1fae5', color: '#065f46' },
-                      active: { label: 'Live', bg: '#dbeafe', color: '#1e40af' },
-                      awarded: { label: 'Awarded', bg: '#d1fae5', color: '#065f46' },
-                      no_sale: { label: 'No Sale', bg: '#fee2e2', color: '#991b1b' },
-                    };
-                    const st = statusMap[v.status] || statusMap.intake;
+                    const transport = data.transport.find(t => t.vehicleId === v.id);
                     return (
                       <tr key={v.id}>
                         <td><div style={{ fontWeight: 600 }}>{v.year} {v.make} {v.model}</div><div style={{ fontSize: 11, color: '#6b7280' }}>{v.color} · {v.condition}</div></td>
@@ -247,7 +240,7 @@ export default function History() {
                         <td style={{ fontWeight: 700, color: '#1a3d76' }}>{v.winningBid ? fmt(v.winningBid) : '—'}</td>
                         <td>{v.winnerName ? <span style={{ background: '#e8eef5', color: '#1a3d76', padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{v.winnerName}</span> : '—'}</td>
                         <td style={{ fontSize: 12 }}>{titleMap[v.titleStatus] || '—'}</td>
-                        <td><span style={{ background: st.bg, color: st.color, padding: '3px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{st.label}</span></td>
+                        <td><StatusBadge vehicle={v} transport={transport} size="sm" useShort showTitle={false} /></td>
                       </tr>
                     );
                   })}

@@ -4,6 +4,7 @@ import { useData } from '../context/DataContext';
 import { useNavigate } from 'react-router-dom';
 import { USERS } from '../context/AuthContext';
 import { StoreAvatar } from '../components/StoreAvatar';
+import { StatusBadge } from '../components/StatusBadge';
 
 function StatCard({ label, value, sub, color, onClick }) {
   return (
@@ -142,15 +143,14 @@ function BidderDashboard({ user, data, navigate }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {myTransport.slice(0, 4).map(t => {
               const v = data.vehicles.find(vv => vv.id === t.vehicleId);
-              const statusLabel = { awarded: '⏳ Pending dispatch', dispatched: '📦 Dispatched', inTransit: '🚚 In transit', arrived: '✅ Arrived', titleReceived: '📄 Complete' };
               return (
                 <div key={t.id} onClick={() => navigate('/transport')} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ width: 48, height: 36, borderRadius: 6, overflow: 'hidden', flexShrink: 0, background: '#f0f4f8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {v?.photos?.[0] ? <img src={v.photos[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 16 }}>🚗</span>}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{t.vehicleName}</div>
-                    <div style={{ fontSize: 12, color: '#6b7280' }}>{statusLabel[t.status] || '⏳ Pending'}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{t.vehicleName}</div>
+                    <StatusBadge vehicle={v} transport={t} size="sm" />
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#1a3d76' }}>${t.winningBid?.toLocaleString()}</div>
                 </div>
@@ -208,8 +208,7 @@ function TriStateDashboard({ data, navigate }) {
         {recentVehicles.length === 0 ? (
           <div style={{ color: '#9ca3af', fontSize: 14, padding: '20px 0' }}>No vehicles yet — <span style={{ color: '#1a3d76', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => navigate('/acquisitions')}>add your first vehicle</span></div>
         ) : recentVehicles.map(v => {
-          const stMap = { intake: { label: 'Intake', color: '#6b7280', bg: '#f3f4f6' }, recon: { label: 'In Recon', color: '#92400e', bg: '#fef3c7' }, ready: { label: 'Ready', color: '#065f46', bg: '#d1fae5' }, active: { label: 'Live', color: '#1e40af', bg: '#dbeafe' }, awarded: { label: 'Awarded', color: '#065f46', bg: '#d1fae5' }, no_sale: { label: 'No Sale', color: '#991b1b', bg: '#fee2e2' } };
-          const st = stMap[v.status] || stMap.intake;
+          const transport = data.transport.find(t => t.vehicleId === v.id);
           return (
             <div key={v.id} onClick={() => navigate('/acquisitions')} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{ width: 56, height: 42, borderRadius: 6, overflow: 'hidden', flexShrink: 0, background: '#f0f4f8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -221,7 +220,7 @@ function TriStateDashboard({ data, navigate }) {
               </div>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                 {v.totalCost && <div style={{ fontSize: 13, fontWeight: 700, color: '#1a3d76' }}>${parseFloat(v.totalCost).toLocaleString()}</div>}
-                <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{st.label}</span>
+                <StatusBadge vehicle={v} transport={transport} size="sm" />
               </div>
             </div>
           );
