@@ -24,11 +24,24 @@ const AUCTION_STATUSES = [
 
 const LOCATIONS = ['Arbor Plaza', 'In Transit', 'Mechanic'];
 
-// How a vehicle physically arrived at intake
-const INTAKE_METHODS = ['Driven in', 'Towed in', 'Third-party transport', 'Delivered by seller', 'Picked up by us', 'Other'];
-
 function todayISO() {
   return new Date().toISOString().substring(0, 10);
+}
+
+// Format a pickup date (YYYY-MM-DD) and/or time (HH:MM) into a readable label.
+function formatPickup(dateStr, timeStr) {
+  let datePart = '';
+  if (dateStr) {
+    datePart = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+  let timePart = '';
+  if (timeStr) {
+    const [h, m] = timeStr.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hr12 = h % 12 === 0 ? 12 : h % 12;
+    timePart = `${hr12}:${String(m).padStart(2, '0')} ${ampm}`;
+  }
+  return [datePart, timePart].filter(Boolean).join(' · ');
 }
 
 function InlineSelect({ options, current, onChange, minWidth, label }) {
@@ -299,13 +312,13 @@ function ExcelUploadModal({ onClose, onImport }) {
   );
 }
 
-function VehicleForm({ initial, onSave, onCancel, defaultIntakeBy }) {
+function VehicleForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState(initial || {
     vin: '', year: '', make: '', model: '', trim: '', mileage: '', color: '',
     source: 'Trade-in', purchasePrice: '', condition: 'Good', notes: '',
     overheadCosts: '', reconItems: [], reconNotes: '', floorPrice: '', photos: [],
     titleStatus: 'pending', titleNotes: '', currentLocation: 'Arbor Plaza', vendorNotes: '',
-    intakeDate: todayISO(), intakeBy: defaultIntakeBy || '', intakeFrom: '', intakeMethod: 'Driven in',
+    seller: '', sellerLocation: '', pickupDate: todayISO(), pickupTime: '', driver: '',
   });
   const [reconCosts, setReconCosts] = useState(initial?.reconCosts || {});
   const fileRef = useRef();
@@ -419,27 +432,29 @@ function VehicleForm({ initial, onSave, onCancel, defaultIntakeBy }) {
         </div>
       </div>
 
-      {/* Intake logistics — when / who / where / how */}
+      {/* Pickup logistics — seller / location / when / driver */}
       <div style={{ background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px', margin: '16px 0' }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#1a3d76', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 12 }}>Intake logistics</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#1a3d76', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 12 }}>Pickup logistics</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="form-group">
-            <label>When (intake date)</label>
-            <input type="date" value={form.intakeDate || ''} onChange={e => set('intakeDate', e.target.value)} />
+            <label>Seller</label>
+            <input type="text" value={form.seller || ''} onChange={e => set('seller', e.target.value)} placeholder="Seller name or dealership" />
           </div>
           <div className="form-group">
-            <label>Who received it</label>
-            <input type="text" value={form.intakeBy || ''} onChange={e => set('intakeBy', e.target.value)} placeholder="e.g. Tri-State" />
+            <label>Seller location</label>
+            <input type="text" value={form.sellerLocation || ''} onChange={e => set('sellerLocation', e.target.value)} placeholder="City, lot, or pickup address" />
           </div>
           <div className="form-group">
-            <label>Where it came from</label>
-            <input type="text" value={form.intakeFrom || ''} onChange={e => set('intakeFrom', e.target.value)} placeholder="Seller, lot, or pickup address" />
+            <label>Pickup day</label>
+            <input type="date" value={form.pickupDate || ''} onChange={e => set('pickupDate', e.target.value)} />
           </div>
           <div className="form-group">
-            <label>How it arrived</label>
-            <select value={form.intakeMethod || 'Driven in'} onChange={e => set('intakeMethod', e.target.value)}>
-              {INTAKE_METHODS.map(m => <option key={m}>{m}</option>)}
-            </select>
+            <label>Pickup time</label>
+            <input type="time" value={form.pickupTime || ''} onChange={e => set('pickupTime', e.target.value)} />
+          </div>
+          <div className="form-group" style={{ gridColumn: '1/-1' }}>
+            <label>Driver</label>
+            <input type="text" value={form.driver || ''} onChange={e => set('driver', e.target.value)} placeholder="Assigned driver" />
           </div>
         </div>
       </div>
@@ -747,14 +762,14 @@ export default function Acquisitions() {
                     </div>
                   </div>
 
-                  {/* Intake logistics strip: when / who / where / how */}
-                  {(v.intakeDate || v.intakeBy || v.intakeFrom || v.intakeMethod) && (
+                  {/* Pickup logistics strip: seller / location / when / driver */}
+                  {(v.seller || v.sellerLocation || v.pickupDate || v.pickupTime || v.driver) && (
                     <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', marginBottom: 16, background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 14px' }}>
                       {[
-                        ['When', v.intakeDate ? new Date(v.intakeDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null],
-                        ['Who', v.intakeBy],
-                        ['Where from', v.intakeFrom],
-                        ['How', v.intakeMethod],
+                        ['Seller', v.seller],
+                        ['Location', v.sellerLocation],
+                        ['Pickup', formatPickup(v.pickupDate, v.pickupTime)],
+                        ['Driver', v.driver],
                       ].filter(([, val]) => val).map(([label, val]) => (
                         <div key={label}>
                           <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>{label}</div>
@@ -879,7 +894,6 @@ export default function Acquisitions() {
                 initial={editing}
                 onSave={handleSave}
                 onCancel={() => { setShowForm(false); setEditing(null); }}
-                defaultIntakeBy={user.name}
               />
             </div>
           </div>
