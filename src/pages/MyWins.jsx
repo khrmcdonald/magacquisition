@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { StatusBadge } from '../components/StatusBadge';
+import { VehicleDetailModal } from '../components/VehicleDetailModal';
 
 const ARBITRATION_ISSUES = [
   'Undisclosed mechanical issue',
@@ -81,6 +82,7 @@ export default function MyWins() {
   const { user } = useAuth();
   const { data } = useData();
   const [arbitrationVehicle, setArbitrationVehicle] = useState(null);
+  const [detailVehicleId, setDetailVehicleId] = useState(null);
 
   const myWins = data.vehicles.filter(v => v.status === 'awarded' && v.winnerId === user.id);
   const myBids = data.bids.filter(b => b.storeId === user.id);
@@ -128,7 +130,15 @@ export default function MyWins() {
           {myWins.map(v => {
             const transport = getTransport(v.id);
             return (
-              <div key={v.id} className="card" style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+              <div
+                key={v.id}
+                className="card"
+                onClick={() => setDetailVehicleId(v.id)}
+                title="Click to view full details"
+                style={{ display: 'flex', gap: 16, alignItems: 'flex-start', cursor: 'pointer', transition: 'box-shadow 0.15s, transform 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(26,61,118,0.14)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = ''; e.currentTarget.style.transform = ''; }}
+              >
                 {v.photos && v.photos[0] ? (
                   <img src={v.photos[0]} alt="" style={{ width: 100, height: 72, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
                 ) : (
@@ -153,12 +163,15 @@ export default function MyWins() {
                       <span style={{ background: '#d1fae5', color: '#065f46', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>✓ Arbitration resolved</span>
                     ) : (
                       <button
-                        onClick={() => setArbitrationVehicle(v)}
+                        onClick={(e) => { e.stopPropagation(); setArbitrationVehicle(v); }}
                         style={{ background: 'none', border: '1px solid #fca5a5', color: '#991b1b', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                       >
                         File arbitration
                       </button>
                     )}
+                    <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 600, color: '#1a3d76', whiteSpace: 'nowrap' }}>
+                      View details →
+                    </span>
                   </div>
                   {v.notes && (
                     <p style={{ fontSize: 12, color: '#6b7280', marginTop: 8, background: '#f9fafb', padding: '6px 10px', borderRadius: 6, borderLeft: '3px solid #e5e7eb' }}>
@@ -224,6 +237,13 @@ export default function MyWins() {
         storeId={user.id}
         storeName={user.name}
         onClose={() => setArbitrationVehicle(null)}
+      />
+    )}
+
+    {detailVehicleId && (
+      <VehicleDetailModal
+        vehicleId={detailVehicleId}
+        onClose={() => setDetailVehicleId(null)}
       />
     )}
     </>
