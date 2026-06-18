@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
+import { downloadIntakePdf, downloadOuttakePdf } from '../lib/vehiclePdf';
 
 const SOURCES = ['KBB', 'VETTX', 'LBO', 'AutoHub', 'eBlock', 'ADESA', 'Private', 'Trade-in', 'Dealer trade', 'Off-lease', 'Other'];
 const CONDITIONS = ['Excellent', 'Good', 'Fair', 'Poor'];
@@ -699,6 +700,22 @@ export default function Acquisitions() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                      <button
+                        onClick={() => downloadIntakePdf(v)}
+                        title="Download intake (purchase) record as PDF"
+                        style={{ background: '#fff', color: '#1a3d76', border: '1px solid #c7d6ef', padding: '8px 14px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+                      >
+                        📄 Intake PDF
+                      </button>
+                      {v.status === 'awarded' && (
+                        <button
+                          onClick={() => downloadOuttakePdf(v)}
+                          title="Download outtake (sale) record as PDF"
+                          style={{ background: '#1a3d76', color: '#fff', border: '1px solid #1a3d76', padding: '8px 14px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+                        >
+                          📄 Outtake PDF
+                        </button>
+                      )}
                       {!isReadOnly && v.status === 'ready' && data.auction.isOpen && (
                         <button className="btn-primary" style={{ padding: '8px 16px', fontSize: 14 }} onClick={() => handleList(v)}>List now</button>
                       )}
