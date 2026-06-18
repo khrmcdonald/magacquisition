@@ -1,8 +1,14 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { useAuth } from './AuthContext';
 
 const DataContext = createContext(null);
 
-const STORAGE_KEY = 'mag_data';
+// Shared state lives in a managed Postgres database behind /api/state, not in
+// the browser. A fresh database has no row, so every browser starts from this
+// blank slate and all activity from that point forward is persisted to the
+// shared backend (with an append-only audit trail) for reference and audit.
+const API = '/api/state';
+const POLL_MS = 5000;
 
 const DEFAULT_DATA = {
   auction: {
@@ -19,31 +25,109 @@ const DEFAULT_DATA = {
   storePhotos: {},
 };
 
-function loadData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...DEFAULT_DATA, ...JSON.parse(raw) };
-  } catch {}
-  return DEFAULT_DATA;
-}
-
-function saveData(data) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
+const normalize = (raw) => ({ ...DEFAULT_DATA, ...(raw || {}) });
 
 export function DataProvider({ children }) {
-  const [data, setData] = useState(loadData);
+  const { user } = useAuth();
+  const [data, setData] = useState(DEFAULT_DATA);
+  const [loaded, setLoaded] = useState(false);
 
-  const update = useCallback((updater) => {
-    setData(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      saveData(next);
-      return next;
+  // Refs hold the live values used by the async write pipeline so it always
+  // works from the freshest state without re-binding callbacks.
+  const dataRef = useRef(DEFAULT_DATA);
+  const versionRef = useRef(0);
+  const userRef = useRef(user);
+  const writeChain = useRef(Promise.resolve());
+  const pendingWrites = useRef(0);
+
+  useEffect(() => { dataRef.current = data; }, [data]);
+  useEffect(() => { userRef.current = user; }, [user]);
+
+  const applyServer = useCallback((payload) => {
+    if (!payload) return;
+    versionRef.current = payload.version || 0;
+    const next = normalize(payload.data);
+    dataRef.current = next;
+    setData(next);
+  }, []);
+
+  // Initial load of the shared state.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(API)
+      .then(r => r.json())
+      .then(p => { if (!cancelled) applyServer(p); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoaded(true); });
+    return () => { cancelled = true; };
+  }, [applyServer]);
+
+  // Poll so changes made by other browsers (other stores bidding, GM opening
+  // an auction, etc.) show up in near real time. Skipped while a local write
+  // is in flight to avoid clobbering an optimistic update mid-flight.
+  useEffect(() => {
+    const iv = setInterval(() => {
+      if (pendingWrites.current > 0) return;
+      fetch(API)
+        .then(r => r.json())
+        .then(p => { if (p && (p.version || 0) > versionRef.current) applyServer(p); })
+        .catch(() => {});
+    }, POLL_MS);
+    return () => clearInterval(iv);
+  }, [applyServer]);
+
+  // Apply a change locally (optimistically) and persist it to the shared
+  // backend. `updater` must be a pure function of previous state so it can be
+  // safely re-applied on the latest server state if another writer raced us.
+  const update = useCallback((updater, action) => {
+    const fn = typeof updater === 'function' ? updater : () => updater;
+
+    const optimistic = fn(dataRef.current);
+    dataRef.current = optimistic;
+    setData(optimistic);
+
+    pendingWrites.current += 1;
+    writeChain.current = writeChain.current.then(async () => {
+      try {
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const res = await fetch(API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              data: dataRef.current,
+              baseVersion: versionRef.current,
+              actor: userRef.current?.id || null,
+              action: action || 'update',
+            }),
+          });
+
+          if (res.ok) {
+            const p = await res.json();
+            versionRef.current = p.version;
+            return;
+          }
+
+          if (res.status === 409) {
+            // Someone else wrote first. Rebase our change onto their state and
+            // retry so no update is silently lost.
+            const p = await res.json();
+            versionRef.current = p.version || 0;
+            const rebased = fn(normalize(p.data));
+            dataRef.current = rebased;
+            setData(rebased);
+            continue;
+          }
+
+          return; // Unexpected error: keep the optimistic state, stop retrying.
+        }
+      } finally {
+        pendingWrites.current = Math.max(0, pendingWrites.current - 1);
+      }
     });
   }, []);
 
   // --- Auction ---
-  const setAuction = (fields) => update(d => ({ ...d, auction: { ...d.auction, ...fields } }));
+  const setAuction = (fields) => update(d => ({ ...d, auction: { ...d.auction, ...fields } }), 'auction:update');
 
   const openAuction = (closeDate, label) => {
     update(d => ({
@@ -57,7 +141,7 @@ export function DataProvider({ children }) {
         closeDate,
         vehicleCount: d.vehicles.filter(v => v.status === 'active').length,
       }]
-    }));
+    }), 'auction:open');
   };
 
   const closeAuction = () => {
@@ -91,7 +175,6 @@ export function DataProvider({ children }) {
           }
         }));
 
-      const awarded = vehicles.filter(v => v.status === 'awarded' && !d.vehicles.find(dv => dv.id === v.id && dv.status === 'awarded'));
       const histEntry = (d.auctionHistory || []).findIndex(h => h.event === 'opened' && !h.closedDate);
       const updatedHistory = [...(d.auctionHistory || [])];
       if (histEntry >= 0) {
@@ -112,26 +195,26 @@ export function DataProvider({ children }) {
         transport: [...d.transport, ...newTransport],
         auctionHistory: updatedHistory,
       };
-    });
+    }, 'auction:close');
   };
 
   // --- Vehicles ---
   const addVehicle = (vehicle) => {
     const id = 'v_' + Date.now();
-    update(d => ({ ...d, vehicles: [...d.vehicles, { ...vehicle, id, createdAt: new Date().toISOString(), status: 'intake' }] }));
+    update(d => ({ ...d, vehicles: [...d.vehicles, { ...vehicle, id, createdAt: new Date().toISOString(), status: 'intake' }] }), 'vehicle:add');
     return id;
   };
 
   const updateVehicle = (id, fields) => {
-    update(d => ({ ...d, vehicles: d.vehicles.map(v => v.id === id ? { ...v, ...fields } : v) }));
+    update(d => ({ ...d, vehicles: d.vehicles.map(v => v.id === id ? { ...v, ...fields } : v) }), 'vehicle:update');
   };
 
   const deleteVehicle = (id) => {
-    update(d => ({ ...d, vehicles: d.vehicles.filter(v => v.id !== id) }));
+    update(d => ({ ...d, vehicles: d.vehicles.filter(v => v.id !== id) }), 'vehicle:delete');
   };
 
   const listVehicle = (id) => {
-    update(d => ({ ...d, vehicles: d.vehicles.map(v => v.id === id ? { ...v, status: 'active', listedAt: new Date().toISOString() } : v) }));
+    update(d => ({ ...d, vehicles: d.vehicles.map(v => v.id === id ? { ...v, status: 'active', listedAt: new Date().toISOString() } : v) }), 'vehicle:list');
   };
 
   const unlistVehicle = (id) => {
@@ -139,23 +222,26 @@ export function DataProvider({ children }) {
       ...d,
       vehicles: d.vehicles.map(v => v.id === id ? { ...v, status: 'ready' } : v),
       bids: d.bids.filter(b => b.vehicleId !== id),
-    }));
+    }), 'vehicle:unlist');
   };
 
   // --- Bids ---
   const placeBid = (vehicleId, storeId, storeName, amount) => {
-    const existing = data.bids.find(b => b.vehicleId === vehicleId && b.storeId === storeId);
-    if (existing) {
-      update(d => ({
-        ...d,
-        bids: d.bids.map(b =>
-          b.vehicleId === vehicleId && b.storeId === storeId
-            ? { ...b, amount, updatedAt: new Date().toISOString() }
-            : b
-        )
-      }));
-    } else {
-      update(d => ({
+    // The existence check runs inside the updater so the write stays correct
+    // even when rebased onto another store's concurrent bid.
+    update(d => {
+      const existing = d.bids.find(b => b.vehicleId === vehicleId && b.storeId === storeId);
+      if (existing) {
+        return {
+          ...d,
+          bids: d.bids.map(b =>
+            b.vehicleId === vehicleId && b.storeId === storeId
+              ? { ...b, amount, updatedAt: new Date().toISOString() }
+              : b
+          )
+        };
+      }
+      return {
         ...d,
         bids: [...d.bids, {
           id: 'bid_' + Date.now(),
@@ -163,8 +249,8 @@ export function DataProvider({ children }) {
           placedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }]
-      }));
-    }
+      };
+    }, 'bid:place');
   };
 
   const getHighBid = (vehicleId) => {
@@ -190,7 +276,7 @@ export function DataProvider({ children }) {
           ? { ...t, status: stepKey, notes: notes || t.notes, steps: { ...t.steps, [stepKey]: new Date().toISOString() } }
           : t
       )
-    }));
+    }), 'transport:update');
   };
 
   const BADGE_DEFS = [
@@ -205,7 +291,7 @@ export function DataProvider({ children }) {
   ];
 
   const computeBadges = (storeId) => {
-    const d = loadData();
+    const d = dataRef.current;
     const myWins = d.vehicles.filter(v => v.status === 'awarded' && v.winnerId === storeId);
     const myBids = d.bids.filter(b => b.storeId === storeId);
     const earned = [];
@@ -250,18 +336,16 @@ export function DataProvider({ children }) {
     if (data.auction.openDate) {
       const openTime = new Date(data.auction.openDate);
       if ((new Date() - openTime) < 5 * 60 * 1000) {
-        update(d => ({ ...d, badges: { ...d.badges, [storeId]: [...new Set([...(d.badges[storeId]||[]), 'quick_draw'])] } }));
+        update(d => ({ ...d, badges: { ...d.badges, [storeId]: [...new Set([...(d.badges[storeId]||[]), 'quick_draw'])] } }), 'badge:quick_draw');
       }
     }
     if (data.bids.filter(b => b.storeId === storeId).length === 0) {
-      update(d => ({ ...d, badges: { ...d.badges, [storeId]: [...new Set([...(d.badges[storeId]||[]), 'first_bid'])] } }));
+      update(d => ({ ...d, badges: { ...d.badges, [storeId]: [...new Set([...(d.badges[storeId]||[]), 'first_bid'])] } }), 'badge:first_bid');
     }
   };
 
-  const computePostAuctionBadges = () => {};
-
   const updateStorePhoto = (storeId, photoData) => {
-    update(d => ({ ...d, storePhotos: { ...d.storePhotos, [storeId]: photoData } }));
+    update(d => ({ ...d, storePhotos: { ...d.storePhotos, [storeId]: photoData } }), 'store:photo');
   };
 
   const fileArbitration = (vehicleId, storeId, storeName, issueType, details) => {
@@ -276,7 +360,7 @@ export function DataProvider({ children }) {
           resolution: null, resolvedAt: null,
         }
       } : v)
-    }));
+    }), 'arbitration:file');
   };
 
   const resolveArbitration = (vehicleId, resolution) => {
@@ -286,12 +370,13 @@ export function DataProvider({ children }) {
         ...v,
         arbitration: { ...v.arbitration, status: 'resolved', resolution, resolvedAt: new Date().toISOString() }
       } : v)
-    }));
+    }), 'arbitration:resolve');
   };
 
   return (
     <DataContext.Provider value={{
       data,
+      loaded,
       setAuction,
       openAuction,
       closeAuction,
