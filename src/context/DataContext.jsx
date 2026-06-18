@@ -150,6 +150,71 @@ export function DataProvider({ children }) {
     });
   };
 
+  // Direct "sell now" — skip the auction entirely and sell a vehicle straight
+  // to a store at an agreed price. Produces the same awarded vehicle + transport
+  // record that closing an auction would, so the sale flows through Logistics,
+  // My Wins, History and the accounting export with no extra handling.
+  const directSale = (vehicleId, buyerId, buyerName, price, note) => {
+    update(d => {
+      const v = d.vehicles.find(vv => vv.id === vehicleId);
+      if (!v) return d;
+      const soldAt = new Date().toISOString();
+      const amount = parseFloat(price) || 0;
+      const vehicleName = `${v.year} ${v.make} ${v.model}`;
+
+      const vehicles = d.vehicles.map(vv => vv.id === vehicleId ? {
+        ...vv,
+        status: 'awarded',
+        winnerId: buyerId,
+        winnerName: buyerName,
+        winningBid: amount,
+        awardedAt: soldAt,
+        saleType: 'direct',
+        saleNote: note || vv.saleNote || '',
+      } : vv);
+
+      // A direct sale bypasses bidding, so drop any stray bids on this vehicle.
+      const bids = d.bids.filter(b => b.vehicleId !== vehicleId);
+
+      // Mirror closeAuction: open a transport record if one doesn't exist yet.
+      const transport = d.transport.find(t => t.vehicleId === vehicleId)
+        ? d.transport
+        : [...d.transport, {
+            id: 'tr_' + vehicleId,
+            vehicleId,
+            vehicleName,
+            storeId: buyerId,
+            storeName: buyerName,
+            winningBid: amount,
+            status: 'pending',
+            saleType: 'direct',
+            notes: note || '',
+            steps: {
+              awarded: soldAt,
+              dispatched: null,
+              inTransit: null,
+              arrived: null,
+              titleReceived: null,
+            },
+          }];
+
+      // Log it in the audit trail as a one-vehicle sale, opened and closed at once.
+      const auctionHistory = [...(d.auctionHistory || []), {
+        id: 'ds_' + Date.now(),
+        event: 'direct_sale',
+        label: `Direct sale — ${vehicleName} → ${buyerName}`,
+        openDate: soldAt,
+        closedDate: soldAt,
+        vehicleCount: 1,
+        awardedCount: 1,
+        noSaleCount: 0,
+        totalVolume: amount,
+      }];
+
+      return { ...d, vehicles, bids, transport, auctionHistory };
+    });
+  };
+
   // --- Vehicles ---
   const addVehicle = (vehicle) => {
     const id = uid('v_');
@@ -330,6 +395,7 @@ export function DataProvider({ children }) {
       setAuction,
       openAuction,
       closeAuction,
+      directSale,
       addVehicle,
       updateVehicle,
       deleteVehicle,
