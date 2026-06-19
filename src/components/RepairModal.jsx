@@ -14,13 +14,14 @@ import { VENDOR_SPECIALTIES } from '../pages/Vendors';
 //   onClose      — () => void
 export function RepairModal({ vehicle, vendors = [], onAddVendor, onSend, onClose }) {
   const [vendorId, setVendorId] = useState(vendors[0]?.id || 'NEW');
-  const [newVendor, setNewVendor] = useState({ name: '', specialty: 'General', phone: '' });
+  const [newVendor, setNewVendor] = useState({ name: '', specialty: 'General', phone: '', address: '', poRequired: false });
   const [reason, setReason] = useState('');
   const [estCost, setEstCost] = useState('');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
 
   const addingNew = vendorId === 'NEW' || vendors.length === 0;
+  const selectedVendor = addingNew ? null : vendors.find(v => v.id === vendorId);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -86,6 +87,29 @@ export function RepairModal({ vehicle, vendors = [], onAddVendor, onSend, onClos
                   </div>
                 </div>
                 <div style={{ fontSize: 12, color: '#6b7280', marginTop: 8 }}>This shop is saved to your approved vendors list.</div>
+                <div className="form-group" style={{ marginTop: 10, marginBottom: 10 }}>
+                  <label>Address</label>
+                  <textarea value={newVendor.address} onChange={e => setNewVendor(n => ({ ...n, address: e.target.value }))} rows={2} placeholder="Street, city, state, ZIP" />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>PO required?</label>
+                  <div style={{ display: 'flex', gap: 18, marginTop: 4 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500, cursor: 'pointer' }}>
+                      <input type="radio" name="newVendorPo" checked={newVendor.poRequired === true} onChange={() => setNewVendor(n => ({ ...n, poRequired: true }))} style={{ width: 'auto' }} />
+                      Yes
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500, cursor: 'pointer' }}>
+                      <input type="radio" name="newVendorPo" checked={newVendor.poRequired !== true} onChange={() => setNewVendor(n => ({ ...n, poRequired: false }))} style={{ width: 'auto' }} />
+                      No
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!addingNew && selectedVendor?.poRequired && (
+              <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#92400e', fontWeight: 600 }}>
+                📋 This vendor requires a purchase order before work begins.
               </div>
             )}
 

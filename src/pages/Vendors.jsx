@@ -11,7 +11,7 @@ export const VENDOR_SPECIALTIES = [
 
 function VendorForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState(initial || {
-    name: '', specialty: 'General', contact: '', phone: '', notes: '',
+    name: '', specialty: 'General', contact: '', phone: '', address: '', poRequired: false, notes: '',
   });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -42,6 +42,23 @@ function VendorForm({ initial, onSave, onCancel }) {
       <div className="form-group">
         <label>Contact name</label>
         <input type="text" value={form.contact} onChange={e => set('contact', e.target.value)} placeholder="Who to ask for" />
+      </div>
+      <div className="form-group">
+        <label>Address</label>
+        <textarea value={form.address} onChange={e => set('address', e.target.value)} rows={2} placeholder="Street, city, state, ZIP" />
+      </div>
+      <div className="form-group">
+        <label>PO required?</label>
+        <div style={{ display: 'flex', gap: 18, marginTop: 4 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500, cursor: 'pointer' }}>
+            <input type="radio" name="poRequired" checked={form.poRequired === true} onChange={() => set('poRequired', true)} style={{ width: 'auto' }} />
+            Yes
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500, cursor: 'pointer' }}>
+            <input type="radio" name="poRequired" checked={form.poRequired !== true} onChange={() => set('poRequired', false)} style={{ width: 'auto' }} />
+            No
+          </label>
+        </div>
       </div>
       <div className="form-group">
         <label>Notes</label>
@@ -128,6 +145,13 @@ export default function Vendors() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, color: '#374151' }}>
                   {vn.contact && <div><strong style={{ color: '#6b7280' }}>Contact:</strong> {vn.contact}</div>}
                   {vn.phone && <div><strong style={{ color: '#6b7280' }}>Phone:</strong> {vn.phone}</div>}
+                  {vn.address && <div><strong style={{ color: '#6b7280' }}>Address:</strong> {vn.address}</div>}
+                  <div>
+                    <strong style={{ color: '#6b7280' }}>PO required:</strong>{' '}
+                    <span style={{ fontWeight: 700, color: vn.poRequired ? '#92400e' : '#15803d' }}>
+                      {vn.poRequired ? 'Yes' : 'No'}
+                    </span>
+                  </div>
                 </div>
                 {vn.notes && (
                   <div style={{ fontSize: 13, color: '#374151', background: '#f9fafb', borderRadius: 8, padding: '8px 10px', borderLeft: '3px solid #e5e7eb' }}>{vn.notes}</div>
