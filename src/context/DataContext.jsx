@@ -14,6 +14,62 @@ function uid(prefix) {
   return `${prefix}${Date.now().toString(36)}_${_idSeq}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// Last 6 of the VIN — a stable, human-recognizable unique key per physical
+// vehicle. Used to reconcile records (e.g. a repair trip and its vehicle) when
+// generated ids drift apart, since the VIN never changes. Falls back to '' for
+// vehicles still missing a VIN.
+function vinKey(vinOrVehicle) {
+  const vin = typeof vinOrVehicle === 'string' ? vinOrVehicle : (vinOrVehicle?.vin || '');
+  return vin.replace(/\s+/g, '').slice(-6).toUpperCase();
+}
+
+// Heal the repair board: every vehicle currently in repair must have a matching
+// repair trip in transport, or it won't show on Transport & Title. Trips can go
+// missing for cars sent to repair before repair-trips existed, or when a
+// vehicle's id changed and orphaned its old trip. Match first by vehicleId,
+// then fall back to the VIN's last 6 (re-pointing the trip's vehicleId so later
+// id-based lookups work), and synthesize a fresh trip when none is found.
+function reconcileRepairTrips(vehicles, transport) {
+  if (!Array.isArray(vehicles) || !Array.isArray(transport)) return transport;
+  const inRepair = vehicles.filter(v => v && v.repair && v.repair.status === 'in_repair');
+  if (inRepair.length === 0) return transport;
+
+  let next = transport.slice();
+  let changed = false;
+
+  for (const v of inRepair) {
+    const vk = vinKey(v);
+    const byId = next.findIndex(t => t && t.kind === 'repair' && t.vehicleId === v.id);
+    if (byId >= 0) continue;
+
+    const byVin = vk
+      ? next.findIndex(t => t && t.kind === 'repair' && t.status !== 'returned' && vinKey(t.vin || t.vinKey || '') === vk)
+      : -1;
+    if (byVin >= 0) {
+      next[byVin] = { ...next[byVin], vehicleId: v.id, vin: v.vin || next[byVin].vin, vinKey: vk };
+      changed = true;
+      continue;
+    }
+
+    next.push({
+      id: 'rp_' + v.id,
+      kind: 'repair',
+      vehicleId: v.id,
+      vin: v.vin || '',
+      vinKey: vk,
+      vehicleName: `${v.year || ''} ${v.make || ''} ${v.model || ''}`.trim(),
+      vendorId: v.repair.vendorId || null,
+      vendorName: v.repair.vendorName || '',
+      status: 'scheduled',
+      notes: v.repair.notes || '',
+      steps: { scheduled: v.repair.sentAt || new Date().toISOString(), droppedOff: null, pickedUp: null, returned: null },
+    });
+    changed = true;
+  }
+
+  return changed ? next : transport;
+}
+
 // Repair data that was saved before unique ids were guaranteed: any vehicle
 // that has no id or shares an id with an earlier vehicle gets a fresh one.
 function dedupeVehicleIds(vehicles) {
@@ -53,6 +109,7 @@ function loadData() {
     if (raw) {
       const parsed = { ...DEFAULT_DATA, ...JSON.parse(raw) };
       parsed.vehicles = dedupeVehicleIds(parsed.vehicles);
+      parsed.transport = reconcileRepairTrips(parsed.vehicles, parsed.transport);
       return parsed;
     }
   } catch {}
@@ -470,6 +527,8 @@ export function DataProvider({ children }) {
         id: 'rp_' + vehicleId,
         kind: 'repair',
         vehicleId,
+        vin: v?.vin || '',
+        vinKey: vinKey(v?.vin || ''),
         vehicleName,
         vendorId: vendorId || null,
         vendorName: vendorName || '',
