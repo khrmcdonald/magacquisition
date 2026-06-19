@@ -5,6 +5,7 @@ import { Navigate } from 'react-router-dom';
 import { StatusBadge } from '../components/StatusBadge';
 import { DirectSaleModal } from '../components/DirectSaleModal';
 import { SellSheetButton } from '../components/SellSheetButton';
+import { RepairModal } from '../components/RepairModal';
 
 const SOURCES = ['KBB', 'VETTX', 'LBO', 'AutoHub', 'eBlock', 'ADESA', 'Private', 'Trade-in', 'Dealer trade', 'Off-lease', 'Other'];
 const CONDITIONS = ['Excellent', 'Good', 'Fair', 'Poor'];
@@ -635,7 +636,7 @@ const STATUS_LABELS = {
 
 export default function Acquisitions() {
   const { user } = useAuth();
-  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, resolveArbitration, directSale } = useData();
+  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, resolveArbitration, directSale, addVendor, sendToRepair, completeRepair } = useData();
   const [resolveModal, setResolveModal] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -644,6 +645,7 @@ export default function Acquisitions() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
   const [sellVehicle, setSellVehicle] = useState(null);
+  const [repairVehicle, setRepairVehicle] = useState(null);
 
   if (user.role !== 'wholesale' && user.role !== 'gm' && user.role !== 'admin') {
     return <Navigate to="/auction" replace />;
@@ -672,6 +674,13 @@ export default function Acquisitions() {
     if (window.confirm(`List ${v.year} ${v.make} ${v.model} in the active auction?`)) {
       listVehicle(v.id);
     }
+  };
+
+  const handleCompleteRepair = (v) => {
+    if (!window.confirm(`Mark repair complete for ${v.year} ${v.make} ${v.model}? It's back from ${v.repair?.vendorName || 'the vendor'}.`)) return;
+    const entered = window.prompt('Actual repair cost (optional):', v.repair?.estCost || '');
+    if (entered === null) return; // cancelled
+    completeRepair(v.id, { actualCost: entered });
   };
 
   const handleStatusChange = (v, status) => {
@@ -786,6 +795,14 @@ export default function Acquisitions() {
                       {!isReadOnly && ['intake','recon','ready','active','awarded','no_sale'].includes(v.status) && (
                         <button className="btn-secondary" style={{ padding: '8px 16px', fontSize: 14 }} onClick={() => { setEditing(v); setShowForm(true); }}>Edit</button>
                       )}
+                      {!isReadOnly && v.repair?.status !== 'in_repair' && (
+                        <button
+                          onClick={() => setRepairVehicle(v)}
+                          style={{ background: '#fff7ed', color: '#9a3412', border: '1px solid #fed7aa', padding: '8px 16px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: 600 }}
+                        >
+                          🔧 Repair
+                        </button>
+                      )}
                       {!isReadOnly && v.status === 'active' && (
                         <button onClick={() => unlistVehicle(v.id)} style={{ background: '#fef3c7', color: '#92400e', border: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>Remove from auction</button>
                       )}
@@ -896,6 +913,31 @@ export default function Acquisitions() {
                     </div>
                   )}
 
+                  {/* Row 5: repair status */}
+                  {v.repair?.status === 'in_repair' && (
+                    <div style={{ marginTop: 14, background: '#fff7ed', border: '2px solid #fed7aa', borderRadius: 8, padding: '14px 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#9a3412', fontSize: 14, marginBottom: 4 }}>🔧 In repair at {v.repair.vendorName || 'vendor'}</div>
+                        {v.repair.reason && <div style={{ fontSize: 13, color: '#7c2d12', marginBottom: 2 }}><strong>For:</strong> {v.repair.reason}</div>}
+                        {v.repair.estCost && <div style={{ fontSize: 13, color: '#7c2d12', marginBottom: 2 }}><strong>Est. cost:</strong> ${parseFloat(v.repair.estCost).toLocaleString()}</div>}
+                        {v.repair.notes && <div style={{ fontSize: 13, color: '#7c2d12' }}>{v.repair.notes}</div>}
+                        {v.repair.sentAt && <div style={{ fontSize: 11, color: '#9a3412', marginTop: 6, opacity: 0.7 }}>Sent {new Date(v.repair.sentAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
+                      </div>
+                      {!isReadOnly && (
+                        <button onClick={() => handleCompleteRepair(v)} style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                          Mark repair complete
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {v.repair?.status === 'completed' && (
+                    <div style={{ marginTop: 14, background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#065f46' }}>
+                      ✓ Repair complete at {v.repair.vendorName || 'vendor'}
+                      {v.repair.reason ? ` — ${v.repair.reason}` : ''}
+                      {v.repair.actualCost ? ` · $${parseFloat(v.repair.actualCost).toLocaleString()}` : ''}
+                    </div>
+                  )}
+
                 </div>
               );
             })}
@@ -970,6 +1012,17 @@ export default function Acquisitions() {
           fixedVehicle={sellVehicle}
           onClose={() => setSellVehicle(null)}
           onSell={(vehicleId, buyerId, buyerName, amount, note) => directSale(vehicleId, buyerId, buyerName, amount, note)}
+        />
+      )}
+
+      {/* Send to repair modal */}
+      {repairVehicle && (
+        <RepairModal
+          vehicle={repairVehicle}
+          vendors={data.approvedVendors || []}
+          onAddVendor={addVendor}
+          onSend={(info) => sendToRepair(repairVehicle.id, info)}
+          onClose={() => setRepairVehicle(null)}
         />
       )}
 

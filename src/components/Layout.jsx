@@ -17,6 +17,7 @@ const NAV = {
   wholesale: [
     { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/acquisitions', label: 'Acquisitions', icon: '📋' },
+    { to: '/vendors', label: 'Repair Vendors', icon: '🔧' },
     { to: '/manage', label: 'Manage Auction', icon: '⚙️' },
     { to: '/transport', label: 'Transport & Title', icon: '🚚' },
     { to: '/leaderboard', label: 'Leaderboard', icon: '🏅' },

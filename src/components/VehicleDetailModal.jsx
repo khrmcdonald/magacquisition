@@ -117,6 +117,9 @@ export function VehicleDetailModal({ vehicleId, onClose, showFinancials = false 
           {/* Status row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
             <StatusBadge vehicle={v} transport={transport} />
+            {v.repair?.status === 'in_repair' && (
+              <span style={{ background: '#fff7ed', color: '#9a3412', border: '1px solid #fed7aa', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>🔧 In repair</span>
+            )}
             {v.arbitration?.status === 'open' && (
               <span style={{ background: '#fee2e2', color: '#991b1b', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>⚠ Arbitration open</span>
             )}
@@ -194,6 +197,18 @@ export function VehicleDetailModal({ vehicleId, onClose, showFinancials = false 
 
           {/* Repairs / reconditioning */}
           <Section title="Repairs & reconditioning">
+            {v.repair?.status === 'in_repair' && (
+              <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#9a3412' }}>🔧 In repair at {v.repair.vendorName || 'vendor'}</div>
+                {v.repair.reason && <div style={{ fontSize: 13, color: '#7c2d12', marginTop: 3 }}>{v.repair.reason}</div>}
+              </div>
+            )}
+            {v.repair?.status === 'completed' && (
+              <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#065f46' }}>✓ Repair complete{v.repair.vendorName ? ` at ${v.repair.vendorName}` : ''}</div>
+                {v.repair.reason && <div style={{ fontSize: 13, color: '#065f46', marginTop: 3 }}>{v.repair.reason}</div>}
+              </div>
+            )}
             {reconItems.length > 0 || v.reconNotes ? (
               <>
                 {reconItems.length > 0 && (
@@ -210,7 +225,7 @@ export function VehicleDetailModal({ vehicleId, onClose, showFinancials = false 
                 )}
               </>
             ) : (
-              <div style={{ fontSize: 13, color: '#9ca3af' }}>No reconditioning recorded.</div>
+              !v.repair && <div style={{ fontSize: 13, color: '#9ca3af' }}>No reconditioning recorded.</div>
             )}
           </Section>
 

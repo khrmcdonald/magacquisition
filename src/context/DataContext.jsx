@@ -44,6 +44,7 @@ const DEFAULT_DATA = {
   auctionHistory: [],
   badges: {},
   storePhotos: {},
+  approvedVendors: [],
 };
 
 function loadData() {
@@ -389,6 +390,73 @@ export function DataProvider({ children }) {
     }));
   };
 
+  // --- Approved repair vendors ---
+  // TRI-STATE keeps the master list of shops it trusts for repair work. Any
+  // vehicle, at any stage, can be sent out to one of these (see sendToRepair).
+  const addVendor = (vendor) => {
+    const id = uid('vn_');
+    update(d => ({
+      ...d,
+      approvedVendors: [...(d.approvedVendors || []), { ...vendor, id, createdAt: new Date().toISOString() }],
+    }));
+    return id;
+  };
+
+  const updateVendor = (id, fields) => {
+    update(d => ({
+      ...d,
+      approvedVendors: (d.approvedVendors || []).map(v => v.id === id ? { ...v, ...fields } : v),
+    }));
+  };
+
+  const deleteVendor = (id) => {
+    update(d => ({
+      ...d,
+      approvedVendors: (d.approvedVendors || []).filter(v => v.id !== id),
+    }));
+  };
+
+  // --- Repair ---
+  // Send a vehicle out for repair to an approved vendor. This is an overlay on
+  // top of the auction stage — it doesn't change v.status — so a car can be in
+  // repair whether it's in intake, recon, ready, live, or already awarded.
+  const sendToRepair = (vehicleId, { vendorId, vendorName, reason, estCost, notes }) => {
+    update(d => ({
+      ...d,
+      vehicles: d.vehicles.map(v => v.id === vehicleId ? {
+        ...v,
+        repair: {
+          status: 'in_repair',
+          vendorId: vendorId || null,
+          vendorName: vendorName || '',
+          reason: reason || '',
+          estCost: estCost || '',
+          notes: notes || '',
+          sentAt: new Date().toISOString(),
+          completedAt: null,
+          actualCost: '',
+        },
+      } : v)
+    }));
+  };
+
+  // Mark a vehicle's current repair complete (back from the shop).
+  const completeRepair = (vehicleId, { actualCost, completionNotes } = {}) => {
+    update(d => ({
+      ...d,
+      vehicles: d.vehicles.map(v => v.id === vehicleId && v.repair ? {
+        ...v,
+        repair: {
+          ...v.repair,
+          status: 'completed',
+          completedAt: new Date().toISOString(),
+          actualCost: actualCost != null ? actualCost : v.repair.actualCost,
+          completionNotes: completionNotes || v.repair.completionNotes || '',
+        },
+      } : v)
+    }));
+  };
+
   return (
     <DataContext.Provider value={{
       data,
@@ -408,6 +476,11 @@ export function DataProvider({ children }) {
       updateTransport,
       fileArbitration,
       resolveArbitration,
+      addVendor,
+      updateVendor,
+      deleteVendor,
+      sendToRepair,
+      completeRepair,
       updateStorePhoto,
       checkAndAwardBadges,
       computeBadges,

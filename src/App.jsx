@@ -13,6 +13,7 @@ import Transport from './pages/Transport';
 import GMOverview from './pages/GMOverview';
 import MyWins from './pages/MyWins';
 import AvailableUnits from './pages/AvailableUnits';
+import Vendors from './pages/Vendors';
 import Admin from './pages/Admin';
 import History from './pages/History';
 import Dashboard from './pages/Dashboard';
@@ -47,6 +48,7 @@ export default function App() {
               <Route path="overview" element={<GMOverview />} />
               <Route path="wins" element={<MyWins />} />
               <Route path="available" element={<AvailableUnits />} />
+              <Route path="vendors" element={<Vendors />} />
               <Route path="admin" element={<Admin />} />
               <Route path="history" element={<History />} />
               <Route path="dashboard" element={<Dashboard />} />
