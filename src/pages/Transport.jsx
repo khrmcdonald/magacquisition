@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { StoreAvatar } from '../components/StoreAvatar';
 import { useData } from '../context/DataContext';
 import { StatusBadge, isTitlePending } from '../components/StatusBadge';
+import { SellSheetButton } from '../components/SellSheetButton';
 
 // Outbound: a sold car travelling from Arbor Plaza to the buyer's store.
 const OUT_STEPS = [
@@ -107,6 +108,7 @@ function OutboundCard({ t, vehicle, canUpdate, onUpdateStep, onNotes }) {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
           <StatusBadge vehicle={vehicle} transport={t} />
+          <SellSheetButton vehicle={vehicle} transport={t} />
           {canUpdate && (
             <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => onNotes(t)}>
               Notes

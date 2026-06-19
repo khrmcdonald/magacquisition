@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { StatusBadge, isTitlePending } from './StatusBadge';
+import { SellSheetButton } from './SellSheetButton';
 
 // Title status labels — mirrors the list TRI-STATE sets on Acquisitions so the
 // buyer sees the exact same wording.
@@ -121,6 +122,11 @@ export function VehicleDetailModal({ vehicleId, onClose, showFinancials = false 
             )}
             {v.arbitration?.status === 'resolved' && (
               <span style={{ background: '#d1fae5', color: '#065f46', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>✓ Arbitration resolved</span>
+            )}
+            {v.status === 'awarded' && (
+              <span style={{ marginLeft: 'auto' }}>
+                <SellSheetButton vehicle={v} transport={transport} variant="solid" />
+              </span>
             )}
           </div>
 

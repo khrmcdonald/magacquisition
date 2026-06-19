@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { StatusBadge } from '../components/StatusBadge';
 import { DirectSaleModal } from '../components/DirectSaleModal';
+import { SellSheetButton } from '../components/SellSheetButton';
 
 const SOURCES = ['KBB', 'VETTX', 'LBO', 'AutoHub', 'eBlock', 'ADESA', 'Private', 'Trade-in', 'Dealer trade', 'Off-lease', 'Other'];
 const CONDITIONS = ['Excellent', 'Good', 'Fair', 'Poor'];
@@ -778,6 +779,9 @@ export default function Acquisitions() {
                         >
                           🤝 Sell now
                         </button>
+                      )}
+                      {v.status === 'awarded' && (
+                        <SellSheetButton vehicle={v} transport={transport} variant="solid" style={{ padding: '8px 16px', fontSize: 14 }} />
                       )}
                       {!isReadOnly && ['intake','recon','ready','active','awarded','no_sale'].includes(v.status) && (
                         <button className="btn-secondary" style={{ padding: '8px 16px', fontSize: 14 }} onClick={() => { setEditing(v); setShowForm(true); }}>Edit</button>

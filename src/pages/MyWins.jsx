@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { StatusBadge } from '../components/StatusBadge';
 import { VehicleDetailModal } from '../components/VehicleDetailModal';
+import { SellSheetButton } from '../components/SellSheetButton';
 
 const ARBITRATION_ISSUES = [
   'Undisclosed mechanical issue',
@@ -169,8 +170,11 @@ export default function MyWins() {
                         File arbitration
                       </button>
                     )}
-                    <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 600, color: '#1a3d76', whiteSpace: 'nowrap' }}>
-                      View details →
+                    <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                      <SellSheetButton vehicle={v} transport={transport} />
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#1a3d76', whiteSpace: 'nowrap' }}>
+                        View details →
+                      </span>
                     </span>
                   </div>
                   {v.notes && (
