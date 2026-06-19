@@ -117,7 +117,7 @@ export default function AvailableUnits() {
   const readyCount = available.filter(v => v.status === 'ready').length;
   const liveCount = available.filter(v => v.status === 'active').length;
 
-  const getTransport = (vehicleId) => data.transport.find(t => t.vehicleId === vehicleId);
+  const getTransport = (vehicleId) => data.transport.find(t => t.vehicleId === vehicleId && t.kind !== 'repair');
 
   return (
     <div>

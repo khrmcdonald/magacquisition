@@ -283,12 +283,29 @@ export function DataProvider({ children }) {
   };
 
   // --- Transport ---
+  // Advance the outbound (sold-car) transport record. Scoped to non-repair
+  // records so it never disturbs a repair trip that shares the same vehicleId
+  // (an awarded car can be both sold and out for repair at once).
   const updateTransport = (vehicleId, stepKey, notes) => {
     update(d => ({
       ...d,
       transport: d.transport.map(t =>
-        t.vehicleId === vehicleId
+        t.vehicleId === vehicleId && t.kind !== 'repair'
           ? { ...t, status: stepKey, notes: notes || t.notes, steps: { ...t.steps, [stepKey]: new Date().toISOString() } }
+          : t
+      )
+    }));
+  };
+
+  // Advance the repair trip (drop-off / pickup / return). Lives in the same
+  // transport list as outbound but is tagged kind: 'repair' so the two stay
+  // independent.
+  const updateRepairTransport = (vehicleId, stepKey, notes) => {
+    update(d => ({
+      ...d,
+      transport: d.transport.map(t =>
+        t.vehicleId === vehicleId && t.kind === 'repair'
+          ? { ...t, status: stepKey, notes: notes != null ? notes : t.notes, steps: { ...t.steps, [stepKey]: new Date().toISOString() } }
           : t
       )
     }));
@@ -420,24 +437,53 @@ export function DataProvider({ children }) {
   // Send a vehicle out for repair to an approved vendor. This is an overlay on
   // top of the auction stage — it doesn't change v.status — so a car can be in
   // repair whether it's in intake, recon, ready, live, or already awarded.
-  const sendToRepair = (vehicleId, { vendorId, vendorName, reason, estCost, notes }) => {
-    update(d => ({
-      ...d,
-      vehicles: d.vehicles.map(v => v.id === vehicleId ? {
-        ...v,
+  //
+  // A repair is also a physical trip: the car is dropped off at the shop and
+  // picked up when the work is done. So sending one out also opens a repair
+  // transport record (kind: 'repair') that surfaces on Transport & Title, where
+  // the drop-off and pickup are tracked. Re-sending replaces any prior repair
+  // trip for the same vehicle.
+  const sendToRepair = (vehicleId, { vendorId, vendorName, reason, details, estCost, notes, poNumber }) => {
+    update(d => {
+      const v = d.vehicles.find(vv => vv.id === vehicleId);
+      const sentAt = new Date().toISOString();
+
+      const vehicles = d.vehicles.map(vv => vv.id === vehicleId ? {
+        ...vv,
         repair: {
           status: 'in_repair',
           vendorId: vendorId || null,
           vendorName: vendorName || '',
           reason: reason || '',
+          details: details || '',
+          poNumber: poNumber || '',
           estCost: estCost || '',
           notes: notes || '',
-          sentAt: new Date().toISOString(),
+          sentAt,
           completedAt: null,
           actualCost: '',
         },
-      } : v)
-    }));
+      } : vv);
+
+      const vehicleName = v ? `${v.year} ${v.make} ${v.model}` : '';
+      const repairTrip = {
+        id: 'rp_' + vehicleId,
+        kind: 'repair',
+        vehicleId,
+        vehicleName,
+        vendorId: vendorId || null,
+        vendorName: vendorName || '',
+        status: 'scheduled',
+        notes: notes || '',
+        steps: { scheduled: sentAt, droppedOff: null, pickedUp: null, returned: null },
+      };
+      const transport = [
+        ...d.transport.filter(t => !(t.kind === 'repair' && t.vehicleId === vehicleId)),
+        repairTrip,
+      ];
+
+      return { ...d, vehicles, transport };
+    });
   };
 
   // Mark a vehicle's current repair complete (back from the shop).
@@ -474,6 +520,7 @@ export function DataProvider({ children }) {
       getMyBid,
       getAllBidsForVehicle,
       updateTransport,
+      updateRepairTransport,
       fileArbitration,
       resolveArbitration,
       addVendor,

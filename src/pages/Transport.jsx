@@ -4,6 +4,7 @@ import { StoreAvatar } from '../components/StoreAvatar';
 import { useData } from '../context/DataContext';
 import { StatusBadge, isTitlePending } from '../components/StatusBadge';
 import { SellSheetButton } from '../components/SellSheetButton';
+import { RepairOrderButton } from '../components/RepairOrderButton';
 
 // Outbound: a sold car travelling from Arbor Plaza to the buyer's store.
 const OUT_STEPS = [
@@ -12,6 +13,15 @@ const OUT_STEPS = [
   { key: 'inTransit', label: 'In Transit', icon: '🚚' },
   { key: 'arrived', label: 'Arrived', icon: '✅' },
   { key: 'titleReceived', label: 'Title Received', icon: '📄' },
+];
+
+// Repair: a car making the round trip to an approved shop and back. The vehicle
+// is physically dropped off, worked on, then picked up when complete.
+const REPAIR_STEPS = [
+  { key: 'scheduled', label: 'Scheduled', icon: '📅' },
+  { key: 'droppedOff', label: 'Dropped off', icon: '📦' },
+  { key: 'pickedUp', label: 'Picked up', icon: '🔧' },
+  { key: 'returned', label: 'Back at lot', icon: '⚓' },
 ];
 
 // Inbound: a freshly bought car travelling from the seller/auction to our lot.
@@ -212,9 +222,71 @@ function InboundCard({ vehicle, canUpdate, onAdvance }) {
   );
 }
 
+// Repair card — a vehicle out at an approved shop, tracked drop-off to pickup.
+function RepairCard({ t, vehicle, vendor, canUpdate, onUpdateStep, onNotes }) {
+  const repair = vehicle?.repair;
+  return (
+    <div className="card" style={{ padding: '16px 20px', borderLeft: '4px solid #fed7aa' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+          <VehiclePhoto vehicle={vehicle} />
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>{t.vehicleName}</div>
+            <div style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>
+              At shop: <strong style={{ color: '#9a3412' }}>🔧 {t.vendorName || 'vendor'}</strong>
+              {repair?.reason ? <> · {repair.reason}</> : null}
+            </div>
+            {repair?.estCost && (
+              <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>Est. ${parseFloat(repair.estCost).toLocaleString()}</div>
+            )}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
+          <span style={{ background: repair?.status === 'completed' ? '#dcfce7' : '#ffedd5', color: repair?.status === 'completed' ? '#065f46' : '#9a3412', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
+            {repair?.status === 'completed' ? '✓ Work complete' : '🔧 In repair'}
+          </span>
+          <RepairOrderButton vehicle={vehicle} vendor={vendor} transport={t} />
+          {canUpdate && (
+            <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => onNotes(t)}>
+              Notes
+            </button>
+          )}
+        </div>
+      </div>
+
+      <StepTracker
+        stepDefs={REPAIR_STEPS}
+        steps={t.steps}
+        currentStatus={t.status}
+        onUpdate={(stepKey) => onUpdateStep(t, stepKey)}
+        canUpdate={canUpdate}
+      />
+
+      {canUpdate && t.status !== 'returned' && (() => {
+        const nextIdx = REPAIR_STEPS.findIndex(s => s.key === t.status) + 1;
+        if (nextIdx <= 0 || nextIdx >= REPAIR_STEPS.length) return null;
+        const nextStep = REPAIR_STEPS[nextIdx];
+        return (
+          <div style={{ marginTop: 4 }}>
+            <button className="btn-navy" style={{ padding: '7px 16px', fontSize: 13 }} onClick={() => onUpdateStep(t, nextStep.key)}>
+              Mark as {nextStep.label} {nextStep.icon}
+            </button>
+          </div>
+        );
+      })()}
+
+      {t.notes && (
+        <div style={{ marginTop: 10, background: '#fff7ed', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#7c2d12', borderLeft: '3px solid #fed7aa' }}>
+          📝 {t.notes}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Transport() {
   const { user } = useAuth();
-  const { data, updateTransport, updateVehicle } = useData();
+  const { data, updateTransport, updateRepairTransport, updateVehicle } = useData();
   const [filter, setFilter] = useState('all');
   const [notesModal, setNotesModal] = useState(null);
   const [notes, setNotes] = useState('');
@@ -225,15 +297,24 @@ export default function Transport() {
   const seesInbound = isWholesale || isGM;
 
   const vehicleById = (id) => data.vehicles.find(v => v.id === id);
+  const vendorById = (id) => (data.approvedVendors || []).find(vn => vn.id === id);
 
   // Outbound — sold vehicles heading to a buyer. Bidders only see their own.
-  const outbound = (isWholesale || isGM)
+  // Repair trips share this list but are tagged kind: 'repair', so exclude them.
+  const outbound = ((isWholesale || isGM)
     ? data.transport
-    : data.transport.filter(t => t.storeId === user.id);
+    : data.transport.filter(t => t.storeId === user.id)
+  ).filter(t => t.kind !== 'repair');
 
   // Inbound — bought vehicles still heading to our lot. Internal only.
   const inbound = seesInbound
     ? data.vehicles.filter(v => ['scheduled', 'in_transit'].includes(v.inboundStatus) && v.status !== 'awarded')
+    : [];
+
+  // In repair — internal inventory making the round trip to a shop and back.
+  // Internal only; settled (returned) trips drop off the active board.
+  const repairs = seesInbound
+    ? data.transport.filter(t => t.kind === 'repair' && t.status !== 'returned')
     : [];
 
   const outboundInTransit = outbound.filter(t => ['dispatched', 'inTransit'].includes(t.status)).length;
@@ -244,11 +325,12 @@ export default function Transport() {
 
   const showInbound = (filter === 'all' || filter === 'inbound') && inbound.length > 0;
   const filteredOutbound =
-    filter === 'inbound' ? []
+    filter === 'inbound' || filter === 'repair' ? []
     : filter === 'delivered' ? outbound.filter(t => t.status === 'titleReceived')
     : filter === 'outbound' ? outbound.filter(t => t.status !== 'titleReceived')
     : outbound;
-  const showOutbound = filter !== 'inbound';
+  const showOutbound = filter !== 'inbound' && filter !== 'repair';
+  const showRepairs = (filter === 'all' || filter === 'repair') && repairs.length > 0;
 
   const handleAdvanceInbound = (v, stepKey) => {
     const fields = { inboundStatus: stepKey };
@@ -256,9 +338,19 @@ export default function Transport() {
     updateVehicle(v.id, fields);
   };
 
+  // Advancing a repair trip also keeps the vehicle's location honest: it's at
+  // the shop once dropped off, and back at Arbor Plaza once returned.
+  const handleAdvanceRepair = (t, stepKey) => {
+    updateRepairTransport(t.vehicleId, stepKey);
+    if (stepKey === 'droppedOff' && t.vendorName) updateVehicle(t.vehicleId, { currentLocation: t.vendorName });
+    if (stepKey === 'returned') updateVehicle(t.vehicleId, { currentLocation: 'Arbor Plaza' });
+  };
+
   const filterTabs = [['all', 'All']];
   if (seesInbound) filterTabs.push(['inbound', 'Inbound']);
-  filterTabs.push(['outbound', 'Outbound'], ['delivered', 'Delivered']);
+  filterTabs.push(['outbound', 'Outbound']);
+  if (seesInbound) filterTabs.push(['repair', 'In repair']);
+  filterTabs.push(['delivered', 'Delivered']);
 
   return (
     <div>
@@ -281,6 +373,12 @@ export default function Transport() {
           <div className="stat-label">In transit · Outbound</div>
           <div className="stat-value" style={{ color: '#1e40af' }}>{outboundInTransit}</div>
         </div>
+        {seesInbound && (
+          <div className="stat-card">
+            <div className="stat-label">In repair</div>
+            <div className="stat-value" style={{ color: '#9a3412' }}>{repairs.length}</div>
+          </div>
+        )}
         <div className="stat-card">
           <div className="stat-label">Awaiting title</div>
           <div className="stat-value" style={{ color: '#9a3412' }}>{titlePendingCount}</div>
@@ -312,7 +410,7 @@ export default function Transport() {
         ))}
       </div>
 
-      {!showInbound && filteredOutbound.length === 0 ? (
+      {!showInbound && !showRepairs && filteredOutbound.length === 0 ? (
         <div className="empty-state">
           <div style={{ fontSize: 36, marginBottom: 8 }}>🚚</div>
           <p>No vehicles to track</p>
@@ -358,6 +456,28 @@ export default function Transport() {
               </div>
             </div>
           )}
+
+          {/* Repair section */}
+          {showRepairs && (
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#9a3412', marginBottom: 10 }}>
+                🔧 In repair — vehicles out at a shop and back
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {repairs.map(t => (
+                  <RepairCard
+                    key={t.id}
+                    t={t}
+                    vehicle={vehicleById(t.vehicleId)}
+                    vendor={vendorById(t.vendorId)}
+                    canUpdate={canUpdate}
+                    onUpdateStep={handleAdvanceRepair}
+                    onNotes={(tr) => { setNotesModal(tr); setNotes(tr.notes || ''); }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -378,7 +498,7 @@ export default function Transport() {
             </div>
             <div className="modal-footer">
               <button className="btn-secondary" onClick={() => setNotesModal(null)}>Cancel</button>
-              <button className="btn-navy" onClick={() => { updateTransport(notesModal.vehicleId, notesModal.status, notes); setNotesModal(null); }}>Save notes</button>
+              <button className="btn-navy" onClick={() => { (notesModal.kind === 'repair' ? updateRepairTransport : updateTransport)(notesModal.vehicleId, notesModal.status, notes); setNotesModal(null); }}>Save notes</button>
             </div>
           </div>
         </div>

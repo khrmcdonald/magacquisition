@@ -130,7 +130,7 @@ export default function Export() {
       ['MAG ACQUISITION — TRANSPORT LOG', '', '', '', '', '', '', ''],
       [],
       ['Vehicle', 'VIN', 'Destination Store', 'Winning Bid', 'Awarded', 'Dispatched', 'In Transit', 'Arrived', 'Title Received', 'Notes'],
-      ...data.transport.map(t => {
+      ...data.transport.filter(t => t.kind !== 'repair').map(t => {
         const v = vehicles.find(vv => vv.id === t.vehicleId);
         return [
           t.vehicleName || '', v?.vin || '', t.storeName || '', t.winningBid || 0,

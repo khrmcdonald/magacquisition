@@ -83,6 +83,7 @@ export default function History() {
 
   // Transport history. Bidders see only their own incoming vehicles.
   const filteredTransport = data.transport.filter(t => {
+    if (t.kind === 'repair') return false;
     if (isBidder && t.storeId !== user.id) return false;
     if (storeFilter !== 'all' && t.storeId !== storeFilter) return false;
     if (search) {
@@ -150,7 +151,7 @@ export default function History() {
           </div>
           <div className="stat-card">
             <div className="stat-label">Vehicles in transit</div>
-            <div className="stat-value">{data.transport.filter(t => !['arrived','titleReceived'].includes(t.status)).length}</div>
+            <div className="stat-value">{data.transport.filter(t => t.kind !== 'repair' && !['arrived','titleReceived'].includes(t.status)).length}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Fully delivered</div>
@@ -232,7 +233,7 @@ export default function History() {
                 <tbody>
                   {filteredVehicles.map(v => {
                     const titleMap = { pending: 'Pending', in_transit: 'In Transit', on_hand: 'On Hand', lien: 'Lien', missing: 'Missing', transferred: 'Transferred' };
-                    const transport = data.transport.find(t => t.vehicleId === v.id);
+                    const transport = data.transport.find(t => t.vehicleId === v.id && t.kind !== 'repair');
                     return (
                       <tr key={v.id}>
                         <td><div style={{ fontWeight: 600 }}>{v.year} {v.make} {v.model}</div><div style={{ fontSize: 11, color: '#6b7280' }}>{v.color} · {v.condition}</div></td>

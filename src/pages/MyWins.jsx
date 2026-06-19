@@ -89,7 +89,7 @@ export default function MyWins() {
   const myBids = data.bids.filter(b => b.storeId === user.id);
   const totalSpend = myWins.reduce((s, v) => s + (v.winningBid || 0), 0);
 
-  const getTransport = (vehicleId) => data.transport.find(t => t.vehicleId === vehicleId);
+  const getTransport = (vehicleId) => data.transport.find(t => t.vehicleId === vehicleId && t.kind !== 'repair');
 
   return (
     <>

@@ -84,7 +84,7 @@ function ReadOnlyTracker({ steps, currentStatus }) {
 export function VehicleDetailModal({ vehicleId, onClose, showFinancials = false }) {
   const { data } = useData();
   const vehicle = data.vehicles.find(v => v.id === vehicleId);
-  const transport = data.transport.find(t => t.vehicleId === vehicleId);
+  const transport = data.transport.find(t => t.vehicleId === vehicleId && t.kind !== 'repair');
   const [activePhoto, setActivePhoto] = useState(0);
 
   if (!vehicle) return null;

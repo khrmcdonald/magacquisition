@@ -16,12 +16,15 @@ export function RepairModal({ vehicle, vendors = [], onAddVendor, onSend, onClos
   const [vendorId, setVendorId] = useState(vendors[0]?.id || 'NEW');
   const [newVendor, setNewVendor] = useState({ name: '', specialty: 'General', phone: '', address: '', poRequired: false });
   const [reason, setReason] = useState('');
+  const [details, setDetails] = useState('');
   const [estCost, setEstCost] = useState('');
+  const [poNumber, setPoNumber] = useState('');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
 
   const addingNew = vendorId === 'NEW' || vendors.length === 0;
   const selectedVendor = addingNew ? null : vendors.find(v => v.id === vendorId);
+  const poRequired = addingNew ? newVendor.poRequired === true : !!selectedVendor?.poRequired;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -38,7 +41,7 @@ export function RepairModal({ vehicle, vendors = [], onAddVendor, onSend, onClos
       chosenName = vn.name;
     }
 
-    onSend({ vendorId: chosenId, vendorName: chosenName, reason, estCost, notes });
+    onSend({ vendorId: chosenId, vendorName: chosenName, reason, details, estCost, notes, poNumber });
     onClose();
   };
 
@@ -107,7 +110,7 @@ export function RepairModal({ vehicle, vendors = [], onAddVendor, onSend, onClos
               </div>
             )}
 
-            {!addingNew && selectedVendor?.poRequired && (
+            {poRequired && (
               <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#92400e', fontWeight: 600 }}>
                 📋 This vendor requires a purchase order before work begins.
               </div>
@@ -117,6 +120,18 @@ export function RepairModal({ vehicle, vendors = [], onAddVendor, onSend, onClos
               <label>What's the repair for?</label>
               <input type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Front bumper & fender, hail damage..." />
             </div>
+
+            <div className="form-group">
+              <label>Repairs needed — details &amp; specifics</label>
+              <textarea value={details} onChange={e => setDetails(e.target.value)} rows={4} placeholder="List the specific work to be done, one item per line — this prints on the repair order. e.g.&#10;• R&R front bumper cover&#10;• Repaint hood&#10;• Replace windshield" />
+            </div>
+
+            {poRequired && (
+              <div className="form-group">
+                <label>PO number</label>
+                <input type="text" value={poNumber} onChange={e => setPoNumber(e.target.value)} placeholder="Purchase order # for this work" />
+              </div>
+            )}
 
             <div className="form-group">
               <label>Estimated cost</label>

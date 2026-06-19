@@ -125,7 +125,7 @@ export default function GMOverview() {
                   </thead>
                   <tbody>
                     {[...awarded, ...noSale].map(v => {
-                      const transport = data.transport.find(t => t.vehicleId === v.id);
+                      const transport = data.transport.find(t => t.vehicleId === v.id && t.kind !== 'repair');
                       const margin = v.winningBid && v.totalCost ? (v.winningBid - parseFloat(v.totalCost)) : null;
                       return (
                         <tr key={v.id}>
@@ -242,7 +242,7 @@ export default function GMOverview() {
                 {data.vehicles.map(v => {
                   const bids = getAllBidsForVehicle(v.id);
                   const highBid = bids[0];
-                  const transport = data.transport.find(t => t.vehicleId === v.id);
+                  const transport = data.transport.find(t => t.vehicleId === v.id && t.kind !== 'repair');
                   return (
                     <tr key={v.id}>
                       <td>

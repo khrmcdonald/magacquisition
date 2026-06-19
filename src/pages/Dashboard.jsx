@@ -208,7 +208,7 @@ function TriStateDashboard({ data, navigate }) {
         {recentVehicles.length === 0 ? (
           <div style={{ color: '#9ca3af', fontSize: 14, padding: '20px 0' }}>No vehicles yet — <span style={{ color: '#1a3d76', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => navigate('/acquisitions')}>add your first vehicle</span></div>
         ) : recentVehicles.map(v => {
-          const transport = data.transport.find(t => t.vehicleId === v.id);
+          const transport = data.transport.find(t => t.vehicleId === v.id && t.kind !== 'repair');
           return (
             <div key={v.id} onClick={() => navigate('/acquisitions')} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{ width: 56, height: 42, borderRadius: 6, overflow: 'hidden', flexShrink: 0, background: '#f0f4f8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

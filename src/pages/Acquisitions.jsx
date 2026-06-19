@@ -5,6 +5,7 @@ import { Navigate } from 'react-router-dom';
 import { StatusBadge } from '../components/StatusBadge';
 import { DirectSaleModal } from '../components/DirectSaleModal';
 import { SellSheetButton } from '../components/SellSheetButton';
+import { RepairOrderButton } from '../components/RepairOrderButton';
 import { RepairModal } from '../components/RepairModal';
 
 const SOURCES = ['KBB', 'VETTX', 'LBO', 'AutoHub', 'eBlock', 'ADESA', 'Private', 'Trade-in', 'Dealer trade', 'Off-lease', 'Other'];
@@ -747,7 +748,9 @@ export default function Acquisitions() {
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {filtered.map(v => {
               const st = STATUS_LABELS[v.status] || STATUS_LABELS.intake;
-              const transport = data.transport.find(t => t.vehicleId === v.id);
+              const transport = data.transport.find(t => t.vehicleId === v.id && t.kind !== 'repair');
+              const repairTransport = data.transport.find(t => t.vehicleId === v.id && t.kind === 'repair');
+              const repairVendor = (data.approvedVendors || []).find(vn => vn.id === v.repair?.vendorId);
               const margin = v.floorPrice && v.totalCost ? (parseFloat(v.floorPrice) - parseFloat(v.totalCost)) : null;
               return (
                 <div key={v.id} style={{ borderBottom: '2px solid #e5e7eb', padding: '20px 24px' }}>
@@ -923,18 +926,24 @@ export default function Acquisitions() {
                         {v.repair.notes && <div style={{ fontSize: 13, color: '#7c2d12' }}>{v.repair.notes}</div>}
                         {v.repair.sentAt && <div style={{ fontSize: 11, color: '#9a3412', marginTop: 6, opacity: 0.7 }}>Sent {new Date(v.repair.sentAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
                       </div>
-                      {!isReadOnly && (
-                        <button onClick={() => handleCompleteRepair(v)} style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
-                          Mark repair complete
-                        </button>
-                      )}
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
+                        <RepairOrderButton vehicle={v} vendor={repairVendor} transport={repairTransport} />
+                        {!isReadOnly && (
+                          <button onClick={() => handleCompleteRepair(v)} style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                            Mark repair complete
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                   {v.repair?.status === 'completed' && (
-                    <div style={{ marginTop: 14, background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#065f46' }}>
-                      ✓ Repair complete at {v.repair.vendorName || 'vendor'}
-                      {v.repair.reason ? ` — ${v.repair.reason}` : ''}
-                      {v.repair.actualCost ? ` · $${parseFloat(v.repair.actualCost).toLocaleString()}` : ''}
+                    <div style={{ marginTop: 14, background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                      <div style={{ fontSize: 13, color: '#065f46' }}>
+                        ✓ Repair complete at {v.repair.vendorName || 'vendor'}
+                        {v.repair.reason ? ` — ${v.repair.reason}` : ''}
+                        {v.repair.actualCost ? ` · $${parseFloat(v.repair.actualCost).toLocaleString()}` : ''}
+                      </div>
+                      <RepairOrderButton vehicle={v} vendor={repairVendor} transport={repairTransport} />
                     </div>
                   )}
 
