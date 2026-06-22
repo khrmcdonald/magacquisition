@@ -3,9 +3,13 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { StoreAvatar } from './StoreAvatar';
+import { ShoppingCart } from 'lucide-react';
+
+const INVENTORY_NAV = { to: '/inventory', label: 'Inventory', icon: <ShoppingCart size={16} /> };
 
 const NAV = {
   bidder: [
+    INVENTORY_NAV,
     { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/auction', label: 'Auction Floor', icon: '🔨' },
     { to: '/wins', label: 'My Wins', icon: '🏆' },
@@ -14,6 +18,7 @@ const NAV = {
     { to: '/history', label: 'History', icon: '📜' },
   ],
   wholesale: [
+    INVENTORY_NAV,
     { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/acquisitions', label: 'Acquisitions', icon: '📋' },
     { to: '/manage', label: 'Manage Auction', icon: '⚙️' },
@@ -23,6 +28,7 @@ const NAV = {
     { to: '/export', label: 'Accounting Export', icon: '📊' },
   ],
   gm: [
+    INVENTORY_NAV,
     { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/overview', label: 'GM Overview', icon: '📊' },
     { to: '/auction', label: 'Auction Floor', icon: '🔨' },
@@ -32,6 +38,7 @@ const NAV = {
     { to: '/export', label: 'Accounting Export', icon: '📊' },
   ],
   admin: [
+    INVENTORY_NAV,
     { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/admin', label: 'Admin', icon: '🔧' },
     { to: '/overview', label: 'GM Overview', icon: '📊' },

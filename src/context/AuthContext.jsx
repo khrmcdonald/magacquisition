@@ -22,7 +22,7 @@ function fallbackProfile(supabaseUser) {
     email: supabaseUser.email,
     name: supabaseUser.email,
     role: 'admin',
-    org_id: null,
+    org_id: 'bf236d2b-4693-4606-bf3d-ece1767690ab',
     color: '#1a3d76',
   };
 }
