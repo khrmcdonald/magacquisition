@@ -3,39 +3,29 @@ import { useNavigate } from 'react-router-dom';
 import TEAM_PHOTO from '../teamPhoto';
 import { useAuth } from '../context/AuthContext';
 
-
-
 export default function Login() {
-  const [pin, setPin] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    setTimeout(() => {
-      const user = login(pin);
-      if (user) {
-        if (user.role === 'wholesale') navigate('/acquisitions');
-        else if (user.role === 'gm') navigate('/overview');
-        else if (user.role === 'admin') navigate('/admin');
-        else navigate('/auction');
-      } else {
-        setError('Invalid PIN. Please try again.');
-        setPin('');
-      }
-      setLoading(false);
-    }, 300);
+    const user = await login(email.trim(), password);
+    if (user) {
+      if (user.role === 'wholesale') navigate('/acquisitions');
+      else if (user.role === 'gm') navigate('/overview');
+      else if (user.role === 'admin') navigate('/admin');
+      else navigate('/auction');
+    } else {
+      setError('Invalid email or password. Please try again.');
+    }
+    setLoading(false);
   };
-
-  const handleKey = (digit) => {
-    if (pin.length < 6) setPin(p => p + digit);
-  };
-
-  const handleBackspace = () => setPin(p => p.slice(0, -1));
 
   return (
     <div style={{
@@ -52,7 +42,6 @@ export default function Login() {
         borderRadius: 20,
         width: '100%',
         maxWidth: 400,
-        textAlign: 'center',
         overflow: 'hidden',
         boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
       }}>
@@ -67,7 +56,7 @@ export default function Login() {
             position: 'absolute', inset: 0,
             background: 'linear-gradient(to bottom, rgba(26,61,118,0.1) 0%, rgba(26,61,118,0.8) 100%)',
           }} />
-          <div style={{ position: 'absolute', bottom: 18, left: 0, right: 0 }}>
+          <div style={{ position: 'absolute', bottom: 18, left: 0, right: 0, textAlign: 'center' }}>
             <div style={{ color: '#f1bb25', fontWeight: 800, fontSize: 22, letterSpacing: '.03em' }}>
               MAG Acquisition
             </div>
@@ -77,51 +66,75 @@ export default function Login() {
           </div>
         </div>
 
-        {/* PIN pad */}
-        <div style={{ padding: '28px 36px 36px' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginBottom: 24 }}>
-            {[0,1,2,3].map(i => (
-              <div key={i} style={{
-                width: 48, height: 56, borderRadius: 10,
-                border: `2px solid ${pin.length > i ? '#1a3d76' : '#e5e7eb'}`,
-                background: pin.length > i ? '#f0f4fb' : '#f9fafb',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 22, fontWeight: 700, color: '#1a3d76', transition: 'all 0.15s',
-              }}>
-                {pin.length > i ? '●' : ''}
-              </div>
-            ))}
+        {/* Login form */}
+        <form onSubmit={handleSubmit} style={{ padding: '32px 36px 36px' }}>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+              autoFocus
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                padding: '11px 14px', fontSize: 15,
+                border: '1.5px solid #e5e7eb', borderRadius: 10,
+                outline: 'none', color: '#111827',
+              }}
+              onFocus={e => e.target.style.borderColor = '#1a3d76'}
+              onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+            />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
-            {[1,2,3,4,5,6,7,8,9].map(n => (
-              <button key={n} type="button" onClick={() => handleKey(String(n))}
-                style={{ background: '#f5f6f8', border: '1px solid #e5e7eb', borderRadius: 10, padding: '16px 0', fontSize: 20, fontWeight: 600, color: '#111827', cursor: 'pointer' }}
-                onMouseDown={e => e.currentTarget.style.background = '#e5e7eb'}
-                onMouseUp={e => e.currentTarget.style.background = '#f5f6f8'}
-              >{n}</button>
-            ))}
-            <button type="button" onClick={handleBackspace}
-              style={{ background: '#f5f6f8', border: '1px solid #e5e7eb', borderRadius: 10, padding: '16px 0', fontSize: 16, fontWeight: 600, color: '#6b7280', cursor: 'pointer' }}>
-              ←
-            </button>
-            <button type="button" onClick={() => handleKey('0')}
-              style={{ background: '#f5f6f8', border: '1px solid #e5e7eb', borderRadius: 10, padding: '16px 0', fontSize: 20, fontWeight: 600, color: '#111827', cursor: 'pointer' }}>
-              0
-            </button>
-            <button type="button" onClick={handleSubmit}
-              style={{ background: pin.length >= 4 ? '#1a3d76' : '#e5e7eb', border: 'none', borderRadius: 10, padding: '16px 0', fontSize: 14, fontWeight: 700, color: pin.length >= 4 ? '#fff' : '#9ca3af', cursor: pin.length >= 4 ? 'pointer' : 'default', transition: 'background 0.15s' }}>
-              {loading ? '...' : 'Enter'}
-            </button>
+          <div style={{ marginBottom: 24 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                padding: '11px 14px', fontSize: 15,
+                border: '1.5px solid #e5e7eb', borderRadius: 10,
+                outline: 'none', color: '#111827',
+              }}
+              onFocus={e => e.target.style.borderColor = '#1a3d76'}
+              onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+            />
           </div>
 
           {error && (
-            <div style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: 8, fontSize: 13, fontWeight: 500 }}>
+            <div style={{
+              background: '#fee2e2', color: '#991b1b',
+              padding: '10px 14px', borderRadius: 8,
+              fontSize: 13, fontWeight: 500, marginBottom: 16,
+            }}>
               {error}
             </div>
           )}
-          <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 16 }}>Enter your store PIN to continue</p>
-        </div>
+
+          <button
+            type="submit"
+            disabled={loading || !email || !password}
+            style={{
+              width: '100%', padding: '13px 0', fontSize: 15, fontWeight: 700,
+              background: loading || !email || !password ? '#e5e7eb' : '#1a3d76',
+              color: loading || !email || !password ? '#9ca3af' : '#fff',
+              border: 'none', borderRadius: 10, cursor: loading || !email || !password ? 'default' : 'pointer',
+              transition: 'background 0.15s',
+            }}
+          >
+            {loading ? 'Signing in…' : 'Sign In'}
+          </button>
+        </form>
       </div>
     </div>
   );
