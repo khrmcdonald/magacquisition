@@ -10,21 +10,21 @@ function StatCard({ label, value, sub, color, onClick }) {
     <div
       onClick={onClick}
       style={{
-        background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12,
-        padding: '20px 24px', cursor: onClick ? 'pointer' : 'default',
-        transition: 'box-shadow 0.15s',
+        background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10,
+        padding: '18px 20px', cursor: onClick ? 'pointer' : 'default',
+        transition: 'box-shadow 0.15s, border-color 0.15s',
       }}
-      onMouseEnter={e => onClick && (e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)')}
-      onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
+      onMouseEnter={e => { if (onClick) { e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.07)'; e.currentTarget.style.borderColor = '#0d2550'; } }}
+      onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#e5e7eb'; }}
     >
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>{label}</div>
-      <div style={{ fontSize: 32, fontWeight: 800, color: color || '#1a3d76', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 10 }}>{label}</div>
+      <div style={{ fontSize: 34, fontWeight: 800, color: color || '#0d2550', lineHeight: 1, letterSpacing: '-.01em' }}>{value}</div>
       {sub && <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>{sub}</div>}
     </div>
   );
 }
 
-function AuctionBanner({ auction, navigate }) {
+function AuctionBanner({ auction, navigate, role }) {
   const [now, setNow] = React.useState(new Date());
   React.useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -45,19 +45,31 @@ function AuctionBanner({ auction, navigate }) {
   };
 
   if (!auction.isOpen) return (
-    <div style={{ background: '#f5f6f8', border: '1px solid #e5e7eb', borderRadius: 12, padding: '20px 24px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
-      <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#9ca3af', flexShrink: 0 }} />
-      <div>
-        <div style={{ fontWeight: 700, color: '#374151', fontSize: 15 }}>No active auction</div>
-        <div style={{ fontSize: 13, color: '#9ca3af', marginTop: 2 }}>TRI-STATE will open the next auction when ready</div>
+    <div style={{
+      background: '#fff', border: '1px solid #e8eaed', borderRadius: 12,
+      padding: '20px 24px', marginBottom: 24,
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      flexWrap: 'wrap', gap: 16,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ width: 44, height: 44, borderRadius: 10, background: '#f0f2f5', border: '1px solid #e8eaed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>📅</div>
+        <div>
+          <div style={{ fontWeight: 700, color: '#0d2550', fontSize: 15 }}>No auction currently open</div>
+          <div style={{ fontSize: 13, color: '#9ca3af', marginTop: 2 }}>Tri-State will announce the next auction date</div>
+        </div>
       </div>
+      {['wholesale','gm','admin'].includes(role) && (
+        <button onClick={() => navigate('/manage')} style={{ background: '#0d2550', color: '#fff', border: 'none', padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          Open auction →
+        </button>
+      )}
     </div>
   );
 
   return (
     <div
       onClick={() => navigate('/auction')}
-      style={{ background: '#1a3d76', borderRadius: 12, padding: '20px 24px', marginBottom: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}
+      style={{ background: '#0d2550', borderRadius: 12, padding: '20px 24px', marginBottom: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#f1bb25', boxShadow: '0 0 8px #f1bb25', flexShrink: 0 }} />
@@ -66,7 +78,7 @@ function AuctionBanner({ auction, navigate }) {
           <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>{getCountdown()}</div>
         </div>
       </div>
-      <div style={{ background: '#f1bb25', color: '#1a3d76', padding: '8px 20px', borderRadius: 8, fontWeight: 700, fontSize: 14 }}>
+      <div style={{ background: '#e8b84b', color: '#0d2550', padding: '8px 20px', borderRadius: 8, fontWeight: 700, fontSize: 14 }}>
         Go to auction floor →
       </div>
     </div>
@@ -74,7 +86,7 @@ function AuctionBanner({ auction, navigate }) {
 }
 
 // ── BIDDER DASHBOARD ──
-function BidderDashboard({ user, data, navigate }) {
+function BidderDashboard({ user, data, navigate, role }) {
   const myWins = data.vehicles.filter(v => v.status === 'awarded' && v.winnerId === user.id);
   const myBids = data.bids.filter(b => b.storeId === user.id);
   const activeVehicles = data.vehicles.filter(v => v.status === 'active');
@@ -92,12 +104,12 @@ function BidderDashboard({ user, data, navigate }) {
 
   return (
     <>
-      <AuctionBanner auction={data.auction} navigate={navigate} />
+      <AuctionBanner auction={data.auction} navigate={navigate} role={role} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 28 }}>
         <StatCard label="Cars won" value={myWins.length} sub="all time" onClick={() => navigate('/wins')} />
-        <StatCard label="Total spend" value={`$${(totalSpend/1000).toFixed(0)}k`} sub="winning bids" color="#1a3d76" />
-        <StatCard label="Active bids" value={myActiveBids.length} sub={`${winning.length} winning`} color={winning.length > 0 ? '#065f46' : '#1a3d76'} onClick={() => navigate('/auction')} />
+        <StatCard label="Total spend" value={`$${(totalSpend/1000).toFixed(0)}k`} sub="winning bids" color="#0d2550" />
+        <StatCard label="Active bids" value={myActiveBids.length} sub={`${winning.length} winning`} color={winning.length > 0 ? '#065f46' : '#0d2550'} onClick={() => navigate('/auction')} />
         <StatCard label="Incoming" value={incoming.length} sub="in transit" color={incoming.length > 0 ? '#0369a1' : '#9ca3af'} onClick={() => navigate('/transport')} />
         {openArbitrations.length > 0 && (
           <StatCard label="Arbitrations" value={openArbitrations.length} sub="pending review" color="#991b1b" onClick={() => navigate('/wins')} />
@@ -115,7 +127,7 @@ function BidderDashboard({ user, data, navigate }) {
               const highBid = allBids.length ? Math.max(...allBids.map(b => b.amount)) : null;
               const isWinning = myBid && highBid && myBid.amount >= highBid;
               return (
-                <div key={v.id} onClick={() => navigate('/auction')} style={{ background: '#fff', border: `1px solid ${isWinning ? '#1a3d76' : myBid ? '#fca5a5' : '#e5e7eb'}`, borderRadius: 10, padding: '14px 16px', cursor: 'pointer', display: 'flex', gap: 12, alignItems: 'center' }}>
+                <div key={v.id} onClick={() => navigate('/auction')} style={{ background: '#fff', border: `1px solid ${isWinning ? '#0d2550' : myBid ? '#fca5a5' : '#e5e7eb'}`, borderRadius: 10, padding: '14px 16px', cursor: 'pointer', display: 'flex', gap: 12, alignItems: 'center' }}>
                   <div style={{ width: 56, height: 42, borderRadius: 6, overflow: 'hidden', flexShrink: 0, background: '#f0f4f8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {v.photos?.[0] ? <img src={v.photos[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 20 }}>🚗</span>}
                   </div>
@@ -125,7 +137,7 @@ function BidderDashboard({ user, data, navigate }) {
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     <div style={{ fontSize: 11, color: '#9ca3af' }}>High bid</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1a3d76' }}>{highBid ? `$${highBid.toLocaleString()}` : 'No bids'}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0d2550' }}>{highBid ? `$${highBid.toLocaleString()}` : 'No bids'}</div>
                     {myBid && <div style={{ fontSize: 11, fontWeight: 700, color: isWinning ? '#065f46' : '#991b1b' }}>{isWinning ? '✓ Winning' : '✗ Outbid'}</div>}
                   </div>
                 </div>
@@ -152,7 +164,7 @@ function BidderDashboard({ user, data, navigate }) {
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{t.vehicleName}</div>
                     <div style={{ fontSize: 12, color: '#6b7280' }}>{statusLabel[t.status] || '⏳ Pending'}</div>
                   </div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#1a3d76' }}>${t.winningBid?.toLocaleString()}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#0d2550' }}>${t.winningBid?.toLocaleString()}</div>
                 </div>
               );
             })}
@@ -164,7 +176,7 @@ function BidderDashboard({ user, data, navigate }) {
 }
 
 // ── TRISTATE DASHBOARD ──
-function TriStateDashboard({ data, navigate }) {
+function TriStateDashboard({ data, navigate, role }) {
   const total = data.vehicles.length;
   const inRecon = data.vehicles.filter(v => v.status === 'recon').length;
   const ready = data.vehicles.filter(v => v.status === 'ready').length;
@@ -178,13 +190,13 @@ function TriStateDashboard({ data, navigate }) {
 
   return (
     <>
-      <AuctionBanner auction={data.auction} navigate={navigate} />
+      <AuctionBanner auction={data.auction} navigate={navigate} role={role} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 28 }}>
         <StatCard label="Total inventory" value={total} sub="all vehicles" onClick={() => navigate('/acquisitions')} />
         <StatCard label="Ready to list" value={ready} sub="auction ready" color={ready > 0 ? '#065f46' : '#9ca3af'} onClick={() => navigate('/acquisitions')} />
         <StatCard label="Live now" value={live} sub="in auction" color={live > 0 ? '#1e40af' : '#9ca3af'} onClick={() => navigate('/manage')} />
-        <StatCard label="Awarded" value={awarded} sub={`$${(totalVolume/1000).toFixed(0)}k volume`} color="#1a3d76" onClick={() => navigate('/acquisitions')} />
+        <StatCard label="Awarded" value={awarded} sub={`$${(totalVolume/1000).toFixed(0)}k volume`} color="#0d2550" onClick={() => navigate('/acquisitions')} />
         <StatCard label="In recon" value={inRecon} sub="being prepped" color="#92400e" onClick={() => navigate('/acquisitions')} />
         {openArbitrations.length > 0 && <StatCard label="Arbitrations" value={openArbitrations.length} sub="need review" color="#991b1b" onClick={() => navigate('/acquisitions')} />}
         {pendingTitles.length > 0 && <StatCard label="Title issues" value={pendingTitles.length} sub="need attention" color="#92400e" onClick={() => navigate('/acquisitions')} />}
@@ -206,7 +218,7 @@ function TriStateDashboard({ data, navigate }) {
       <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 12 }}>Recent inventory</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {recentVehicles.length === 0 ? (
-          <div style={{ color: '#9ca3af', fontSize: 14, padding: '20px 0' }}>No vehicles yet — <span style={{ color: '#1a3d76', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => navigate('/acquisitions')}>add your first vehicle</span></div>
+          <div style={{ color: '#9ca3af', fontSize: 14, padding: '20px 0' }}>No vehicles yet — <span style={{ color: '#0d2550', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => navigate('/acquisitions')}>add your first vehicle</span></div>
         ) : recentVehicles.map(v => {
           const stMap = { intake: { label: 'Intake', color: '#6b7280', bg: '#f3f4f6' }, recon: { label: 'In Recon', color: '#92400e', bg: '#fef3c7' }, ready: { label: 'Ready', color: '#065f46', bg: '#d1fae5' }, active: { label: 'Live', color: '#1e40af', bg: '#dbeafe' }, awarded: { label: 'Awarded', color: '#065f46', bg: '#d1fae5' }, no_sale: { label: 'No Sale', color: '#991b1b', bg: '#fee2e2' } };
           const st = stMap[v.status] || stMap.intake;
@@ -220,7 +232,7 @@ function TriStateDashboard({ data, navigate }) {
                 <div style={{ fontSize: 12, color: '#6b7280' }}>{v.color} · {parseInt(v.mileage||0).toLocaleString()} mi · {v.source}</div>
               </div>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                {v.totalCost && <div style={{ fontSize: 13, fontWeight: 700, color: '#1a3d76' }}>${parseFloat(v.totalCost).toLocaleString()}</div>}
+                {v.totalCost && <div style={{ fontSize: 13, fontWeight: 700, color: '#0d2550' }}>${parseFloat(v.totalCost).toLocaleString()}</div>}
                 <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{st.label}</span>
               </div>
             </div>
@@ -232,7 +244,7 @@ function TriStateDashboard({ data, navigate }) {
 }
 
 // ── GM DASHBOARD ──
-function GMDashboard({ data, navigate }) {
+function GMDashboard({ data, navigate, role }) {
   const STORES = USERS.filter(u => u.role === 'bidder');
   const awarded = data.vehicles.filter(v => v.status === 'awarded');
   const totalVolume = awarded.reduce((s, v) => s + (v.winningBid || 0), 0);
@@ -249,12 +261,12 @@ function GMDashboard({ data, navigate }) {
 
   return (
     <>
-      <AuctionBanner auction={data.auction} navigate={navigate} />
+      <AuctionBanner auction={data.auction} navigate={navigate} role={role} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 28 }}>
         <StatCard label="Total inventory" value={data.vehicles.length} sub="all vehicles" onClick={() => navigate('/overview')} />
-        <StatCard label="Awarded" value={awarded.length} sub="cars sold" color="#1a3d76" onClick={() => navigate('/overview')} />
-        <StatCard label="Bid volume" value={`$${(totalVolume/1000).toFixed(0)}k`} sub="total awarded" color="#1a3d76" />
+        <StatCard label="Awarded" value={awarded.length} sub="cars sold" color="#0d2550" onClick={() => navigate('/overview')} />
+        <StatCard label="Bid volume" value={`$${(totalVolume/1000).toFixed(0)}k`} sub="total awarded" color="#0d2550" />
         <StatCard label="Group margin" value={`$${(totalMargin/1000).toFixed(0)}k`} sub="vs cost basis" color={totalMargin >= 0 ? '#065f46' : '#991b1b'} />
         <StatCard label="Total bids" value={data.bids.length} sub="all stores" onClick={() => navigate('/overview')} />
         {openArbitrations > 0 && <StatCard label="Arbitrations" value={openArbitrations} sub="open" color="#991b1b" onClick={() => navigate('/overview')} />}
@@ -263,18 +275,31 @@ function GMDashboard({ data, navigate }) {
       <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 12 }}>Store performance</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
         {storeSummary.map(store => (
-          <div key={store.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '16px 20px', cursor: 'pointer' }} onClick={() => navigate('/overview')}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <StoreAvatar storeId={store.id} size={38} />
-              <div style={{ fontWeight: 700, fontSize: 15 }}>{store.name}</div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-              {[['Cars won', store.wins], ['Spend', `$${(store.spend/1000).toFixed(0)}k`], ['Bids', store.bids]].map(([l, v]) => (
-                <div key={l} style={{ background: '#f5f6f8', borderRadius: 8, padding: '8px 10px' }}>
-                  <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{l}</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: '#1a3d76' }}>{v}</div>
-                </div>
-              ))}
+          <div key={store.id} style={{
+            background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12,
+            overflow: 'hidden', cursor: 'pointer',
+            display: 'flex',
+            transition: 'box-shadow 0.15s',
+          }}
+            onClick={() => navigate('/overview')}
+            onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.07)'}
+            onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+          >
+            {/* Left accent bar */}
+            <div style={{ width: 4, background: store.color || '#0d2550', flexShrink: 0 }} />
+            <div style={{ padding: '16px 20px', flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <StoreAvatar storeId={store.id} size={36} />
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{store.name}</div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                {[['Cars won', store.wins], ['Spend', `$${(store.spend/1000).toFixed(0)}k`], ['Bids', store.bids]].map(([l, v]) => (
+                  <div key={l} style={{ background: '#f0f2f5', borderRadius: 8, padding: '8px 10px' }}>
+                    <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 2 }}>{l}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: '#0d2550' }}>{v}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         ))}
@@ -308,9 +333,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {user.role === 'bidder' && <BidderDashboard user={user} data={data} navigate={navigate} />}
-      {user.role === 'wholesale' && <TriStateDashboard data={data} navigate={navigate} />}
-      {(user.role === 'gm' || user.role === 'admin') && <GMDashboard data={data} navigate={navigate} />}
+      {user.role === 'bidder' && <BidderDashboard user={user} data={data} navigate={navigate} role={user.role} />}
+      {user.role === 'wholesale' && <TriStateDashboard data={data} navigate={navigate} role={user.role} />}
+      {(user.role === 'gm' || user.role === 'admin') && <GMDashboard data={data} navigate={navigate} role={user.role} />}
     </div>
   );
 }

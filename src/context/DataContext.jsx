@@ -4,6 +4,16 @@ import { supabase } from '../lib/supabase';
 const DataContext = createContext(null);
 const ORG_ID = 'bf236d2b-4693-4606-bf3d-ece1767690ab';
 
+// Fields that must never be sent to the vehicles table (computed, read-only, or non-existent columns).
+// Applied as a final filter in both addVehicle and updateVehicle.
+const STRIP_FIELDS = new Set([
+  'createdAt', 'created_at', 'vin6', 'total_cost_basis', 'totalCost', 'totalCostBasis',
+  'reconCosts', 'recon_costs', 'reconItems', 'recon_items', 'reconNotes', 'recon_notes',
+  'vendorNotes', 'vendor_notes', 'titleNotes', 'title_notes', 'notes', 'mileage',
+  'source', 'storeId', 'store_id', 'winnerId', 'winner_id', 'updatedAt', 'updated_at',
+  'arbitration', 'arbitrationStatus', 'arbitration_status', 'arbitrationNotes', 'arbitration_notes',
+]);
+
 // ── Column mappers: Supabase snake_case → app camelCase ───────────────────
 function mapVehicle(r) {
   return {
@@ -17,7 +27,7 @@ function mapVehicle(r) {
     reconCosts: r.recon_costs,
     totalCost: r.total_cost,
     floorPrice: r.floor_price,
-    notes: r.notes, photos: r.photos,
+    notes: r.notes, photos: Array.isArray(r.photos) ? r.photos : [],
     currentLocation: r.current_location,
     titleStatus: r.title_status,
     titleNotes: r.title_notes,
@@ -294,25 +304,47 @@ export function DataProvider({ children }) {
   };
 
   // ── Vehicle mutations ─────────────────────────────────────────────────────
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const asUuid = (v) => (v && UUID_RE.test(v) ? v : null);
+  const stripPayload = (obj) => Object.fromEntries(Object.entries(obj).filter(([k]) => !STRIP_FIELDS.has(k)));
+
   const addVehicle = async (vehicle) => {
+    const payload = stripPayload({
+      org_id:              ORG_ID,
+      status:              vehicle.status || 'intake',
+      intake_at:           new Date().toISOString(),
+      vin:                 vehicle.vin              || null,
+      year:                vehicle.year             || null,
+      make:                vehicle.make             || null,
+      model:               vehicle.model            || null,
+      trim:                vehicle.trim             || null,
+      color:               vehicle.color            || null,
+      condition:           vehicle.condition        || null,
+      purchase_price:      vehicle.purchasePrice    ? parseFloat(vehicle.purchasePrice)  : null,
+      overhead_costs:      vehicle.overheadCosts    ? parseFloat(vehicle.overheadCosts)  : null,
+      floor_price:         vehicle.floorPrice       ? parseFloat(vehicle.floorPrice)     : null,
+      list_price:          vehicle.listPrice        ? parseFloat(vehicle.listPrice)      : null,
+      title_status:        vehicle.titleStatus      || null,
+      current_location_id: asUuid(vehicle.currentLocation),
+      photos:              Array.isArray(vehicle.photos) ? vehicle.photos : [],
+    });
+
     const { data: row, error } = await supabase
       .from('vehicles')
-      .insert({
-        org_id: ORG_ID,
-        status: 'intake',
-        created_at: new Date().toISOString(),
-        ...toSnakeCase(vehicle),
-      })
+      .insert(payload)
       .select()
       .single();
     if (error) throw error;
-    return row.id;
+    return row;
   };
 
   const updateVehicle = async (id, fields) => {
+    const clean = stripPayload(toSnakeCase(
+      Object.fromEntries(Object.entries(fields).filter(([k]) => !STRIP_FIELDS.has(k)))
+    ));
     const { error } = await supabase
       .from('vehicles')
-      .update(toSnakeCase(fields))
+      .update(clean)
       .eq('id', id);
     if (error) throw error;
   };
@@ -329,6 +361,17 @@ export function DataProvider({ children }) {
   const unlistVehicle = async (id) => {
     await updateVehicle(id, { status: 'ready' });
     await supabase.from('bids').delete().eq('vehicle_id', id);
+  };
+
+  const getMileage = async (vehicleId) => {
+    const { data } = await supabase
+      .from('mileage_log')
+      .select('reading')
+      .eq('vehicle_id', vehicleId)
+      .order('logged_at', { ascending: false })
+      .limit(1)
+      .single();
+    return data?.reading ?? null;
   };
 
   // ── Bid mutations ─────────────────────────────────────────────────────────
@@ -470,7 +513,7 @@ export function DataProvider({ children }) {
       setAuction, openAuction, closeAuction,
       addAuction, updateAuction,
       // Vehicles
-      addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle,
+      addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, getMileage,
       // Bids
       placeBid, addBid,
       getHighBid, getMyBid, getAllBidsForVehicle,

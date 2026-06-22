@@ -18,6 +18,7 @@ import Dashboard from './pages/Dashboard';
 import Leaderboard from './pages/Leaderboard';
 import Export from './pages/Export';
 import Inventory from './pages/Inventory';
+import Help from './pages/Help';
 
 function RequireAuth({ children }) {
   const { user } = useAuth();
@@ -52,6 +53,7 @@ export default function App() {
               <Route path="leaderboard" element={<Leaderboard />} />
               <Route path="export" element={<Export />} />
               <Route path="inventory" element={<Inventory />} />
+              <Route path="help" element={<Help />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

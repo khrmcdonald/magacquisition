@@ -353,3 +353,43 @@ tbody tr:hover td { background: var(--gray-50); }
   .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .stat-card .stat-value { font-size: 18px !important; }
 }
+
+/* === GLOBAL OVERRIDES v2 === */
+
+:root {
+  --primary: #0d2550;
+  --accent: #e8b84b;
+  --success: #1D9E75;
+  --warning: #BA7517;
+  --danger: #A32D2D;
+  --page-bg: #f0f2f5;
+}
+
+body {
+  background: #f0f2f5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: #0d2550;
+  color: #ffffff;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: #e8eaed; }
+::-webkit-scrollbar-thumb { background: #0d2550; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #0d2550cc; }
+
+*:focus-visible {
+  outline: 2px solid #e8b84b;
+  outline-offset: 2px;
+}
+
+/* Update button classes to new primary */
+.btn-navy {
+  background: #0d2550 !important;
+}
+.btn-navy:hover {
+  background: #1a3d76 !important;
+}
