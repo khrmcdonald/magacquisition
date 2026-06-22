@@ -63,6 +63,18 @@ export default function Layout() {
 
   const [navExpanded, setNavExpanded] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [orgLogo, setOrgLogo] = useState(() => {
+    try { return localStorage.getItem('org_logo') || null; } catch { return null; }
+  });
+
+  // Sync logo if admin updates it in the same session
+  useEffect(() => {
+    const onStorage = () => setOrgLogo(localStorage.getItem('org_logo') || null);
+    window.addEventListener('storage', onStorage);
+    // also poll once on mount in case it changed in same tab
+    onStorage();
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   // Close sidebar on route change
   useEffect(() => {
@@ -100,27 +112,27 @@ export default function Layout() {
     {
       label: 'Marketplace',
       items: [
-        { to: '/inventory', label: 'Inventory',     Icon: LayoutGrid, roles: ALL,  badge: activeListings || null },
-        { to: '/auction',   label: 'Auction floor', Icon: Gavel,      roles: ALL },
+        { to: '/dashboard', label: 'Dashboard',    Icon: LayoutDashboard, roles: ALL },
+        { to: '/inventory', label: 'Inventory',    Icon: LayoutGrid,      roles: ALL, badge: activeListings || null },
+        { to: '/auction',   label: 'Auction floor', Icon: Gavel,           roles: ALL },
       ],
     },
     {
       label: 'Operations',
       items: [
-        { to: '/acquisitions', label: 'Acquisitions',   Icon: Car,      roles: MGRS,        badge: pendingAcq || null },
-        { to: '/transport',    label: 'Transport',       Icon: Truck,    roles: ALL },
-        { to: '/manage',       label: 'Manage auction',  Icon: Settings, roles: MGRS },
-        { to: '/wins',         label: 'My wins',         Icon: Trophy,   roles: ['bidder'] },
+        { to: '/acquisitions', label: 'Acquisitions',  Icon: Car,      roles: MGRS, badge: pendingAcq || null },
+        { to: '/transport',    label: 'Transport',      Icon: Truck,    roles: ALL },
+        { to: '/manage',       label: 'Manage auction', Icon: Settings, roles: MGRS },
+        { to: '/wins',         label: 'My wins',        Icon: Trophy,   roles: ['bidder'] },
       ],
     },
     {
       label: 'Reporting',
       items: [
-        { to: '/dashboard',   label: 'Dashboard',  Icon: LayoutDashboard, roles: ALL },
-        { to: '/overview',    label: 'GM overview', Icon: BarChart2,       roles: ['gm', 'admin', 'wholesale'] },
-        { to: '/leaderboard', label: 'Leaderboard', Icon: Award,           roles: ALL },
-        { to: '/history',     label: 'History',     Icon: FileText,        roles: ALL },
-        { to: '/export',      label: 'Export',      Icon: Download,        roles: MGRS },
+        { to: '/overview',    label: 'GM overview',  Icon: BarChart2, roles: ['gm', 'admin', 'wholesale'] },
+        { to: '/leaderboard', label: 'Leaderboard',  Icon: Award,     roles: ALL },
+        { to: '/history',     label: 'History',      Icon: FileText,  roles: ALL },
+        { to: '/export',      label: 'Export',       Icon: Download,  roles: MGRS },
       ],
     },
   ];
@@ -235,9 +247,14 @@ export default function Layout() {
         >
           {/* Logo row */}
           <div style={{ height: 52, display: 'flex', alignItems: 'center', padding: '0 18px', gap: 10, borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-            <div style={{ width: 28, height: 28, background: '#e8b84b', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span style={{ color: '#0d2550', fontWeight: 900, fontSize: 14 }}>M</span>
-            </div>
+            {orgLogo
+              ? <img src={orgLogo} alt="Logo" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+              : (
+                <div style={{ width: 28, height: 28, background: '#e8b84b', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ color: '#0d2550', fontWeight: 900, fontSize: 14 }}>M</span>
+                </div>
+              )
+            }
             {showText && (
               <span style={{ color: '#fff', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>MAG Acquisition</span>
             )}

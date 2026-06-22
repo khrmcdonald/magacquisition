@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import { VehicleCard } from '../components/VehicleCard';
+import { VehicleCard, AuctionCountdownPill } from '../components/VehicleCard';
 
 // ── Detail modal ──────────────────────────────────────────────────────────────
 function Detail({ label, value, mono, highlight }) {
@@ -267,13 +267,15 @@ export default function Inventory() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
           {filteredVehicles.map(v => {
             const isInAuction = v.status === 'in_auction';
+            const bidCount = data.bids.filter(b => b.vehicleId === v.id).length;
             return (
               <VehicleCard
                 key={v.id}
                 vehicle={v}
                 mileage={mileageMap[v.id] ?? null}
                 auctionCloseDate={data.auction?.closeDate}
-                onClick={() => setDetailVehicle(v)}
+                pricePill={isInAuction ? <AuctionCountdownPill closeDate={data.auction?.closeDate} /> : undefined}
+                onDetails={() => setDetailVehicle(v)}
                 actionButton={
                   <button
                     onClick={e => { e.stopPropagation(); !isInAuction && setBuyTarget(v); }}
@@ -282,15 +284,22 @@ export default function Inventory() {
                       width: '100%', padding: '10px 0', fontSize: 13, fontWeight: 700,
                       border: 'none', borderRadius: 8,
                       cursor: isInAuction ? 'not-allowed' : 'pointer',
-                      background: isInAuction ? '#f0f4ff' : '#0d2550',
-                      color: isInAuction ? '#1e40af' : '#fff',
+                      background: isInAuction ? '#1e40af' : '#0d2550',
+                      color: '#fff',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
                     }}
                   >
                     {isInAuction ? '🔨 Bidding Open' : '🛒 Buy Now'}
                   </button>
                 }
-              />
+              >
+                {isInAuction && (
+                  <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                    {bidCount === 0 ? '0 bids' : `${bidCount} bid${bidCount !== 1 ? 's' : ''}`}
+                    {v.floor_price ? ` · floor $${parseFloat(v.floor_price).toLocaleString()}` : ''}
+                  </div>
+                )}
+              </VehicleCard>
             );
           })}
         </div>
@@ -298,6 +307,7 @@ export default function Inventory() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {filteredVehicles.map(v => {
             const isInAuction = v.status === 'in_auction';
+            const bidCount = data.bids.filter(b => b.vehicleId === v.id).length;
             return (
               <VehicleCard
                 key={v.id}
@@ -305,6 +315,7 @@ export default function Inventory() {
                 vehicle={v}
                 mileage={mileageMap[v.id] ?? null}
                 auctionCloseDate={data.auction?.closeDate}
+                badge={isInAuction ? <AuctionCountdownPill closeDate={data.auction?.closeDate} /> : undefined}
                 onClick={() => setDetailVehicle(v)}
                 actionButton={
                   <button
@@ -322,7 +333,14 @@ export default function Inventory() {
                     {isInAuction ? 'In Auction' : 'Buy Now'}
                   </button>
                 }
-              />
+              >
+                {isInAuction && (
+                  <div style={{ padding: '6px 16px 10px', fontSize: 11, color: '#9ca3af' }}>
+                    {bidCount === 0 ? '0 bids' : `${bidCount} bid${bidCount !== 1 ? 's' : ''}`}
+                    {v.floor_price ? ` · floor $${parseFloat(v.floor_price).toLocaleString()}` : ''}
+                  </div>
+                )}
+              </VehicleCard>
             );
           })}
         </div>

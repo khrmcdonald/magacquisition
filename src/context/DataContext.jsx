@@ -57,7 +57,8 @@ function mapBid(r) {
 function mapAuction(r) {
   return {
     id: r.id,
-    isOpen: r.is_open,
+    // Support both is_open (boolean) and status (string) column conventions
+    isOpen: r.is_open === true || r.status === 'open',
     openDate: r.open_date,
     closeDate: r.close_date,
     label: r.label,
@@ -113,11 +114,17 @@ export function DataProvider({ children }) {
         supabase.from('locations').select('*').eq('org_id', ORG_ID),
         supabase.from('acquisition_sources').select('*').eq('org_id', ORG_ID),
       ]);
-      if (vehiclesRes.data) setVehicles(vehiclesRes.data.map(mapVehicle));
-      if (auctionsRes.data) setAuctions(auctionsRes.data.map(mapAuction));
-      if (bidsRes.data) setBids(bidsRes.data.map(mapBid));
+      if (vehiclesRes.error)  console.log('vehicles fetch error:',  JSON.stringify(vehiclesRes.error));
+      if (auctionsRes.error)  console.log('auctions fetch error:',  JSON.stringify(auctionsRes.error));
+      if (bidsRes.error)      console.log('bids fetch error:',      JSON.stringify(bidsRes.error));
+      if (locationsRes.error) console.log('locations fetch error:', JSON.stringify(locationsRes.error));
+      if (sourcesRes.error)   console.log('sources fetch error:',   JSON.stringify(sourcesRes.error));
+
+      if (vehiclesRes.data)  setVehicles(vehiclesRes.data.map(mapVehicle));
+      if (auctionsRes.data)  setAuctions(auctionsRes.data.map(mapAuction));
+      if (bidsRes.data)      setBids(bidsRes.data.map(mapBid));
       if (locationsRes.data) setLocations(locationsRes.data);
-      if (sourcesRes.data) setAcquisitionSources(sourcesRes.data);
+      if (sourcesRes.data)   setAcquisitionSources(sourcesRes.data);
       setLoading(false);
     }
     fetchAll();

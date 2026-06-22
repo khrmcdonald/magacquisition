@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { StoreAvatar } from '../components/StoreAvatar';
 import { useData } from '../context/DataContext';
-import { VehicleCard } from '../components/VehicleCard';
+import { VehicleCard, AuctionCountdownPill } from '../components/VehicleCard';
 
 // ── BidStrip — inline below each VehicleCard ─────────────────────────────────
 function BidStrip({ vehicleId, storeId, storeName, isOpen }) {
@@ -120,7 +120,7 @@ export default function AuctionFloor() {
   const [filter, setFilter] = useState('all');
   const [viewMode, setViewMode] = useState('grid');
 
-  const activeVehicles = data.vehicles.filter(v => v.status === 'active');
+  const activeVehicles = data.vehicles.filter(v => v.status === 'in_auction');
   const myBids = activeVehicles.filter(v => getMyBid(v.id, user.id));
   const winning = myBids.filter(v => {
     const high = getHighBid(v.id);
@@ -204,13 +204,7 @@ export default function AuctionFloor() {
                 const highBid = getHighBid(v.id);
                 const myBid = getMyBid(v.id, user.id);
                 const isWinning = myBid && highBid && myBid.amount >= highBid;
-                const conditionColors = {
-                  excellent: { bg: '#d1fae5', color: '#065f46' },
-                  good:      { bg: '#dbeafe', color: '#1e40af' },
-                  fair:      { bg: '#fef3c7', color: '#92400e' },
-                  poor:      { bg: '#fee2e2', color: '#991b1b' },
-                };
-                const cond = conditionColors[v.condition?.toLowerCase()] || conditionColors.good;
+                const bidCount = data.bids.filter(b => b.vehicleId === v.id).length;
 
                 return (
                   <div key={v.id} style={{ display: 'flex', flexDirection: 'column' }}>
@@ -228,28 +222,19 @@ export default function AuctionFloor() {
                         auctionCloseDate={data.auction?.closeDate}
                         highlighted={isWinning}
                         badge={
-                          <span style={{
-                            background: '#0d2550', color: '#fff',
-                            padding: '3px 10px', borderRadius: 20,
-                            fontSize: 11, fontWeight: 700,
-                            display: 'inline-flex', alignItems: 'center', gap: 5,
-                          }}>
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#e8b84b' }} />
-                            {v.condition ? (
-                              <span style={{ background: cond.bg, color: cond.color, padding: '1px 6px', borderRadius: 10, fontSize: 10 }}>
-                                {v.condition}
-                              </span>
-                            ) : 'In Auction'}
-                          </span>
-                        }
-                        pricePill={
                           isWinning
-                            ? <span style={{ background: '#0d2550', color: '#e8b84b', padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700 }}>WINNING</span>
+                            ? <span style={{ background: '#0d2550', color: '#e8b84b', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>WINNING</span>
                             : myBid
-                              ? <span style={{ background: '#fee2e2', color: '#991b1b', padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700 }}>OUTBID</span>
+                              ? <span style={{ background: '#fee2e2', color: '#991b1b', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>OUTBID</span>
                               : null
                         }
-                      />
+                        pricePill={<AuctionCountdownPill closeDate={data.auction?.closeDate} />}
+                      >
+                        {/* Bid count */}
+                        <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                          {bidCount === 0 ? '0 bids' : `${bidCount} bid${bidCount !== 1 ? 's' : ''}`}
+                        </div>
+                      </VehicleCard>
                     </div>
                     {/* Bid strip — no top radius */}
                     <BidStrip
@@ -269,6 +254,7 @@ export default function AuctionFloor() {
                 const highBid = getHighBid(v.id);
                 const myBid = getMyBid(v.id, user.id);
                 const isWinning = myBid && highBid && myBid.amount >= highBid;
+                const bidCount = data.bids.filter(b => b.vehicleId === v.id).length;
 
                 return (
                   <VehicleCard
@@ -281,7 +267,7 @@ export default function AuctionFloor() {
                         ? <span style={{ background: '#0d2550', color: '#e8b84b', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>WINNING</span>
                         : myBid
                           ? <span style={{ background: '#fee2e2', color: '#991b1b', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>OUTBID</span>
-                          : <span style={{ background: '#dbeafe', color: '#1e40af', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>In Auction</span>
+                          : <AuctionCountdownPill closeDate={data.auction?.closeDate} />
                     }
                     pricePill={null}
                   >
@@ -292,6 +278,9 @@ export default function AuctionFloor() {
                           <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>High bid</div>
                           <div style={{ fontSize: 16, fontWeight: 800, color: highBid ? '#0d2550' : '#9ca3af' }}>
                             {highBid ? `$${highBid.toLocaleString()}` : 'No bids'}
+                          </div>
+                          <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>
+                            {bidCount === 0 ? '0 bids' : `${bidCount} bid${bidCount !== 1 ? 's' : ''}`}
                           </div>
                         </div>
                         {myBid && (

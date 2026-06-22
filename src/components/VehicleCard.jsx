@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 // ── Countdown hook ────────────────────────────────────────────────────────────
-function useCountdown(targetDate, active) {
+export function useCountdown(targetDate, active) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     if (!active || !targetDate) return;
@@ -16,6 +16,23 @@ function useCountdown(targetDate, active) {
   const m = Math.floor((diff % 3600000) / 60000);
   const s = Math.floor((diff % 60000) / 1000);
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+// ── Teal countdown pill (exported for use in AuctionFloor, Inventory) ─────────
+export function AuctionCountdownPill({ closeDate }) {
+  const countdown = useCountdown(closeDate, !!closeDate);
+  if (!countdown) return null;
+  return (
+    <span style={{
+      background: '#0e7490', color: '#fff',
+      padding: '3px 10px', borderRadius: 20,
+      fontSize: 11, fontWeight: 700,
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      fontFamily: 'monospace', letterSpacing: '.03em',
+    }}>
+      ⏱ {countdown}
+    </span>
+  );
 }
 
 // ── Default badge for Inventory / Auction status ──────────────────────────────
@@ -84,6 +101,7 @@ export function VehicleCard({
   pricePill,
   showCostBasis = false,
   costBasis,
+  onDetails,
   actionButton,
   children,
 }) {
@@ -284,10 +302,30 @@ export function VehicleCard({
         {/* Extra content slot */}
         {children}
 
-        {/* Primary action button */}
-        {actionButton && (
-          <div style={{ marginTop: 'auto', paddingTop: 6 }} onClick={e => e.stopPropagation()}>
-            {actionButton}
+        {/* Footer: Details (left) + primary action (right) */}
+        {(onDetails || actionButton) && (
+          <div
+            style={{ marginTop: 'auto', paddingTop: 6, display: 'flex', gap: 8 }}
+            onClick={e => e.stopPropagation()}
+          >
+            {onDetails && (
+              <button
+                onClick={onDetails}
+                style={{
+                  flex: '0 0 40%', padding: '10px 0', fontSize: 13, fontWeight: 600,
+                  border: '1.5px solid #e5e7eb', borderRadius: 8,
+                  background: '#fff', color: '#374151', cursor: 'pointer',
+                  transition: 'border-color 0.12s, background 0.12s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#0d2550'; e.currentTarget.style.background = '#f8faff'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.background = '#fff'; }}
+              >
+                Details
+              </button>
+            )}
+            {actionButton && (
+              <div style={{ flex: 1 }}>{actionButton}</div>
+            )}
           </div>
         )}
       </div>
