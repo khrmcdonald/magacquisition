@@ -883,9 +883,10 @@ export default function Acquisitions() {
     vehicles.forEach(v => addVehicle(v));
   };
 
-  const handleList = (v) => {
+  const handleList = async (v) => {
     if (window.confirm(`List ${v.year} ${v.make} ${v.model} in the active auction?`)) {
-      listVehicle(v.id);
+      try { await listVehicle(v.id); }
+      catch (err) { alert('Failed to list vehicle: ' + (err.message || JSON.stringify(err))); }
     }
   };
 

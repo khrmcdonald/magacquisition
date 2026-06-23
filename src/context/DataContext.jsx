@@ -363,7 +363,7 @@ export function DataProvider({ children }) {
   };
 
   const listVehicle = async (id) => {
-    await updateVehicle(id, { status: 'active', listedAt: new Date().toISOString() });
+    await updateVehicle(id, { status: 'active' });
   };
 
   const unlistVehicle = async (id) => {
