@@ -3,6 +3,100 @@ import { useAuth, USERS } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { Navigate } from 'react-router-dom';
 import { StoreAvatar } from '../components/StoreAvatar';
+import { supabase } from '../lib/supabase';
+
+const ROLE_OPTIONS = [
+  { value: 'bidder',    label: 'Retail Store (Bidder)' },
+  { value: 'wholesale', label: 'Wholesale' },
+  { value: 'gm',        label: 'Group GM' },
+  { value: 'admin',     label: 'Admin' },
+];
+
+function InviteUserCard() {
+  const [email, setEmail]   = useState('');
+  const [name, setName]     = useState('');
+  const [role, setRole]     = useState('bidder');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult]   = useState(null);
+
+  const handleInvite = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setResult(null);
+    try {
+      const { error } = await supabase.functions.invoke('invite-user', {
+        body: { email: email.trim(), name: name.trim(), role },
+      });
+      if (error) throw error;
+      setResult({ ok: true, msg: `Invite sent to ${email}` });
+      setEmail(''); setName(''); setRole('bidder');
+    } catch (err) {
+      setResult({ ok: false, msg: err.message || 'Failed to send invite' });
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="card" style={{ padding: 0, marginBottom: 24 }}>
+      <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>Invite User</h2>
+        <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>Send an invite email — they set their own password on first login</p>
+      </div>
+      <form onSubmit={handleInvite} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>Full Name</div>
+            <input
+              required
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Jane Smith"
+              style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>Email</div>
+            <input
+              required
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="jane@dealership.com"
+              style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>Role</div>
+            <select
+              value={role}
+              onChange={e => setRole(e.target.value)}
+              style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', background: '#fff', boxSizing: 'border-box' }}
+            >
+              {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-navy"
+            style={{ padding: '10px 24px', fontSize: 14, opacity: loading ? 0.7 : 1 }}
+          >
+            {loading ? 'Sending…' : 'Send Invite'}
+          </button>
+          {result && (
+            <span style={{ fontSize: 13, fontWeight: 600, color: result.ok ? '#065f46' : '#991b1b' }}>
+              {result.ok ? '✓ ' : '⚠ '}{result.msg}
+            </span>
+          )}
+        </div>
+      </form>
+    </div>
+  );
+}
 
 // ── Org Settings helpers ──────────────────────────────────────────────────────
 function readOrgSettings() {
@@ -97,6 +191,9 @@ export default function Admin() {
         <h1>Admin</h1>
         <p>Manage organization settings and store profiles</p>
       </div>
+
+      {/* ── Invite User ─────────────────────────────────────────────────────── */}
+      <InviteUserCard />
 
       {/* ── Organization Settings ───────────────────────────────────────────── */}
       <div className="card" style={{ padding: 0, marginBottom: 24 }}>
