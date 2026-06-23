@@ -133,6 +133,7 @@ export function VehicleCard({
   pricePill,
   showCostBasis = false,
   costBasis,
+  showAge = false,
   onDetails,
   actionButton,
   children,
@@ -221,7 +222,7 @@ export function VehicleCard({
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
             <div style={{ fontSize: 17, fontWeight: 800, color: '#0d2550' }}>{listPrice}</div>
             {badgeContent}
-            <AgePill vehicle={vehicle} />
+            {showAge && <AgePill vehicle={vehicle} />}
             {actionButton && (
               <div onClick={e => e.stopPropagation()}>{actionButton}</div>
             )}
@@ -322,8 +323,8 @@ export function VehicleCard({
           </div>
         )}
 
-        {/* Age flag */}
-        <AgePill vehicle={vehicle} />
+        {/* Age flag — wholesale/gm/admin only */}
+        {showAge && <AgePill vehicle={vehicle} />}
 
         {/* Disclosure callout */}
         {vehicle.disclosure_notes && (

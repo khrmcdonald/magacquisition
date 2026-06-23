@@ -1062,6 +1062,7 @@ export default function Acquisitions() {
               <VehicleCard
                 key={v.id}
                 vehicle={v}
+                showAge
                 mileage={mileageMap[v.id] ?? null}
                 badge={
                   <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
@@ -1127,6 +1128,7 @@ export default function Acquisitions() {
               <VehicleCard
                 key={v.id}
                 variant="list"
+                showAge
                 vehicle={v}
                 mileage={mileageMap[v.id] ?? null}
                 badge={
