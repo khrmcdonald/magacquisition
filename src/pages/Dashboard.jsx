@@ -309,12 +309,12 @@ function GMDashboard({ data, navigate, role }) {
       <AgedInventorySummary vehicles={data.vehicles} navigate={navigate} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 28 }}>
-        <StatCard label="Total inventory" value={data.vehicles.length} sub="all vehicles" onClick={() => navigate('/overview')} />
-        <StatCard label="Awarded" value={awarded.length} sub="cars sold" color="#0d2550" onClick={() => navigate('/overview')} />
+        <StatCard label="Total inventory" value={data.vehicles.length} sub="all vehicles" onClick={() => navigate('/acquisitions')} />
+        <StatCard label="Awarded" value={awarded.length} sub="cars sold" color="#0d2550" onClick={() => navigate('/acquisitions')} />
         <StatCard label="Bid volume" value={`$${(totalVolume/1000).toFixed(0)}k`} sub="total awarded" color="#0d2550" />
         <StatCard label="Group margin" value={`$${(totalMargin/1000).toFixed(0)}k`} sub="vs cost basis" color={totalMargin >= 0 ? '#065f46' : '#991b1b'} />
-        <StatCard label="Total bids" value={data.bids.length} sub="all stores" onClick={() => navigate('/overview')} />
-        {openArbitrations > 0 && <StatCard label="Arbitrations" value={openArbitrations} sub="open" color="#991b1b" onClick={() => navigate('/overview')} />}
+        <StatCard label="Total bids" value={data.bids.length} sub="all stores" onClick={() => navigate('/auction')} />
+        {openArbitrations > 0 && <StatCard label="Arbitrations" value={openArbitrations} sub="open" color="#991b1b" onClick={() => navigate('/acquisitions')} />}
       </div>
 
       <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 12 }}>Store performance</div>
@@ -326,7 +326,7 @@ function GMDashboard({ data, navigate, role }) {
             display: 'flex',
             transition: 'box-shadow 0.15s',
           }}
-            onClick={() => navigate('/overview')}
+            onClick={() => navigate('/acquisitions')}
             onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.07)'}
             onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
           >
