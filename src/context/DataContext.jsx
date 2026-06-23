@@ -298,14 +298,7 @@ export function DataProvider({ children }) {
     }
 
     await Promise.all(vehicleUpdates);
-    await updateAuction(currentAuction.id, {
-      is_open: false,
-      closed_date: now,
-      vehicle_count: activeVehicles.length,
-      awarded_count: awardedCount,
-      no_sale_count: noSaleCount,
-      total_volume: totalVolume,
-    });
+    await updateAuction(currentAuction.id, { is_open: false });
 
     if (newTransport.length) setTransport(prev => [...prev, ...newTransport]);
   };
