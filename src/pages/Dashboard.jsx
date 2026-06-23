@@ -264,7 +264,7 @@ function TriStateDashboard({ data, navigate, role }) {
         {recentVehicles.length === 0 ? (
           <div style={{ color: '#9ca3af', fontSize: 14, padding: '20px 0' }}>No vehicles yet — <span style={{ color: '#0d2550', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => navigate('/acquisitions')}>add your first vehicle</span></div>
         ) : recentVehicles.map(v => {
-          const stMap = { intake: { label: 'Intake', color: '#6b7280', bg: '#f3f4f6' }, recon: { label: 'In Recon', color: '#92400e', bg: '#fef3c7' }, ready: { label: 'Ready', color: '#065f46', bg: '#d1fae5' }, active: { label: 'Live', color: '#1e40af', bg: '#dbeafe' }, awarded: { label: 'Awarded', color: '#065f46', bg: '#d1fae5' }, no_sale: { label: 'No Sale', color: '#991b1b', bg: '#fee2e2' } };
+          const stMap = { intake: { label: 'Intake', color: '#6b7280', bg: '#f3f4f6' }, recon: { label: 'In Recon', color: '#92400e', bg: '#fef3c7' }, ready: { label: 'Ready', color: '#065f46', bg: '#d1fae5' }, in_auction: { label: 'Live', color: '#1e40af', bg: '#dbeafe' }, awarded: { label: 'Awarded', color: '#065f46', bg: '#d1fae5' }, no_sale: { label: 'No Sale', color: '#991b1b', bg: '#fee2e2' } };
           const st = stMap[v.status] || stMap.intake;
           return (
             <div key={v.id} onClick={() => navigate('/acquisitions')} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14 }}>

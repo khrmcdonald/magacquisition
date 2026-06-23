@@ -6,7 +6,7 @@ import { VehicleCard, AuctionCountdownPill } from '../components/VehicleCard';
 
 // ── BidStrip — inline below each VehicleCard ─────────────────────────────────
 function BidStrip({ vehicleId, storeId, storeName, isOpen }) {
-  const { placeBid, getMyBid, getHighBid, checkAndAwardBadges } = useData();
+  const { placeBid, getMyBid, getHighBid } = useData();
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -15,7 +15,7 @@ function BidStrip({ vehicleId, storeId, storeName, isOpen }) {
   const myBid = getMyBid(vehicleId, storeId);
   const isWinning = myBid && highBid && myBid.amount >= highBid;
 
-  const handleBid = (e) => {
+  const handleBid = async (e) => {
     e.preventDefault();
     const val = parseInt(amount, 10);
     if (!val || val < 100) { setError('Enter a valid amount (min $100).'); return; }
@@ -23,12 +23,15 @@ function BidStrip({ vehicleId, storeId, storeName, isOpen }) {
       setError(`Must exceed current high bid of $${highBid.toLocaleString()}.`);
       return;
     }
-    placeBid(vehicleId, storeId, storeName, val);
-    checkAndAwardBadges(storeId, val);
-    setSuccess(true);
-    setAmount('');
-    setError('');
-    setTimeout(() => setSuccess(false), 2500);
+    try {
+      await placeBid(vehicleId, storeId, storeName, val);
+      setSuccess(true);
+      setAmount('');
+      setError('');
+      setTimeout(() => setSuccess(false), 2500);
+    } catch (err) {
+      setError('Bid failed: ' + (err.message || 'Unknown error'));
+    }
   };
 
   return (
@@ -315,22 +318,25 @@ export default function AuctionFloor() {
 
 // ── Compact bid form for list view ────────────────────────────────────────────
 function ListBidForm({ vehicleId, storeId, storeName, isOpen, highBid, myBid }) {
-  const { placeBid, checkAndAwardBadges } = useData();
+  const { placeBid } = useData();
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
   if (!isOpen) return <div style={{ fontSize: 12, color: '#9ca3af' }}>Auction closed</div>;
 
-  const handleBid = (e) => {
+  const handleBid = async (e) => {
     e.preventDefault();
     const val = parseInt(amount, 10);
     if (!val || val < 100) { setError('Min $100'); return; }
     if (highBid && val <= highBid) { setError(`Must exceed $${highBid.toLocaleString()}`); return; }
-    placeBid(vehicleId, storeId, storeName, val);
-    checkAndAwardBadges(storeId, val);
-    setSuccess(true); setAmount(''); setError('');
-    setTimeout(() => setSuccess(false), 2000);
+    try {
+      await placeBid(vehicleId, storeId, storeName, val);
+      setSuccess(true); setAmount(''); setError('');
+      setTimeout(() => setSuccess(false), 2000);
+    } catch (err) {
+      setError('Bid failed: ' + (err.message || 'Unknown error'));
+    }
   };
 
   return (

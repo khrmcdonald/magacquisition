@@ -20,10 +20,14 @@ export default function AuctionManage() {
   const activeVehicles = data.vehicles.filter(v => v.status === 'in_auction');
   const readyVehicles = data.vehicles.filter(v => v.status === 'ready');
 
-  const handleOpen = (e) => {
+  const handleOpen = async (e) => {
     e.preventDefault();
     if (!closeDate) return;
-    openAuction(new Date(closeDate).toISOString(), label || undefined);
+    try {
+      await openAuction(new Date(closeDate).toISOString(), label || undefined);
+    } catch (err) {
+      alert('Failed to open auction: ' + err.message);
+    }
   };
 
   const handleClose = async () => {

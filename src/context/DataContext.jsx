@@ -368,7 +368,8 @@ export function DataProvider({ children }) {
 
   const unlistVehicle = async (id) => {
     await updateVehicle(id, { status: 'ready' });
-    await supabase.from('bids').delete().eq('vehicle_id', id);
+    const { error } = await supabase.from('bids').delete().eq('vehicle_id', id);
+    if (error) throw error;
   };
 
   const getMileage = async (vehicleId) => {

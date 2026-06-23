@@ -879,8 +879,10 @@ export default function Acquisitions() {
     setEditing(null);
   };
 
-  const handleBulkImport = (vehicles) => {
-    vehicles.forEach(v => addVehicle(v));
+  const handleBulkImport = async (vehicles) => {
+    const results = await Promise.allSettled(vehicles.map(v => addVehicle(v)));
+    const failed = results.filter(r => r.status === 'rejected').length;
+    if (failed) alert(`${failed} of ${vehicles.length} vehicles failed to import.`);
   };
 
   const handleList = async (v) => {
@@ -1084,7 +1086,7 @@ export default function Acquisitions() {
                         <button onClick={() => handleList(v)} style={{ flex: 1, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>List now</button>
                       )}
                       {v.status === 'in_auction' && (
-                        <button onClick={() => unlistVehicle(v.id)} style={{ flex: 1, background: '#fef3c7', color: '#92400e', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
+                        <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { alert('Failed to remove: ' + err.message); } }} style={{ flex: 1, background: '#fef3c7', color: '#92400e', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
                       )}
                       <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} style={iconBtn} title="Edit">✏️</button>
                       <button onClick={() => handlePrintBuySheet(v)} style={iconBtn} title="Print">🧾</button>
@@ -1197,7 +1199,7 @@ export default function Acquisitions() {
                         <button onClick={() => handleList(v)} style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>List now</button>
                       )}
                       {v.status === 'in_auction' && (
-                        <button onClick={() => unlistVehicle(v.id)} style={{ background: '#fef3c7', color: '#92400e', border: 'none', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
+                        <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { alert('Failed to remove: ' + err.message); } }} style={{ background: '#fef3c7', color: '#92400e', border: 'none', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
                       )}
                       <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} title="Edit" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>✏️</button>
                       <button onClick={() => handlePrintBuySheet(v)} title="Print" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>🧾</button>
@@ -1289,10 +1291,12 @@ export default function Acquisitions() {
             </div>
             <div className="modal-footer">
               <button className="btn-secondary" onClick={() => setResolveModal(null)}>Cancel</button>
-              <button className="btn-navy" onClick={() => {
+              <button className="btn-navy" onClick={async () => {
                 const notes = document.getElementById('resolution-notes').value;
-                resolveArbitration(resolveModal.id, notes || 'Resolved by TRI-STATE');
-                setResolveModal(null);
+                try {
+                  await resolveArbitration(resolveModal.id, notes || 'Resolved by TRI-STATE');
+                  setResolveModal(null);
+                } catch (err) { alert('Failed to resolve: ' + err.message); }
               }}>Mark resolved</button>
             </div>
           </div>
@@ -1322,14 +1326,14 @@ export default function Acquisitions() {
                   ⚠ This vehicle is <strong>awarded to {confirmDelete.winnerName}</strong>. Deleting it will also remove the transport record. Only do this to correct a data entry error.
                 </div>
               )}
-              {confirmDelete.status === 'active' && (
+              {confirmDelete.status === 'in_auction' && (
                 <div className="alert alert-warning" style={{ marginBottom: 16, textAlign: 'left' }}>
                   ⚠ This vehicle is <strong>live in the auction</strong>. Deleting it will remove all bids placed on it.
                 </div>
               )}
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
                 <button className="btn-secondary" onClick={() => setConfirmDelete(null)}>Cancel</button>
-                <button className="btn-danger" onClick={() => { deleteVehicle(confirmDelete.id); setConfirmDelete(null); }}>Remove</button>
+                <button className="btn-danger" onClick={async () => { try { await deleteVehicle(confirmDelete.id); setConfirmDelete(null); } catch (err) { alert('Delete failed: ' + err.message); } }}>Remove</button>
               </div>
             </div>
           </div>
