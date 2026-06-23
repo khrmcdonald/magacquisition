@@ -7,7 +7,7 @@ const ORG_ID = 'bf236d2b-4693-4606-bf3d-ece1767690ab';
 // Fields that must never be sent to the vehicles table (computed, read-only, or non-existent columns).
 // Applied as a final filter in both addVehicle and updateVehicle.
 const STRIP_FIELDS = new Set([
-  'createdAt', 'created_at', 'vin6', 'total_cost_basis', 'totalCost', 'totalCostBasis',
+  'createdAt', 'created_at', 'vin6', 'total_cost_basis', 'totalCost', 'totalCostBasis', 'listedAt', 'listed_at',
   'reconCosts', 'recon_costs', 'reconItems', 'recon_items', 'reconNotes', 'recon_notes',
   'vendorNotes', 'vendor_notes', 'titleNotes', 'title_notes', 'notes', 'mileage',
   'source', 'storeId', 'store_id', 'winnerId', 'winner_id', 'updatedAt', 'updated_at',
@@ -79,7 +79,7 @@ const VEHICLE_FIELD_MAP = {
   notes: 'notes', photos: 'photos', currentLocation: 'current_location',
   titleStatus: 'title_status', titleNotes: 'title_notes',
   winnerId: 'winner_id', winnerName: 'winner_name', winningBid: 'winning_bid',
-  awardedAt: 'awarded_at', listedAt: 'listed_at', arbitration: 'arbitration',
+  awardedAt: 'awarded_at', arbitration: 'arbitration',
 };
 
 function toSnakeCase(fields) {
@@ -240,7 +240,6 @@ export function DataProvider({ children }) {
       open_date: new Date().toISOString(),
       close_date: closeDate,
       label: label || '',
-      vehicle_count: vehicles.filter(v => v.status === 'in_auction').length,
     });
   };
 
@@ -273,13 +272,7 @@ export function DataProvider({ children }) {
           awardedCount++;
           totalVolume += winner.amount;
           vehicleUpdates.push(
-            supabase.from('vehicles').update({
-              status: 'awarded',
-              winner_id: winner.storeId,
-              winner_name: winner.storeName,
-              winning_bid: winner.amount,
-              awarded_at: now,
-            }).eq('id', v.id)
+            supabase.from('vehicles').update({ status: 'awarded' }).eq('id', v.id)
           );
           if (!transport.find(t => t.vehicleId === v.id)) {
             newTransport.push({
