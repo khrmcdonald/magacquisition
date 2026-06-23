@@ -349,6 +349,7 @@ export function DataProvider({ children }) {
     const clean = stripPayload(toSnakeCase(
       Object.fromEntries(Object.entries(fields).filter(([k]) => !STRIP_FIELDS.has(k)))
     ));
+    setVehicles(prev => prev.map(v => v.id === id ? { ...v, ...fields } : v));
     const { error } = await supabase
       .from('vehicles')
       .update(clean)
