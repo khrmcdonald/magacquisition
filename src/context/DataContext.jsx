@@ -7,7 +7,7 @@ const ORG_ID = 'bf236d2b-4693-4606-bf3d-ece1767690ab';
 // Fields that must never be sent to the vehicles table (computed, read-only, or non-existent columns).
 // Applied as a final filter in both addVehicle and updateVehicle.
 const STRIP_FIELDS = new Set([
-  'createdAt', 'created_at', 'vin6', 'total_cost_basis', 'totalCostBasis',
+  'createdAt', 'created_at', 'vin6', 'total_cost_basis', 'totalCost', 'totalCostBasis',
   'reconCosts', 'recon_costs', 'reconItems', 'recon_items', 'reconNotes', 'recon_notes',
   'vendorNotes', 'vendor_notes', 'titleNotes', 'title_notes', 'notes', 'mileage',
   'source', 'storeId', 'store_id', 'winnerId', 'winner_id', 'updatedAt', 'updated_at',
@@ -25,7 +25,7 @@ function mapVehicle(r) {
     purchasePrice: r.purchase_price,
     overheadCosts: r.overhead_costs,
     reconCosts: r.recon_costs,
-    totalCost: r.total_cost,
+    totalCost: (parseFloat(r.purchase_price) || 0) + (parseFloat(r.overhead_costs) || 0) + (parseFloat(r.recon_costs) || 0) || null,
     floorPrice: r.floor_price,
     notes: r.notes, photos: Array.isArray(r.photos) ? r.photos : [],
     currentLocation: r.current_location,
