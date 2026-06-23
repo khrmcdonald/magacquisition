@@ -11,6 +11,8 @@ export default function AuctionManage() {
   const [closeDate, setCloseDate] = useState('');
   const [label, setLabel] = useState('');
   const [confirmClose, setConfirmClose] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [closeError, setCloseError] = useState(null);
   const [expandedBids, setExpandedBids] = useState(null);
 
   if (user.role !== 'wholesale' && user.role !== 'admin') return <Navigate to="/auction" replace />;
@@ -24,9 +26,16 @@ export default function AuctionManage() {
     openAuction(new Date(closeDate).toISOString(), label || undefined);
   };
 
-  const handleClose = () => {
-    closeAuction();
-    setConfirmClose(false);
+  const handleClose = async () => {
+    setClosing(true);
+    setCloseError(null);
+    try {
+      await closeAuction();
+      setConfirmClose(false);
+    } catch (err) {
+      setCloseError(err.message || 'Failed to close auction. Check console for details.');
+    }
+    setClosing(false);
   };
 
   const storeColors = {};
@@ -321,9 +330,16 @@ export default function AuctionManage() {
               <div className="alert alert-warning" style={{ textAlign: 'left', marginBottom: 20 }}>
                 This cannot be undone. Make sure all stores have had time to bid.
               </div>
+              {closeError && (
+                <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#991b1b', textAlign: 'left' }}>
+                  ⚠ {closeError}
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-                <button className="btn-secondary" onClick={() => setConfirmClose(false)}>Not yet</button>
-                <button className="btn-navy" onClick={handleClose}>Close & award winners</button>
+                <button className="btn-secondary" onClick={() => setConfirmClose(false)} disabled={closing}>Not yet</button>
+                <button className="btn-navy" onClick={handleClose} disabled={closing}>
+                  {closing ? 'Closing…' : 'Close & award winners'}
+                </button>
               </div>
             </div>
           </div>

@@ -120,7 +120,7 @@ export default function AuctionFloor() {
   const [filter, setFilter] = useState('all');
   const [viewMode, setViewMode] = useState('grid');
 
-  const activeVehicles = data.vehicles.filter(v => v.status === 'in_auction');
+  const activeVehicles = data.vehicles.filter(v => v.status === 'active');
   const myBids = activeVehicles.filter(v => getMyBid(v.id, user.id));
   const winning = myBids.filter(v => {
     const high = getHighBid(v.id);
