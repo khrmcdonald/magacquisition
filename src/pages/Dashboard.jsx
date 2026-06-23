@@ -4,6 +4,49 @@ import { useData } from '../context/DataContext';
 import { useNavigate } from 'react-router-dom';
 import { USERS } from '../context/AuthContext';
 import { StoreAvatar } from '../components/StoreAvatar';
+import { getAgeFlag } from '../components/VehicleCard';
+
+function AgedInventorySummary({ vehicles, navigate }) {
+  const aging    = vehicles.filter(v => getAgeFlag(v)?.label === 'Aging').length;
+  const atRisk   = vehicles.filter(v => getAgeFlag(v)?.label === 'At Risk').length;
+  const liquidate = vehicles.filter(v => getAgeFlag(v)?.label === 'Liquidate').length;
+
+  if (!aging && !atRisk && !liquidate) return null;
+
+  const items = [
+    { label: 'Aging',     count: aging,    color: '#78350f', bg: '#fef9c3', border: '#fde68a' },
+    { label: 'At Risk',   count: atRisk,   color: '#92400e', bg: '#fef3c7', border: '#fcd34d' },
+    { label: 'Liquidate', count: liquidate, color: '#991b1b', bg: '#fee2e2', border: '#fca5a5' },
+  ].filter(i => i.count > 0);
+
+  return (
+    <div
+      onClick={() => navigate('/acquisitions')}
+      style={{
+        background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12,
+        padding: '14px 20px', marginBottom: 20, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+      }}
+    >
+      <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', flexShrink: 0 }}>
+        ⏱ Aged inventory
+      </div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        {items.map(i => (
+          <span key={i.label} style={{
+            background: i.bg, color: i.color, border: `1px solid ${i.border}`,
+            padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700,
+          }}>
+            {i.count} {i.label}
+          </span>
+        ))}
+      </div>
+      <div style={{ marginLeft: 'auto', fontSize: 12, color: '#9ca3af', flexShrink: 0 }}>
+        View in Acquisitions →
+      </div>
+    </div>
+  );
+}
 
 function StatCard({ label, value, sub, color, onClick }) {
   return (
@@ -191,6 +234,7 @@ function TriStateDashboard({ data, navigate, role }) {
   return (
     <>
       <AuctionBanner auction={data.auction} navigate={navigate} role={role} />
+      <AgedInventorySummary vehicles={data.vehicles} navigate={navigate} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 28 }}>
         <StatCard label="Total inventory" value={total} sub="all vehicles" onClick={() => navigate('/acquisitions')} />
@@ -262,6 +306,7 @@ function GMDashboard({ data, navigate, role }) {
   return (
     <>
       <AuctionBanner auction={data.auction} navigate={navigate} role={role} />
+      <AgedInventorySummary vehicles={data.vehicles} navigate={navigate} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 28 }}>
         <StatCard label="Total inventory" value={data.vehicles.length} sub="all vehicles" onClick={() => navigate('/overview')} />
