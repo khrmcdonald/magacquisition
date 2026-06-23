@@ -35,6 +35,38 @@ export function AuctionCountdownPill({ closeDate }) {
   );
 }
 
+// ── Aged inventory ────────────────────────────────────────────────────────────
+// Returns flag data for vehicles that have been in inventory too long.
+// Only applies to vehicles still actively in the pipeline.
+const AGE_STATUSES = new Set(['intake', 'recon', 'ready', 'active', 'listed', 'in_auction']);
+
+export function getAgeFlag(vehicle) {
+  if (!AGE_STATUSES.has(vehicle.status)) return null;
+  if (!vehicle.createdAt) return null;
+  const days = Math.floor((Date.now() - new Date(vehicle.createdAt)) / 86400000);
+  if (days >= 60) return { days, label: 'Liquidate', color: '#991b1b', bg: '#fee2e2' };
+  if (days >= 45) return { days, label: 'At Risk',   color: '#92400e', bg: '#fef3c7' };
+  if (days >= 30) return { days, label: 'Aging',     color: '#78350f', bg: '#fef9c3' };
+  return null;
+}
+
+export function AgePill({ vehicle, style }) {
+  const flag = getAgeFlag(vehicle);
+  if (!flag) return null;
+  return (
+    <span style={{
+      background: flag.bg, color: flag.color,
+      border: `1px solid ${flag.color}44`,
+      padding: '2px 9px', borderRadius: 20,
+      fontSize: 11, fontWeight: 700,
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      ...style,
+    }}>
+      ⚠ {flag.label} · {flag.days}d
+    </span>
+  );
+}
+
 // ── Default badge for Inventory / Auction status ──────────────────────────────
 function AutoBadge({ vehicle, auctionCloseDate }) {
   const isInAuction = vehicle.status === 'in_auction';
@@ -185,10 +217,11 @@ export function VehicleCard({
             </div>
           </div>
 
-          {/* Right: price + badge + action */}
+          {/* Right: price + badge + age + action */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
             <div style={{ fontSize: 17, fontWeight: 800, color: '#0d2550' }}>{listPrice}</div>
             {badgeContent}
+            <AgePill vehicle={vehicle} />
             {actionButton && (
               <div onClick={e => e.stopPropagation()}>{actionButton}</div>
             )}
@@ -288,6 +321,9 @@ export function VehicleCard({
             Cost basis: <span style={{ fontWeight: 700, color: '#6b7280' }}>${parseFloat(costBasis).toLocaleString()}</span>
           </div>
         )}
+
+        {/* Age flag */}
+        <AgePill vehicle={vehicle} />
 
         {/* Disclosure callout */}
         {vehicle.disclosure_notes && (
