@@ -109,10 +109,10 @@ function InlineSelect({ options, current, onChange, minWidth, label }) {
 }
 
 function VehicleStatusDropdown({ vehicle, onChange }) {
-  const isLocked = ['active', 'awarded', 'no_sale'].includes(vehicle.status);
+  const isLocked = ['in_auction', 'awarded', 'no_sale'].includes(vehicle.status);
   if (isLocked) {
     const lockedMap = {
-      active: { label: 'Live in Auction', bg: '#dbeafe', color: '#1e40af' },
+      in_auction: { label: 'Live in Auction', bg: '#dbeafe', color: '#1e40af' },
       awarded: { label: 'Awarded', bg: '#d1fae5', color: '#065f46' },
       no_sale: { label: 'No Sale', bg: '#fee2e2', color: '#991b1b' },
     };
@@ -748,7 +748,7 @@ const STATUS_LABELS = {
   intake: { label: 'Intake', color: '#6b7280', bg: '#f3f4f6' },
   recon: { label: 'In Recon', color: '#92400e', bg: '#fef3c7' },
   ready: { label: 'Ready to List', color: '#065f46', bg: '#d1fae5' },
-  active: { label: 'Live in Auction', color: '#1e40af', bg: '#dbeafe' },
+  in_auction: { label: 'Live in Auction', color: '#1e40af', bg: '#dbeafe' },
   awarded: { label: 'Awarded', color: '#065f46', bg: '#d1fae5' },
   no_sale: { label: 'No Sale', color: '#991b1b', bg: '#fee2e2' },
 };
@@ -1083,7 +1083,7 @@ export default function Acquisitions() {
                       {v.status === 'ready' && data.auction.isOpen && (
                         <button onClick={() => handleList(v)} style={{ flex: 1, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>List now</button>
                       )}
-                      {v.status === 'active' && (
+                      {v.status === 'in_auction' && (
                         <button onClick={() => unlistVehicle(v.id)} style={{ flex: 1, background: '#fef3c7', color: '#92400e', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
                       )}
                       <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} style={iconBtn} title="Edit">✏️</button>
@@ -1196,7 +1196,7 @@ export default function Acquisitions() {
                       {v.status === 'ready' && data.auction.isOpen && (
                         <button onClick={() => handleList(v)} style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>List now</button>
                       )}
-                      {v.status === 'active' && (
+                      {v.status === 'in_auction' && (
                         <button onClick={() => unlistVehicle(v.id)} style={{ background: '#fef3c7', color: '#92400e', border: 'none', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
                       )}
                       <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} title="Edit" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>✏️</button>

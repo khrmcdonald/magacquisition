@@ -17,7 +17,7 @@ export default function AuctionManage() {
 
   if (user.role !== 'wholesale' && user.role !== 'admin') return <Navigate to="/auction" replace />;
 
-  const activeVehicles = data.vehicles.filter(v => v.status === 'active');
+  const activeVehicles = data.vehicles.filter(v => v.status === 'in_auction');
   const readyVehicles = data.vehicles.filter(v => v.status === 'ready');
 
   const handleOpen = (e) => {

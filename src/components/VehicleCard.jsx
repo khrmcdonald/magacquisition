@@ -38,7 +38,7 @@ export function AuctionCountdownPill({ closeDate }) {
 // ── Aged inventory ────────────────────────────────────────────────────────────
 // Returns flag data for vehicles that have been in inventory too long.
 // Only applies to vehicles still actively in the pipeline.
-const AGE_STATUSES = new Set(['intake', 'recon', 'ready', 'active', 'listed', 'in_auction']);
+const AGE_STATUSES = new Set(['intake', 'recon', 'ready', 'in_auction']);
 
 export function getAgeFlag(vehicle) {
   if (!AGE_STATUSES.has(vehicle.status)) return null;
@@ -213,7 +213,7 @@ export function VehicleCard({
               {vehicle.vin || '—'}
             </div>
             <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
-              {[vehicle.color, mileage != null ? `${parseInt(mileage).toLocaleString()} mi` : null]
+              {[vehicle.condition, vehicle.color, mileage != null ? `${parseInt(mileage).toLocaleString()} mi` : null]
                 .filter(Boolean).join(' · ')}
             </div>
           </div>
@@ -288,10 +288,10 @@ export function VehicleCard({
           {vehicle.make} {vehicle.model}
         </div>
 
-        {/* Trim + Color — 13px muted */}
-        {(vehicle.trim || vehicle.color) && (
+        {/* Trim + Color + Condition — 13px muted */}
+        {(vehicle.trim || vehicle.color || vehicle.condition) && (
           <div style={{ fontSize: 13, color: '#6b7280' }}>
-            {[vehicle.trim, vehicle.color].filter(Boolean).join(' · ')}
+            {[vehicle.trim, vehicle.color, vehicle.condition].filter(Boolean).join(' · ')}
           </div>
         )}
 

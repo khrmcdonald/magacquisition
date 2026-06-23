@@ -132,8 +132,8 @@ function AuctionBanner({ auction, navigate, role }) {
 function BidderDashboard({ user, data, navigate, role }) {
   const myWins = data.vehicles.filter(v => v.status === 'awarded' && v.winnerId === user.id);
   const myBids = data.bids.filter(b => b.storeId === user.id);
-  const activeVehicles = data.vehicles.filter(v => v.status === 'active');
-  const myActiveBids = myBids.filter(b => data.vehicles.find(v => v.id === b.vehicleId && v.status === 'active'));
+  const activeVehicles = data.vehicles.filter(v => v.status === 'in_auction');
+  const myActiveBids = myBids.filter(b => data.vehicles.find(v => v.id === b.vehicleId && v.status === 'in_auction'));
   const winning = myActiveBids.filter(b => {
     const v = data.vehicles.find(vv => vv.id === b.vehicleId);
     const allBids = data.bids.filter(bb => bb.vehicleId === b.vehicleId);
@@ -223,7 +223,7 @@ function TriStateDashboard({ data, navigate, role }) {
   const total = data.vehicles.length;
   const inRecon = data.vehicles.filter(v => v.status === 'recon').length;
   const ready = data.vehicles.filter(v => v.status === 'ready').length;
-  const live = data.vehicles.filter(v => v.status === 'active').length;
+  const live = data.vehicles.filter(v => v.status === 'in_auction').length;
   const awarded = data.vehicles.filter(v => v.status === 'awarded').length;
   const noSale = data.vehicles.filter(v => v.status === 'no_sale').length;
   const openArbitrations = data.vehicles.filter(v => v.arbitration?.status === 'open');

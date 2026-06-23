@@ -102,7 +102,7 @@ export default function Layout() {
 
   // ── Nav definition ──────────────────────────────────────────────────────────
   const role = user.role;
-  const activeListings = data.vehicles.filter(v => v.status === 'active').length;
+  const activeListings = data.vehicles.filter(v => v.status === 'in_auction').length;
   const pendingAcq = data.vehicles.filter(v => ['intake', 'recon'].includes(v.status)).length;
 
   const ALL = ['bidder', 'wholesale', 'gm', 'admin'];

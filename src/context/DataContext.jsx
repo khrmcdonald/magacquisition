@@ -7,7 +7,7 @@ const ORG_ID = 'bf236d2b-4693-4606-bf3d-ece1767690ab';
 // Fields that must never be sent to the vehicles table (computed, read-only, or non-existent columns).
 // Applied as a final filter in both addVehicle and updateVehicle.
 const STRIP_FIELDS = new Set([
-  'createdAt', 'created_at', 'vin6', 'total_cost_basis', 'totalCost', 'totalCostBasis',
+  'createdAt', 'created_at', 'vin6', 'total_cost_basis', 'totalCostBasis',
   'reconCosts', 'recon_costs', 'reconItems', 'recon_items', 'reconNotes', 'recon_notes',
   'vendorNotes', 'vendor_notes', 'titleNotes', 'title_notes', 'notes', 'mileage',
   'source', 'storeId', 'store_id', 'winnerId', 'winner_id', 'updatedAt', 'updated_at',
@@ -240,14 +240,14 @@ export function DataProvider({ children }) {
       open_date: new Date().toISOString(),
       close_date: closeDate,
       label: label || '',
-      vehicle_count: vehicles.filter(v => v.status === 'active').length,
+      vehicle_count: vehicles.filter(v => v.status === 'in_auction').length,
     });
   };
 
   const closeAuction = async () => {
     if (!currentAuction) return;
     const now = new Date().toISOString();
-    const activeVehicles = vehicles.filter(v => v.status === 'active');
+    const activeVehicles = vehicles.filter(v => v.status === 'in_auction');
 
     let awardedCount = 0;
     let noSaleCount = 0;
@@ -363,7 +363,7 @@ export function DataProvider({ children }) {
   };
 
   const listVehicle = async (id) => {
-    await updateVehicle(id, { status: 'active' });
+    await updateVehicle(id, { status: 'in_auction' });
   };
 
   const unlistVehicle = async (id) => {
