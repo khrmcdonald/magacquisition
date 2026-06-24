@@ -70,6 +70,21 @@ function mapAuction(r) {
   };
 }
 
+function mapTransport(r) {
+  return {
+    id: r.id,
+    vehicleId: r.vehicle_id,
+    vehicleName: r.vehicle_name,
+    storeId: r.store_id,
+    storeName: r.store_name,
+    winningBid: r.winning_bid,
+    status: r.status,
+    notes: r.notes,
+    steps: r.steps || {},
+    createdAt: r.created_at,
+  };
+}
+
 // Map camelCase vehicle fields back to snake_case for Supabase writes
 const VEHICLE_FIELD_MAP = {
   status: 'status', year: 'year', make: 'make', model: 'model', trim: 'trim',
@@ -99,7 +114,6 @@ export function DataProvider({ children }) {
   const [acquisitionSources, setAcquisitionSources] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // No Supabase table yet — kept in memory only (won't persist on refresh)
   const [transport, setTransport] = useState([]);
   const [badges, setBadges] = useState({});
   const [storePhotos, setStorePhotos] = useState({});
@@ -107,24 +121,27 @@ export function DataProvider({ children }) {
   // ── Initial data fetch ───────────────────────────────────────────────────
   useEffect(() => {
     async function fetchAll() {
-      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes] = await Promise.all([
+      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes] = await Promise.all([
         supabase.from('vehicles').select('*').eq('org_id', ORG_ID),
         supabase.from('auctions').select('*').eq('org_id', ORG_ID),
         supabase.from('bids').select('*').eq('org_id', ORG_ID),
         supabase.from('locations').select('*').eq('org_id', ORG_ID),
         supabase.from('acquisition_sources').select('*').eq('org_id', ORG_ID),
+        supabase.from('transport').select('*').eq('org_id', ORG_ID),
       ]);
-      if (vehiclesRes.error)  console.log('vehicles fetch error:',  JSON.stringify(vehiclesRes.error));
-      if (auctionsRes.error)  console.log('auctions fetch error:',  JSON.stringify(auctionsRes.error));
-      if (bidsRes.error)      console.log('bids fetch error:',      JSON.stringify(bidsRes.error));
-      if (locationsRes.error) console.log('locations fetch error:', JSON.stringify(locationsRes.error));
-      if (sourcesRes.error)   console.log('sources fetch error:',   JSON.stringify(sourcesRes.error));
+      if (vehiclesRes.error)   console.log('vehicles fetch error:',  JSON.stringify(vehiclesRes.error));
+      if (auctionsRes.error)   console.log('auctions fetch error:',  JSON.stringify(auctionsRes.error));
+      if (bidsRes.error)       console.log('bids fetch error:',      JSON.stringify(bidsRes.error));
+      if (locationsRes.error)  console.log('locations fetch error:', JSON.stringify(locationsRes.error));
+      if (sourcesRes.error)    console.log('sources fetch error:',   JSON.stringify(sourcesRes.error));
+      if (transportRes.error)  console.log('transport fetch error:', JSON.stringify(transportRes.error));
 
-      if (vehiclesRes.data)  setVehicles(vehiclesRes.data.map(mapVehicle));
-      if (auctionsRes.data)  setAuctions(auctionsRes.data.map(mapAuction));
-      if (bidsRes.data)      setBids(bidsRes.data.map(mapBid));
-      if (locationsRes.data) setLocations(locationsRes.data);
-      if (sourcesRes.data)   setAcquisitionSources(sourcesRes.data);
+      if (vehiclesRes.data)   setVehicles(vehiclesRes.data.map(mapVehicle));
+      if (auctionsRes.data)   setAuctions(auctionsRes.data.map(mapAuction));
+      if (bidsRes.data)       setBids(bidsRes.data.map(mapBid));
+      if (locationsRes.data)  setLocations(locationsRes.data);
+      if (sourcesRes.data)    setAcquisitionSources(sourcesRes.data);
+      if (transportRes.data)  setTransport(transportRes.data.map(mapTransport));
       setLoading(false);
     }
     fetchAll();
@@ -177,10 +194,26 @@ export function DataProvider({ children }) {
       })
       .subscribe();
 
+    const transportSub = supabase
+      .channel('transport-changes')
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'transport',
+        filter: `org_id=eq.${ORG_ID}`,
+      }, ({ eventType, new: row, old }) => {
+        setTransport(prev => {
+          if (eventType === 'INSERT') return [...prev, mapTransport(row)];
+          if (eventType === 'UPDATE') return prev.map(t => t.id === row.id ? mapTransport(row) : t);
+          if (eventType === 'DELETE') return prev.filter(t => t.id !== old.id);
+          return prev;
+        });
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(vehiclesSub);
       supabase.removeChannel(auctionsSub);
       supabase.removeChannel(bidsSub);
+      supabase.removeChannel(transportSub);
     };
   }, []);
 
@@ -228,7 +261,7 @@ export function DataProvider({ children }) {
   const setAuction = async (fields) => {
     if (!currentAuction) return;
     const mapped = {};
-    if ('isOpen' in fields) mapped.is_open = fields.isOpen;
+    if ('isOpen' in fields) mapped.status = fields.isOpen ? 'open' : 'closed';
     if ('closeDate' in fields) mapped.close_date = fields.closeDate;
     if ('label' in fields) mapped.label = fields.label;
     await updateAuction(currentAuction.id, mapped);
@@ -236,7 +269,7 @@ export function DataProvider({ children }) {
 
   const openAuction = async (closeDate, label) => {
     await addAuction({
-      is_open: true,
+      status: 'open',
       open_date: new Date().toISOString(),
       close_date: closeDate,
       label: label || '',
@@ -272,7 +305,13 @@ export function DataProvider({ children }) {
           awardedCount++;
           totalVolume += winner.amount;
           vehicleUpdates.push(
-            supabase.from('vehicles').update({ status: 'awarded' }).eq('id', v.id)
+            supabase.from('vehicles').update({
+              status: 'awarded',
+              winner_id: winner.storeId,
+              winner_name: winner.storeName,
+              winning_bid: winner.amount,
+              awarded_at: now,
+            }).eq('id', v.id)
           );
           if (!transport.find(t => t.vehicleId === v.id)) {
             newTransport.push({
@@ -291,9 +330,21 @@ export function DataProvider({ children }) {
     }
 
     await Promise.all(vehicleUpdates);
-    await updateAuction(currentAuction.id, { is_open: false });
+    await updateAuction(currentAuction.id, { status: 'closed' });
 
-    if (newTransport.length) setTransport(prev => [...prev, ...newTransport]);
+    if (newTransport.length) {
+      await supabase.from('transport').insert(newTransport.map(t => ({
+        id: t.id,
+        org_id: ORG_ID,
+        vehicle_id: t.vehicleId,
+        vehicle_name: t.vehicleName,
+        store_id: t.storeId,
+        store_name: t.storeName,
+        winning_bid: t.winningBid,
+        status: t.status,
+        steps: t.steps,
+      })));
+    }
   };
 
   // ── Vehicle mutations ─────────────────────────────────────────────────────
@@ -406,13 +457,21 @@ export function DataProvider({ children }) {
   const getAllBidsForVehicle = (vehicleId) =>
     [...bids.filter(b => b.vehicleId === vehicleId)].sort((a, b) => b.amount - a.amount);
 
-  // ── Transport (in-memory — no Supabase table yet) ─────────────────────────
-  const updateTransport = (vehicleId, stepKey, notes) => {
-    setTransport(prev => prev.map(t =>
-      t.vehicleId === vehicleId
-        ? { ...t, status: stepKey, notes: notes || t.notes, steps: { ...t.steps, [stepKey]: new Date().toISOString() } }
-        : t
+  // ── Transport ─────────────────────────────────────────────────────────────
+  const updateTransport = async (vehicleId, stepKey, notes) => {
+    const t = transport.find(tr => tr.vehicleId === vehicleId);
+    if (!t) return;
+    const updatedSteps = { ...t.steps, [stepKey]: new Date().toISOString() };
+    const updatedNotes = notes || t.notes;
+    setTransport(prev => prev.map(tr =>
+      tr.vehicleId === vehicleId
+        ? { ...tr, status: stepKey, notes: updatedNotes, steps: updatedSteps }
+        : tr
     ));
+    const { error } = await supabase.from('transport')
+      .update({ status: stepKey, notes: updatedNotes, steps: updatedSteps })
+      .eq('id', t.id);
+    if (error) console.error('updateTransport error:', error);
   };
 
   // ── Arbitration ───────────────────────────────────────────────────────────
