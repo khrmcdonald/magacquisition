@@ -9,7 +9,7 @@ export default function AuctionManage() {
   const { user } = useAuth();
   const { data, openAuction, closeAuction, unlistVehicle, getAllBidsForVehicle } = useData();
   const [closeDate, setCloseDate] = useState('');
-  const [label, setLabel] = useState('');
+  const [closeTime, setCloseTime] = useState('17:00');
   const [confirmClose, setConfirmClose] = useState(false);
   const [closing, setClosing] = useState(false);
   const [closeError, setCloseError] = useState(null);
@@ -20,11 +20,13 @@ export default function AuctionManage() {
   const activeVehicles = data.vehicles.filter(v => v.status === 'in_auction');
   const readyVehicles = data.vehicles.filter(v => v.status === 'ready');
 
+  const autoLabel = `Weekly Auction ${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}`;
+
   const handleOpen = async (e) => {
     e.preventDefault();
-    if (!closeDate) return;
+    if (!closeDate || !closeTime) return;
     try {
-      await openAuction(new Date(closeDate).toISOString(), label || undefined);
+      await openAuction(new Date(`${closeDate}T${closeTime}`).toISOString(), autoLabel);
     } catch (err) {
       alert('Failed to open auction: ' + err.message);
     }
@@ -61,22 +63,26 @@ export default function AuctionManage() {
 
         {!data.auction.isOpen ? (
           <form onSubmit={handleOpen}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Auction name</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#0d2550' }}>{autoLabel}</div>
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>Auction label</label>
+                <label>Close date</label>
                 <input
-                  type="text"
-                  value={label}
-                  onChange={e => setLabel(e.target.value)}
-                  placeholder={`Week of ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+                  type="date"
+                  value={closeDate}
+                  onChange={e => setCloseDate(e.target.value)}
+                  required
                 />
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>Close date & time</label>
+                <label>Close time</label>
                 <input
-                  type="datetime-local"
-                  value={closeDate}
-                  onChange={e => setCloseDate(e.target.value)}
+                  type="time"
+                  value={closeTime}
+                  onChange={e => setCloseTime(e.target.value)}
                   required
                 />
               </div>
@@ -84,7 +90,7 @@ export default function AuctionManage() {
             <div className="alert alert-info" style={{ marginBottom: 16 }}>
               {readyVehicles.length} vehicle{readyVehicles.length !== 1 ? 's' : ''} are ready to list. You can list them from the Acquisitions page after opening the auction.
             </div>
-            <button type="submit" className="btn-navy" disabled={!closeDate}>
+            <button type="submit" className="btn-navy" disabled={!closeDate || !closeTime}>
               Open auction
             </button>
           </form>
