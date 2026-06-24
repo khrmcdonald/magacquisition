@@ -331,6 +331,7 @@ export function DataProvider({ children }) {
 
     await Promise.all(vehicleUpdates);
     await updateAuction(currentAuction.id, { status: 'closed' });
+    setAuctions(prev => prev.map(a => a.id === currentAuction.id ? { ...a, isOpen: false } : a));
 
     if (newTransport.length) {
       await supabase.from('transport').insert(newTransport.map(t => ({
