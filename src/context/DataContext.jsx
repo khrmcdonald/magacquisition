@@ -1,16 +1,29 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import LoadingScreen from '../components/LoadingScreen';
 
 const DataContext = createContext(null);
 const ORG_ID = 'bf236d2b-4693-4606-bf3d-ece1767690ab';
 
-// Fields that must never be sent to the vehicles table (computed, read-only, or non-existent columns).
-// Applied as a final filter in both addVehicle and updateVehicle.
+// Fields verified against actual vehicles table schema — never send to Supabase.
 const STRIP_FIELDS = new Set([
-  'createdAt', 'created_at', 'vin6', 'total_cost_basis', 'totalCost', 'totalCostBasis', 'listedAt', 'listed_at',
-  'reconCosts', 'recon_costs', 'reconItems', 'recon_items', 'reconNotes', 'recon_notes',
-  'vendorNotes', 'vendor_notes', 'titleNotes', 'title_notes', 'notes', 'mileage',
-  'source', 'storeId', 'store_id', 'winnerId', 'winner_id', 'updatedAt', 'updated_at',
+  // Auto-managed by DB
+  'createdAt', 'created_at', 'updatedAt', 'updated_at', 'listedAt', 'listed_at',
+  // Computed — never write directly
+  'totalCost', 'total_cost_basis', 'totalCostBasis',
+  // vin6 is auto-derived from vin
+  'vin6',
+  // Columns that don't exist in vehicles table
+  'reconCosts', 'recon_costs',
+  'reconItems', 'recon_items', 'reconNotes', 'recon_notes',
+  'vendorNotes', 'vendor_notes',
+  'titleNotes', 'title_notes',
+  'mileage',                // lives in mileage_log table
+  'source',                 // lives in deal_records table
+  'storeId', 'store_id',
+  // Repair total updated by repair order mutations, not the vehicle edit form
+  'totalRepairCosts', 'total_repair_costs',
+  // Arbitration column does not exist in vehicles table
   'arbitration', 'arbitrationStatus', 'arbitration_status', 'arbitrationNotes', 'arbitration_notes',
 ]);
 
@@ -21,23 +34,26 @@ function mapVehicle(r) {
     status: r.status,
     year: r.year, make: r.make, model: r.model, trim: r.trim,
     color: r.color, mileage: r.mileage, vin: r.vin,
-    condition: r.condition, source: r.source,
+    condition: r.condition,
     purchasePrice: r.purchase_price,
     overheadCosts: r.overhead_costs,
-    reconCosts: r.recon_costs,
-    totalCost: (parseFloat(r.purchase_price) || 0) + (parseFloat(r.overhead_costs) || 0) + (parseFloat(r.recon_costs) || 0) || null,
+    totalRepairCosts: parseFloat(r.total_repair_costs) || 0,
+    totalCost: (parseFloat(r.purchase_price) || 0) + (parseFloat(r.overhead_costs) || 0) + (parseFloat(r.total_repair_costs) || 0) || null,
     floorPrice: r.floor_price,
-    notes: r.notes, photos: Array.isArray(r.photos) ? r.photos : [],
-    currentLocation: r.current_location,
+    listPrice: r.list_price,
+    notes: r.disclosure_notes,   // DB column is disclosure_notes
+    photos: Array.isArray(r.photos) ? r.photos : [],
+    currentLocation: r.current_location_id,  // UUID FK — text display needs a locations table join
     titleStatus: r.title_status,
-    titleNotes: r.title_notes,
+    titleElectronic: r.title_electronic,
+    canListBeforeTitle: r.can_list_before_title,
     winnerId: r.winner_id,
     winnerName: r.winner_name,
     winningBid: r.winning_bid,
     awardedAt: r.awarded_at,
     listedAt: r.listed_at,
     createdAt: r.created_at,
-    arbitration: r.arbitration,
+    arbitration: r.arbitration,  // may be null if column doesn't exist
   };
 }
 
@@ -111,15 +127,19 @@ function mapRepairVendor(r) {
 }
 
 // Map camelCase vehicle fields back to snake_case for Supabase writes
+// Only real, writable vehicles table columns. Verified against schema.
 const VEHICLE_FIELD_MAP = {
   status: 'status', year: 'year', make: 'make', model: 'model', trim: 'trim',
-  color: 'color', mileage: 'mileage', vin: 'vin', condition: 'condition', source: 'source',
+  color: 'color', vin: 'vin', condition: 'condition',
   purchasePrice: 'purchase_price', overheadCosts: 'overhead_costs',
-  reconCosts: 'recon_costs', totalCost: 'total_cost', floorPrice: 'floor_price',
-  notes: 'notes', photos: 'photos', currentLocation: 'current_location',
-  titleStatus: 'title_status', titleNotes: 'title_notes',
+  floorPrice: 'floor_price', listPrice: 'list_price',
+  notes: 'disclosure_notes',     // app uses 'notes', DB column is 'disclosure_notes'
+  photos: 'photos',
+  currentLocation: 'current_location_id',
+  titleStatus: 'title_status', titleElectronic: 'title_electronic',
+  canListBeforeTitle: 'can_list_before_title',
   winnerId: 'winner_id', winnerName: 'winner_name', winningBid: 'winning_bid',
-  awardedAt: 'awarded_at', arbitration: 'arbitration',
+  awardedAt: 'awarded_at',
 };
 
 function toSnakeCase(fields) {
@@ -144,6 +164,7 @@ export function DataProvider({ children }) {
   const [repairVendors, setRepairVendors] = useState([]);
   const [badges, setBadges] = useState({});
   const [storePhotos, setStorePhotos] = useState({});
+  const [fetchError, setFetchError] = useState(null);
 
   // ── Initial data fetch ───────────────────────────────────────────────────
   useEffect(() => {
@@ -158,14 +179,18 @@ export function DataProvider({ children }) {
         supabase.from('repair_orders').select('*, repair_order_lines(*)').eq('org_id', ORG_ID),
         supabase.from('repair_vendors').select('*').eq('org_id', ORG_ID).eq('active', true),
       ]);
-      if (vehiclesRes.error)      console.log('vehicles fetch error:',      JSON.stringify(vehiclesRes.error));
-      if (auctionsRes.error)      console.log('auctions fetch error:',      JSON.stringify(auctionsRes.error));
-      if (bidsRes.error)          console.log('bids fetch error:',          JSON.stringify(bidsRes.error));
-      if (locationsRes.error)     console.log('locations fetch error:',     JSON.stringify(locationsRes.error));
-      if (sourcesRes.error)       console.log('sources fetch error:',       JSON.stringify(sourcesRes.error));
-      if (transportRes.error)     console.log('transport fetch error:',     JSON.stringify(transportRes.error));
-      if (repairOrdersRes.error)  console.log('repair_orders fetch error:', JSON.stringify(repairOrdersRes.error));
-      if (repairVendorsRes.error) console.log('repair_vendors fetch error:', JSON.stringify(repairVendorsRes.error));
+      if (vehiclesRes.error) {
+        setFetchError('Could not load vehicle data. Check your connection and refresh the page.');
+        setLoading(false);
+        return;
+      }
+      if (auctionsRes.error)      console.warn('auctions fetch error:',      auctionsRes.error?.message);
+      if (bidsRes.error)          console.warn('bids fetch error:',          bidsRes.error?.message);
+      if (locationsRes.error)     console.warn('locations fetch error:',     locationsRes.error?.message);
+      if (sourcesRes.error)       console.warn('sources fetch error:',       sourcesRes.error?.message);
+      if (transportRes.error)     console.warn('transport fetch error:',     transportRes.error?.message);
+      if (repairOrdersRes.error)  console.warn('repair_orders fetch error:', repairOrdersRes.error?.message);
+      if (repairVendorsRes.error) console.warn('repair_vendors fetch error:', repairVendorsRes.error?.message);
 
       if (vehiclesRes.data)      setVehicles(vehiclesRes.data.map(mapVehicle));
       if (auctionsRes.data)      setAuctions(auctionsRes.data.map(mapAuction));
@@ -415,7 +440,7 @@ export function DataProvider({ children }) {
       floor_price:         vehicle.floorPrice       ? parseFloat(vehicle.floorPrice)     : null,
       list_price:          vehicle.listPrice        ? parseFloat(vehicle.listPrice)      : null,
       title_status:        vehicle.titleStatus      || null,
-      current_location_id: asUuid(vehicle.currentLocation),
+      disclosure_notes:    vehicle.notes            || null,
       photos:              Array.isArray(vehicle.photos) ? vehicle.photos : [],
     });
 
@@ -433,12 +458,13 @@ export function DataProvider({ children }) {
     const clean = stripPayload(toSnakeCase(
       Object.fromEntries(Object.entries(fields).filter(([k]) => !STRIP_FIELDS.has(k)))
     ));
+    const snapshot = vehicles.find(v => v.id === id);
     setVehicles(prev => prev.map(v => v.id === id ? { ...v, ...fields } : v));
-    const { error } = await supabase
-      .from('vehicles')
-      .update(clean)
-      .eq('id', id);
-    if (error) throw error;
+    const { error } = await supabase.from('vehicles').update(clean).eq('id', id);
+    if (error) {
+      if (snapshot) setVehicles(prev => prev.map(v => v.id === id ? snapshot : v));
+      throw error;
+    }
   };
 
   const deleteVehicle = async (id) => {
@@ -531,28 +557,66 @@ export function DataProvider({ children }) {
   };
 
   // ── Repair orders ─────────────────────────────────────────────────────────
+  const addRepairVendor = async (name, phone) => {
+    const { data: row, error } = await supabase
+      .from('repair_vendors')
+      .insert({ org_id: ORG_ID, name, phone: phone || null, active: true })
+      .select()
+      .single();
+    if (error) throw error;
+    const mapped = mapRepairVendor(row);
+    setRepairVendors(prev => [...prev, mapped]);
+    return mapped;
+  };
+
+  const syncVehicleRepairCosts = async (vehicleId, updatedROs) => {
+    const total = updatedROs.filter(r => r.vehicleId === vehicleId).reduce((s, r) => s + r.totalCost, 0);
+    await supabase.from('vehicles').update({ total_repair_costs: total }).eq('id', vehicleId);
+    setVehicles(prev => prev.map(v => {
+      if (v.id !== vehicleId) return v;
+      return { ...v, totalRepairCosts: total, totalCost: (parseFloat(v.purchasePrice) || 0) + (parseFloat(v.overheadCosts) || 0) + total };
+    }));
+  };
+
   const addRepairOrder = async (vehicleId, vin6, vendorId, notes) => {
     const { data: row, error } = await supabase
       .from('repair_orders')
-      .insert({ org_id: ORG_ID, vehicle_id: vehicleId, vin6: vin6 || null, vendor_id: vendorId || null, status: 'pending', notes: notes || null, total_cost: 0 })
+      .insert({ org_id: ORG_ID, vehicle_id: vehicleId, vin6: vin6 || null, vendor_id: vendorId || null, status: 'draft', notes: notes || null, total_cost: 0 })
       .select('*, repair_order_lines(*)')
       .single();
     if (error) throw error;
     const mapped = mapRepairOrder(row);
-    setRepairOrders(prev => [...prev, mapped]);
+    const updatedROs = [...repairOrders, mapped];
+    setRepairOrders(updatedROs);
+    await syncVehicleRepairCosts(vehicleId, updatedROs);
     return mapped;
   };
 
   const updateRepairOrder = async (id, fields) => {
     const { error } = await supabase.from('repair_orders').update(fields).eq('id', id);
     if (error) throw error;
-    setRepairOrders(prev => prev.map(r => r.id === id ? { ...r, status: fields.status ?? r.status, notes: fields.notes ?? r.notes } : r));
+    const ro = repairOrders.find(r => r.id === id);
+    const updatedROs = repairOrders.map(r => {
+      if (r.id !== id) return r;
+      return {
+        ...r,
+        status:    fields.status    ?? r.status,
+        notes:     fields.notes     ?? r.notes,
+        totalCost: fields.total_cost != null ? parseFloat(fields.total_cost) : r.totalCost,
+        vendorId:  fields.vendor_id  !== undefined ? fields.vendor_id : r.vendorId,
+      };
+    });
+    setRepairOrders(updatedROs);
+    if (fields.total_cost != null && ro) await syncVehicleRepairCosts(ro.vehicleId, updatedROs);
   };
 
   const deleteRepairOrder = async (id) => {
+    const ro = repairOrders.find(r => r.id === id);
     const { error } = await supabase.from('repair_orders').delete().eq('id', id);
     if (error) throw error;
-    setRepairOrders(prev => prev.filter(r => r.id !== id));
+    const updatedROs = repairOrders.filter(r => r.id !== id);
+    setRepairOrders(updatedROs);
+    if (ro) await syncVehicleRepairCosts(ro.vehicleId, updatedROs);
   };
 
   const addRepairOrderLine = async (repairOrderId, description, cost, notes) => {
@@ -563,26 +627,32 @@ export function DataProvider({ children }) {
       .single();
     if (error) throw error;
     const mapped = mapRepairOrderLine(row);
-    setRepairOrders(prev => prev.map(r => {
-      if (r.id !== repairOrderId) return r;
-      const newLines = [...r.lines, mapped];
+    const ro = repairOrders.find(r => r.id === repairOrderId);
+    if (ro) {
+      const newLines = [...ro.lines, mapped];
       const newTotal = newLines.reduce((s, l) => s + l.cost, 0);
-      supabase.from('repair_orders').update({ total_cost: newTotal }).eq('id', repairOrderId);
-      return { ...r, lines: newLines, totalCost: newTotal };
-    }));
+      const { error: roErr } = await supabase.from('repair_orders').update({ total_cost: newTotal }).eq('id', repairOrderId);
+      if (roErr) throw roErr;
+      const updatedROs = repairOrders.map(r => r.id === repairOrderId ? { ...r, lines: newLines, totalCost: newTotal } : r);
+      setRepairOrders(updatedROs);
+      await syncVehicleRepairCosts(ro.vehicleId, updatedROs);
+    }
     return mapped;
   };
 
   const deleteRepairOrderLine = async (lineId, repairOrderId) => {
     const { error } = await supabase.from('repair_order_lines').delete().eq('id', lineId);
     if (error) throw error;
-    setRepairOrders(prev => prev.map(r => {
-      if (r.id !== repairOrderId) return r;
-      const newLines = r.lines.filter(l => l.id !== lineId);
+    const ro = repairOrders.find(r => r.id === repairOrderId);
+    if (ro) {
+      const newLines = ro.lines.filter(l => l.id !== lineId);
       const newTotal = newLines.reduce((s, l) => s + l.cost, 0);
-      supabase.from('repair_orders').update({ total_cost: newTotal }).eq('id', repairOrderId);
-      return { ...r, lines: newLines, totalCost: newTotal };
-    }));
+      const { error: roErr } = await supabase.from('repair_orders').update({ total_cost: newTotal }).eq('id', repairOrderId);
+      if (roErr) throw roErr;
+      const updatedROs = repairOrders.map(r => r.id === repairOrderId ? { ...r, lines: newLines, totalCost: newTotal } : r);
+      setRepairOrders(updatedROs);
+      await syncVehicleRepairCosts(ro.vehicleId, updatedROs);
+    }
   };
 
   // ── Arbitration ───────────────────────────────────────────────────────────
@@ -595,12 +665,25 @@ export function DataProvider({ children }) {
     });
   };
 
-  const resolveArbitration = async (vehicleId, resolution) => {
+  const resolveArbitration = async (vehicleId, resolutionType, resolutionDetails, adjustmentAmount) => {
     const vehicle = vehicles.find(v => v.id === vehicleId);
     if (!vehicle) return;
-    await updateVehicle(vehicleId, {
-      arbitration: { ...vehicle.arbitration, status: 'resolved', resolution, resolvedAt: new Date().toISOString() },
-    });
+    const arbUpdate = {
+      ...vehicle.arbitration,
+      status: 'resolved',
+      resolution: resolutionType,
+      resolutionDetails: resolutionDetails || null,
+      adjustmentAmount: adjustmentAmount || null,
+      resolvedAt: new Date().toISOString(),
+    };
+    if (resolutionType === 'fix_it') {
+      await updateVehicle(vehicleId, { arbitration: arbUpdate, status: 'recon' });
+      const vin6 = (vehicle.vin || '').slice(-6) || null;
+      const desc = resolutionDetails || `Arbitration fix: ${vehicle.arbitration?.issueType || 'see claim'}`;
+      await addRepairOrder(vehicleId, vin6, null, desc);
+    } else {
+      await updateVehicle(vehicleId, { arbitration: arbUpdate });
+    }
   };
 
   // ── Store photos (in-memory — no Supabase table yet) ─────────────────────
@@ -669,7 +752,15 @@ export function DataProvider({ children }) {
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
-  if (loading) return null;
+  if (loading) return <LoadingScreen message="Loading Stockyard…" />;
+  if (fetchError) return (
+    <div style={{ position: 'fixed', inset: 0, background: '#f8faff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', marginBottom: 8 }}>Connection error</div>
+      <div style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', maxWidth: 400, marginBottom: 24 }}>{fetchError}</div>
+      <button onClick={() => window.location.reload()} style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Retry</button>
+    </div>
+  );
 
   return (
     <DataContext.Provider value={{
@@ -687,7 +778,7 @@ export function DataProvider({ children }) {
       // Repair orders
       repairOrders, repairVendors,
       addRepairOrder, updateRepairOrder, deleteRepairOrder,
-      addRepairOrderLine, deleteRepairOrderLine,
+      addRepairVendor,
       // Arbitration
       fileArbitration, resolveArbitration,
       // Photos & badges

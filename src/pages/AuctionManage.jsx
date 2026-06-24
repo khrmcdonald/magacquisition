@@ -4,10 +4,12 @@ import { StoreAvatar } from '../components/StoreAvatar';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { USERS } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 
 export default function AuctionManage() {
   const { user } = useAuth();
   const { data, openAuction, closeAuction, unlistVehicle, getAllBidsForVehicle } = useData();
+  const { showToast } = useToast();
   const [closeDate, setCloseDate] = useState('');
   const [label, setLabel] = useState(`Weekly Auction ${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}`);
   const [confirmClose, setConfirmClose] = useState(false);
@@ -26,7 +28,7 @@ export default function AuctionManage() {
     try {
       await openAuction(new Date(closeDate).toISOString(), label || undefined);
     } catch (err) {
-      alert('Failed to open auction: ' + err.message);
+      showToast('Failed to open auction: ' + err.message, 'error');
     }
   };
 

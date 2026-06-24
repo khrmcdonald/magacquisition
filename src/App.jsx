@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
+import { ToastProvider } from './components/Toast';
 import './index.css';
 
 import Login from './pages/Login';
@@ -10,6 +11,7 @@ import AuctionFloor from './pages/AuctionFloor';
 import Acquisitions from './pages/Acquisitions';
 import AuctionManage from './pages/AuctionManage';
 import Transport from './pages/Transport';
+import Repairs from './pages/Repairs';
 import GMOverview from './pages/GMOverview';
 import MyWins from './pages/MyWins';
 import Admin from './pages/Admin';
@@ -34,6 +36,7 @@ function HomeRedirect() {
 
 export default function App() {
   return (
+    <ToastProvider>
     <AuthProvider>
       <DataProvider>
         <BrowserRouter>
@@ -45,6 +48,7 @@ export default function App() {
               <Route path="acquisitions" element={<Acquisitions />} />
               <Route path="manage" element={<AuctionManage />} />
               <Route path="transport" element={<Transport />} />
+              <Route path="repairs" element={<Repairs />} />
               <Route path="overview" element={<GMOverview />} />
               <Route path="wins" element={<MyWins />} />
               <Route path="admin" element={<Admin />} />
@@ -60,5 +64,6 @@ export default function App() {
         </BrowserRouter>
       </DataProvider>
     </AuthProvider>
+    </ToastProvider>
   );
 }

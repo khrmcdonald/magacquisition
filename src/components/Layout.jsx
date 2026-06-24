@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import {
   LayoutGrid, Gavel, Car, Truck, LayoutDashboard, BarChart2,
-  Trophy, Download, HelpCircle, Settings, FileText, Bell, Award,
+  Trophy, Download, HelpCircle, Settings, FileText, Bell, Award, Wrench,
 } from 'lucide-react';
 
 // ─── Auction Status Bar ───────────────────────────────────────────────────────
@@ -88,6 +88,7 @@ export default function Layout() {
     '/auction': 'Auction Floor',
     '/acquisitions': 'Acquisitions',
     '/manage': 'Manage Auction',
+    '/repairs':   'Repairs',
     '/transport': 'Transport & Title',
     '/overview': 'GM Overview',
     '/wins': 'My Wins',
@@ -121,6 +122,7 @@ export default function Layout() {
       label: 'Operations',
       items: [
         { to: '/acquisitions', label: 'Acquisitions',  Icon: Car,      roles: MGRS, badge: pendingAcq || null },
+        { to: '/repairs',      label: 'Repairs',        Icon: Wrench,   roles: MGRS },
         { to: '/transport',    label: 'Transport',      Icon: Truck,    roles: ALL },
         { to: '/manage',       label: 'Manage auction', Icon: Settings, roles: MGRS },
         { to: '/wins',         label: 'My wins',        Icon: Trophy,   roles: ['bidder'] },

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import LoadingScreen from '../components/LoadingScreen';
 
 // Static store list — used by components that need to enumerate stores.
 // PINs removed; auth is now handled by Supabase.
@@ -21,7 +22,7 @@ function fallbackProfile(supabaseUser) {
     id: supabaseUser.id,
     email: supabaseUser.email,
     name: supabaseUser.email,
-    role: 'admin',
+    role: 'bidder', // safe minimum — never fall back to elevated roles
     org_id: 'bf236d2b-4693-4606-bf3d-ece1767690ab',
     color: '#1a3d76',
   };
@@ -83,7 +84,6 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    console.log('Supabase auth result:', error, data);
     if (error) return null;
     const profile = await fetchProfile(data.user);
     setUser(profile);
@@ -95,7 +95,7 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  if (loading) return null;
+  if (loading) return <LoadingScreen message="Signing in…" />;
 
   return (
     <AuthContext.Provider value={{ user, login, logout }}>

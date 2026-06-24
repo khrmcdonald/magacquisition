@@ -1,228 +1,226 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
+import { useToast } from './Toast';
 
-const STATUS_STYLES = {
-  pending:     { bg: '#fef3c7', color: '#92400e', label: 'Pending' },
-  in_progress: { bg: '#dbeafe', color: '#1e40af', label: 'In Progress' },
-  completed:   { bg: '#d1fae5', color: '#065f46', label: 'Completed' },
+const STATUS = {
+  draft:            { bg: '#fef3c7', color: '#92400e', label: 'Pending',     next: 'in_progress' },
+  pending:          { bg: '#fef3c7', color: '#92400e', label: 'Pending',     next: 'in_progress' },
+  pending_approval: { bg: '#fef3c7', color: '#92400e', label: 'Pending',     next: 'in_progress' },
+  approved:         { bg: '#ede9fe', color: '#6d28d9', label: 'Approved',    next: 'in_progress' },
+  in_progress:      { bg: '#dbeafe', color: '#1e40af', label: 'In Progress', next: 'complete' },
+  complete:         { bg: '#d1fae5', color: '#065f46', label: 'Complete',    next: 'draft' },
+  cancelled:        { bg: '#f3f4f6', color: '#6b7280', label: 'Cancelled',   next: 'draft' },
 };
 
-function LineItemRow({ line, onDelete }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid #f3f4f6' }}>
-      <div style={{ flex: 1, fontSize: 13, color: '#374151' }}>{line.description}</div>
-      {line.notes && <div style={{ fontSize: 11, color: '#9ca3af', flex: 1 }}>{line.notes}</div>}
-      <div style={{ fontSize: 13, fontWeight: 700, color: '#0d2550', minWidth: 70, textAlign: 'right' }}>${line.cost.toLocaleString()}</div>
-      <button onClick={() => onDelete(line.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}>×</button>
-    </div>
-  );
-}
-
-function AddLineForm({ repairOrderId, onDone }) {
-  const { addRepairOrderLine } = useData();
-  const [desc, setDesc] = useState('');
-  const [cost, setCost] = useState('');
-  const [notes, setNotes] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!desc || !cost) return;
-    setSaving(true);
-    try {
-      await addRepairOrderLine(repairOrderId, desc, cost, notes);
-      setDesc(''); setCost(''); setNotes('');
-      onDone();
-    } catch (err) {
-      alert('Failed to add line: ' + err.message);
-    }
-    setSaving(false);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} style={{ background: '#f9fafb', borderRadius: 6, padding: '10px 12px', marginTop: 8 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginBottom: 8 }}>
-        <input
-          placeholder="Description (e.g. Front brakes, Labor)"
-          value={desc} onChange={e => setDesc(e.target.value)}
-          style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13 }}
-          required
-        />
-        <input
-          type="number" placeholder="Cost" min="0" step="0.01"
-          value={cost} onChange={e => setCost(e.target.value)}
-          style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13, width: 90 }}
-          required
-        />
-      </div>
-      <input
-        placeholder="Notes (optional)"
-        value={notes} onChange={e => setNotes(e.target.value)}
-        style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13, width: '100%', marginBottom: 8, boxSizing: 'border-box' }}
-      />
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button type="submit" disabled={saving} style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-          {saving ? 'Adding…' : 'Add line'}
-        </button>
-        <button type="button" onClick={onDone} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer', color: '#6b7280' }}>
-          Cancel
-        </button>
-      </div>
-    </form>
-  );
-}
-
-function RepairOrderCard({ ro, vendors, onDelete }) {
-  const { updateRepairOrder, deleteRepairOrderLine } = useData();
-  const [expanded, setExpanded] = useState(true);
-  const [addingLine, setAddingLine] = useState(false);
-  const vendor = vendors.find(v => v.id === ro.vendorId);
-  const st = STATUS_STYLES[ro.status] || STATUS_STYLES.pending;
-
-  const cycleStatus = async () => {
-    const next = { pending: 'in_progress', in_progress: 'completed', completed: 'pending' };
-    try { await updateRepairOrder(ro.id, { status: next[ro.status] }); }
-    catch (err) { alert('Failed to update status: ' + err.message); }
-  };
-
-  return (
-    <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 10, overflow: 'hidden' }}>
-      {/* RO header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#f9fafb', cursor: 'pointer' }} onClick={() => setExpanded(e => !e)}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>
-            {vendor ? vendor.name : 'No vendor'}
-          </div>
-          {ro.notes && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{ro.notes}</div>}
-        </div>
-        <span onClick={e => { e.stopPropagation(); cycleStatus(); }} style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: 'pointer', userSelect: 'none' }}>
-          {st.label}
-        </span>
-        <div style={{ fontSize: 14, fontWeight: 800, color: '#0d2550', minWidth: 70, textAlign: 'right' }}>
-          ${ro.totalCost.toLocaleString()}
-        </div>
-        <button onClick={e => { e.stopPropagation(); if (window.confirm('Delete this repair order and all its line items?')) onDelete(ro.id); }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 18, padding: '0 2px' }}>
-          🗑
-        </button>
-        <span style={{ fontSize: 12, color: '#9ca3af' }}>{expanded ? '▲' : '▼'}</span>
-      </div>
-
-      {/* Line items */}
-      {expanded && (
-        <div style={{ padding: '8px 14px 12px' }}>
-          {ro.lines.length === 0 && !addingLine && (
-            <div style={{ fontSize: 12, color: '#9ca3af', padding: '6px 0' }}>No line items yet.</div>
-          )}
-          {ro.lines.map(line => (
-            <LineItemRow key={line.id} line={line} onDelete={(id) => deleteRepairOrderLine(id, ro.id)} />
-          ))}
-          {addingLine
-            ? <AddLineForm repairOrderId={ro.id} onDone={() => setAddingLine(false)} />
-            : <button onClick={() => setAddingLine(true)} style={{ marginTop: 8, background: 'none', border: '1px dashed #d1d5db', borderRadius: 6, padding: '5px 12px', fontSize: 12, color: '#6b7280', cursor: 'pointer', width: '100%' }}>
-                + Add line item
-              </button>
-          }
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function RepairOrdersModal({ vehicle, onClose }) {
-  const { repairOrders, repairVendors, addRepairOrder, deleteRepairOrder } = useData();
-  const [addingRO, setAddingRO] = useState(false);
+  const { repairOrders, repairVendors, addRepairOrder, updateRepairOrder, deleteRepairOrder, addRepairVendor } = useData();
+  const { showToast } = useToast();
+
+  const [adding, setAdding] = useState(false);
   const [vendorId, setVendorId] = useState('');
-  const [roNotes, setRoNotes] = useState('');
+  const [addingVendor, setAddingVendor] = useState(false);
+  const [newVendorName, setNewVendorName] = useState('');
+  const [newVendorPhone, setNewVendorPhone] = useState('');
+  const [description, setDescription] = useState('');
+  const [cost, setCost] = useState('');
   const [saving, setSaving] = useState(false);
 
   const vehicleROs = repairOrders.filter(r => r.vehicleId === vehicle.id);
-  const totalRepairCost = vehicleROs.reduce((s, r) => s + r.totalCost, 0);
-  const vin6 = (vehicle.vin || '').slice(-6) || null;
+  const totalRepairs = vehicleROs.reduce((s, r) => s + r.totalCost, 0);
+  const costBasis = (parseFloat(vehicle.totalCost) || 0) + totalRepairs;
 
-  const handleAddRO = async (e) => {
-    e.preventDefault();
+  const resetForm = () => {
+    setVendorId(''); setDescription(''); setCost('');
+    setAddingVendor(false); setNewVendorName(''); setNewVendorPhone('');
+    setAdding(false);
+  };
+
+  const handleSaveVendor = async () => {
+    if (!newVendorName.trim()) return;
     setSaving(true);
     try {
-      await addRepairOrder(vehicle.id, vin6, vendorId || null, roNotes || null);
-      setVendorId(''); setRoNotes(''); setAddingRO(false);
-    } catch (err) {
-      alert('Failed to create repair order: ' + err.message);
-    }
+      const v = await addRepairVendor(newVendorName.trim(), newVendorPhone.trim());
+      setVendorId(v.id);
+      setAddingVendor(false);
+      setNewVendorName(''); setNewVendorPhone('');
+    } catch (err) { showToast('Failed to add vendor: ' + err.message, 'error'); }
     setSaving(false);
+  };
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    if (!description.trim() || !cost) return;
+    setSaving(true);
+    try {
+      const vin6 = (vehicle.vin || '').slice(-6) || null;
+      const ro = await addRepairOrder(vehicle.id, vin6, vendorId || null, description.trim());
+      await updateRepairOrder(ro.id, { total_cost: parseFloat(cost) });
+      resetForm();
+    } catch (err) { showToast('Failed to add repair order: ' + err.message, 'error'); }
+    setSaving(false);
+  };
+
+  const cycleStatus = async (ro) => {
+    const next = STATUS[ro.status]?.next || 'pending';
+    try { await updateRepairOrder(ro.id, { status: next }); }
+    catch (err) { showToast('Failed to update status: ' + err.message, 'error'); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this repair order?')) return;
+    try { await deleteRepairOrder(id); showToast('Repair order deleted.', 'success'); }
+    catch (err) { showToast('Failed to delete: ' + err.message, 'error'); }
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
+
+        {/* Header */}
         <div className="modal-header">
-          <div>
-            <h2 style={{ margin: 0 }}>Repair Orders</h2>
-            <div style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>
-              {vehicle.year} {vehicle.make} {vehicle.model} {vehicle.vin ? `· ${vehicle.vin}` : ''}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 64, height: 48, borderRadius: 6, overflow: 'hidden', background: '#f3f4f6', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {vehicle.photos?.[0]
+                ? <img src={vehicle.photos[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <span style={{ fontSize: 24, opacity: 0.25 }}>🚗</span>
+              }
+            </div>
+            <div>
+              <h2 style={{ margin: 0 }}>Repair Orders</h2>
+              <div style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>
+                {vehicle.year} {vehicle.make} {vehicle.model}
+              </div>
+              {vehicle.vin && <div style={{ fontSize: 11, color: '#9ca3af', fontFamily: 'monospace', letterSpacing: '.04em', marginTop: 1 }}>{vehicle.vin}</div>}
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, color: '#9ca3af', cursor: 'pointer' }}>×</button>
         </div>
 
         <div className="modal-body">
+
           {/* Cost summary */}
-          <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
-            <div style={{ flex: 1, background: '#f0f4fb', borderRadius: 8, padding: '10px 14px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em' }}>Total repair cost</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#0d2550' }}>${totalRepairCost.toLocaleString()}</div>
-            </div>
-            <div style={{ flex: 1, background: '#f0f4fb', borderRadius: 8, padding: '10px 14px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em' }}>Open ROs</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#0d2550' }}>{vehicleROs.filter(r => r.status !== 'completed').length}</div>
-            </div>
-            <div style={{ flex: 1, background: '#f0f4fb', borderRadius: 8, padding: '10px 14px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em' }}>Cost basis</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#0d2550' }}>${((vehicle.totalCost || 0) + totalRepairCost).toLocaleString()}</div>
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
+            {[
+              { label: 'Repair costs', value: `$${totalRepairs.toLocaleString()}` },
+              { label: 'Open ROs',     value: vehicleROs.filter(r => r.status !== 'completed').length },
+              { label: 'Cost basis',   value: `$${costBasis.toLocaleString()}` },
+            ].map(({ label, value }) => (
+              <div key={label} style={{ background: '#f0f4fb', borderRadius: 8, padding: '10px 14px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>{label}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#0d2550' }}>{value}</div>
+              </div>
+            ))}
           </div>
 
           {/* RO list */}
-          {vehicleROs.map(ro => (
-            <RepairOrderCard key={ro.id} ro={ro} vendors={repairVendors} onDelete={deleteRepairOrder} />
-          ))}
-
-          {vehicleROs.length === 0 && !addingRO && (
-            <div style={{ textAlign: 'center', padding: '24px 0', color: '#9ca3af' }}>
-              <div style={{ fontSize: 28, marginBottom: 8 }}>🔧</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>No repair orders</div>
-              <div style={{ fontSize: 12, marginTop: 4 }}>Add an RO to track shop work and costs.</div>
+          {vehicleROs.length === 0 && !adding && (
+            <div style={{ textAlign: 'center', padding: '28px 0', color: '#9ca3af' }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>🔧</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>No repair orders yet</div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>Track shop work and costs for this vehicle.</div>
             </div>
           )}
 
+          {vehicleROs.map(ro => {
+            const vendor = repairVendors.find(v => v.id === ro.vendorId);
+            const st = STATUS[ro.status] || STATUS.draft;
+            return (
+              <div key={ro.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {ro.notes || '—'}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{vendor?.name || 'No vendor'}</div>
+                </div>
+                <span
+                  onClick={() => cycleStatus(ro)}
+                  title="Click to update status"
+                  style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}
+                >
+                  {st.label}
+                </span>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#0d2550', minWidth: 64, textAlign: 'right', flexShrink: 0 }}>
+                  ${ro.totalCost.toLocaleString()}
+                </div>
+                <button onClick={() => handleDelete(ro.id)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 18, padding: '0 2px', flexShrink: 0 }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}
+                >×</button>
+              </div>
+            );
+          })}
+
           {/* Add RO form */}
-          {addingRO ? (
-            <form onSubmit={handleAddRO} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '14px' }}>
-              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10, color: '#111827' }}>New repair order</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+          {adding ? (
+            <form onSubmit={handleAdd} style={{ marginTop: 14, border: '1px solid #e5e7eb', borderRadius: 8, padding: '14px' }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#111827', marginBottom: 12 }}>New repair order</div>
+
+              {/* Vendor row */}
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.05em', display: 'block', marginBottom: 4 }}>Vendor</label>
+                {!addingVendor ? (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <select value={vendorId} onChange={e => setVendorId(e.target.value)}
+                      style={{ flex: 1, padding: '7px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13 }}>
+                      <option value="">No vendor / TBD</option>
+                      {repairVendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                    </select>
+                    <button type="button" onClick={() => setAddingVendor(true)}
+                      style={{ whiteSpace: 'nowrap', fontSize: 12, color: '#0d2550', background: 'none', border: '1px solid #0d2550', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontWeight: 600 }}>
+                      + New vendor
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ background: '#f9fafb', borderRadius: 6, padding: '10px', border: '1px solid #e5e7eb' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                      <input value={newVendorName} onChange={e => setNewVendorName(e.target.value)} placeholder="Vendor name *"
+                        style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13 }} autoFocus />
+                      <input value={newVendorPhone} onChange={e => setNewVendorPhone(e.target.value)} placeholder="Phone (optional)"
+                        style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13 }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button type="button" onClick={handleSaveVendor} disabled={saving || !newVendorName.trim()}
+                        style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                        Save vendor
+                      </button>
+                      <button type="button" onClick={() => setAddingVendor(false)}
+                        style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '5px 12px', fontSize: 12, cursor: 'pointer', color: '#6b7280' }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Description + cost */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginBottom: 12 }}>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.05em' }}>Vendor</label>
-                  <select value={vendorId} onChange={e => setVendorId(e.target.value)} style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13, marginTop: 4 }}>
-                    <option value="">No vendor / TBD</option>
-                    {repairVendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                  </select>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.05em', display: 'block', marginBottom: 4 }}>Description *</label>
+                  <input value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Front brakes, AC recharge, Detail"
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13, boxSizing: 'border-box' }} required />
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.05em' }}>Notes</label>
-                  <input value={roNotes} onChange={e => setRoNotes(e.target.value)} placeholder="Optional notes" style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13, marginTop: 4, boxSizing: 'border-box' }} />
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.05em', display: 'block', marginBottom: 4 }}>Cost *</label>
+                  <input type="number" value={cost} onChange={e => setCost(e.target.value)} placeholder="0" min="0" step="0.01"
+                    style={{ width: 90, padding: '7px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13 }} required />
                 </div>
               </div>
+
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="submit" disabled={saving} style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                  {saving ? 'Creating…' : 'Create RO'}
+                <button type="submit" disabled={saving}
+                  style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                  {saving ? 'Saving…' : 'Add repair order'}
                 </button>
-                <button type="button" onClick={() => setAddingRO(false)} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '7px 18px', fontSize: 13, cursor: 'pointer', color: '#6b7280' }}>
+                <button type="button" onClick={resetForm}
+                  style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '7px 18px', fontSize: 13, cursor: 'pointer', color: '#6b7280' }}>
                   Cancel
                 </button>
               </div>
             </form>
           ) : (
-            <button onClick={() => setAddingRO(true)} style={{ width: '100%', marginTop: 4, padding: '9px', border: '1.5px dashed #d1d5db', borderRadius: 8, background: 'none', fontSize: 13, fontWeight: 600, color: '#6b7280', cursor: 'pointer' }}>
-              + New repair order
+            <button onClick={() => setAdding(true)}
+              style={{ width: '100%', marginTop: 12, padding: '9px', border: '1.5px dashed #d1d5db', borderRadius: 8, background: 'none', fontSize: 13, fontWeight: 600, color: '#6b7280', cursor: 'pointer' }}>
+              + Add repair order
             </button>
           )}
         </div>

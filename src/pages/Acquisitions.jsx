@@ -5,6 +5,8 @@ import { Navigate } from 'react-router-dom';
 import { supabase, uploadVehiclePhoto } from '../lib/supabase';
 import { VehicleCard } from '../components/VehicleCard';
 import RepairOrdersModal from '../components/RepairOrdersModal';
+import ArbitrationResolveModal from '../components/ArbitrationResolveModal';
+import { useToast } from '../components/Toast';
 
 const CONDITIONS = ['Excellent', 'Good', 'Fair', 'Poor'];
 const RECON_ITEMS = ['Detail', 'Tires', 'Brakes', 'Body work', 'Mechanical', 'Glass', 'Interior', 'Paint', 'Other'];
@@ -430,7 +432,7 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }
               const url = await uploadVehiclePhoto(blob, vin6, currentIndex);
               setForm(f => ({ ...f, photos: [...(f.photos || []), url] }));
             } catch (err) {
-              console.log('Photo upload error:', JSON.stringify(err, null, 2));
+              showToast('Photo upload failed — saved locally as fallback.', 'info');
               // Fallback: store as data URL so the photo isn't lost
               const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
               setForm(f => ({ ...f, photos: [...(f.photos || []), dataUrl] }));
@@ -622,7 +624,7 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }
           <label>Current location</label>
           <select value={form.currentLocation || ''} onChange={e => set('currentLocation', e.target.value)}>
             <option value="">Select location…</option>
-            {locations.map(l => <option key={l.value} value={l.label}>{l.label}</option>)}
+            {locations.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
           </select>
         </div>
         <div className="form-group">
@@ -756,7 +758,8 @@ const STATUS_LABELS = {
 
 export default function Acquisitions() {
   const { user } = useAuth();
-  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, resolveArbitration } = useData();
+  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle } = useData();
+  const { showToast } = useToast();
   const [resolveModal, setResolveModal] = useState(null);
   const [repairModal, setRepairModal] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -767,7 +770,7 @@ export default function Acquisitions() {
   const [showUpload, setShowUpload] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [mileageMap, setMileageMap] = useState({});
-  const [viewMode, setViewMode] = useState('list');
+  const [viewMode, setViewMode] = useState('grid');
 
   useEffect(() => {
     if (!data.vehicles.length) return;
@@ -811,15 +814,19 @@ export default function Acquisitions() {
 
     const orgId = user?.org_id || 'bf236d2b-4693-4606-bf3d-ece1767690ab';
 
+    // reconCosts comes in as an object { Detail: 50, Brakes: 200 } — convert to numeric total
+    const reconTotal = Object.values(vehicleFields.reconCosts || {}).reduce((a, b) => a + (parseFloat(b) || 0), 0);
+    const saveFields = { ...vehicleFields, reconCosts: reconTotal };
+
     if (editing) {
-      try { await updateVehicle(editing.id, { ...vehicleFields, status: editing.status }); }
-      catch (err) { console.log('updateVehicle (edit save) error:', JSON.stringify(err, null, 2)); setSaveError(`Update failed: ${fmtErr(err)}`); return; }
+      try { await updateVehicle(editing.id, { ...saveFields, status: editing.status }); }
+      catch (err) { showToast(`Update failed: ${fmtErr(err)}`, 'error'); setSaveError(`Update failed: ${fmtErr(err)}`); return; }
     } else {
       let newVehicle;
       try {
-        newVehicle = await addVehicle({ ...vehicleFields, status: 'intake' });
+        newVehicle = await addVehicle({ ...saveFields, status: 'intake' });
       } catch (err) {
-        console.log('addVehicle error:', JSON.stringify(err, null, 2));
+        showToast(`Vehicle insert failed: ${fmtErr(err)}`, 'error');
         setSaveError(`Vehicle insert failed: ${fmtErr(err)}`);
         return;
       }
@@ -884,19 +891,20 @@ export default function Acquisitions() {
   const handleBulkImport = async (vehicles) => {
     const results = await Promise.allSettled(vehicles.map(v => addVehicle(v)));
     const failed = results.filter(r => r.status === 'rejected').length;
-    if (failed) alert(`${failed} of ${vehicles.length} vehicles failed to import.`);
+    if (failed) showToast(`${failed} of ${vehicles.length} vehicles failed to import.`, 'error');
+    else showToast(`Imported ${vehicles.length} vehicles.`, 'success');
   };
 
   const handleList = async (v) => {
     if (window.confirm(`List ${v.year} ${v.make} ${v.model} in the active auction?`)) {
-      try { await listVehicle(v.id); }
-      catch (err) { alert('Failed to list vehicle: ' + (err.message || JSON.stringify(err))); }
+      try { await listVehicle(v.id); showToast('Vehicle listed in auction.', 'success'); }
+      catch (err) { showToast('Failed to list vehicle: ' + (err.message || JSON.stringify(err)), 'error'); }
     }
   };
 
   const handleStatusChange = async (v, status) => {
     try { await updateVehicle(v.id, { status }); }
-    catch (err) { console.log('updateVehicle (status) error:', JSON.stringify(err, null, 2)); }
+    catch (err) { showToast('Status update failed: ' + err.message, 'error'); }
   };
 
   const statusCounts = {};
@@ -1088,12 +1096,14 @@ export default function Acquisitions() {
                         <button onClick={() => handleList(v)} style={{ flex: 1, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>List now</button>
                       )}
                       {v.status === 'in_auction' && (
-                        <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { alert('Failed to remove: ' + err.message); } }} style={{ flex: 1, background: '#fef3c7', color: '#92400e', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
+                        <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { showToast('Failed to remove: ' + err.message, 'error'); } }} style={{ flex: 1, background: '#fef3c7', color: '#92400e', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
                       )}
-                      <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} style={iconBtn} title="Edit">✏️</button>
-                      <button onClick={() => setRepairModal(v)} style={iconBtn} title="Repairs">🔧</button>
-                      <button onClick={() => handlePrintBuySheet(v)} style={iconBtn} title="Print">🧾</button>
-                      <button onClick={() => setConfirmDelete(v)} style={{ ...iconBtn, background: '#FEF2F2', border: '1px solid #FECACA' }} title="Delete">🗑️</button>
+                      <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} style={iconBtn} data-tooltip="Edit">✏️</button>
+                      {['intake', 'recon', 'ready', 'no_sale'].includes(v.status) && (
+                        <button onClick={() => setRepairModal(v)} style={iconBtn} data-tooltip="Repairs">🔧</button>
+                      )}
+                      <button onClick={() => handlePrintBuySheet(v)} style={iconBtn} data-tooltip="Buy sheet">🧾</button>
+                      <button onClick={() => setConfirmDelete(v)} style={{ ...iconBtn, background: '#FEF2F2', border: '1px solid #FECACA' }} data-tooltip="Delete">🗑️</button>
                     </div>
                   ) : null
                 }
@@ -1162,7 +1172,7 @@ export default function Acquisitions() {
                   <div>
                     <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Stage</div>
                     {!isReadOnly
-                      ? <VehicleStatusDropdown vehicle={v} onChange={async (val) => { try { await updateVehicle(v.id, { status: val }); } catch (err) { console.log('updateVehicle (status dropdown) error:', JSON.stringify(err, null, 2)); } }} />
+                      ? <VehicleStatusDropdown vehicle={v} onChange={async (val) => { try { await updateVehicle(v.id, { status: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
                       : <span style={{ background: st.bg, color: st.color, padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700 }}>{st.label}</span>
                     }
                   </div>
@@ -1171,7 +1181,7 @@ export default function Acquisitions() {
                   <div>
                     <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Title</div>
                     {!isReadOnly
-                      ? <TitleStatusDropdown vehicleId={v.id} current={v.titleStatus || 'pending'} onChange={async (val) => { try { await updateVehicle(v.id, { titleStatus: val }); } catch (err) { console.log('updateVehicle (title) error:', JSON.stringify(err, null, 2)); } }} />
+                      ? <TitleStatusDropdown vehicleId={v.id} current={v.titleStatus || 'pending'} onChange={async (val) => { try { await updateVehicle(v.id, { titleStatus: val }); } catch (err) { showToast('Title update failed: ' + err.message, 'error'); } }} />
                       : <TitleStatusBadge value={v.titleStatus || 'pending'} />
                     }
                     {v.titleNotes && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{v.titleNotes}</div>}
@@ -1183,14 +1193,14 @@ export default function Acquisitions() {
                     {!isReadOnly ? (
                       <select
                         value={v.currentLocation || ''}
-                        onChange={async e => { try { await updateVehicle(v.id, { currentLocation: e.target.value }); } catch (err) { console.log('updateVehicle (location) error:', JSON.stringify(err, null, 2)); } }}
+                        onChange={async e => { try { await updateVehicle(v.id, { currentLocation: e.target.value }); } catch (err) { showToast('Location update failed: ' + err.message, 'error'); } }}
                         style={{ fontSize: 13, padding: '8px 12px', border: '2px solid #e5e7eb', borderRadius: 8, background: '#fff', color: '#374151', minWidth: 150 }}
                       >
                         <option value="">Select location…</option>
-                        {locationOptions.map(l => <option key={l.value} value={l.label}>{l.label}</option>)}
+                        {locationOptions.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                       </select>
                     ) : (
-                      <span style={{ fontSize: 13, color: '#374151' }}>{v.currentLocation || '—'}</span>
+                      <span style={{ fontSize: 13, color: '#374151' }}>{locationOptions.find(l => l.value === v.currentLocation)?.label || '—'}</span>
                     )}
                     {v.vendorNotes && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{v.vendorNotes}</div>}
                   </div>
@@ -1202,11 +1212,14 @@ export default function Acquisitions() {
                         <button onClick={() => handleList(v)} style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>List now</button>
                       )}
                       {v.status === 'in_auction' && (
-                        <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { alert('Failed to remove: ' + err.message); } }} style={{ background: '#fef3c7', color: '#92400e', border: 'none', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
+                        <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { showToast('Failed to remove: ' + err.message, 'error'); } }} style={{ background: '#fef3c7', color: '#92400e', border: 'none', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
                       )}
-                      <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} title="Edit" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>✏️</button>
-                      <button onClick={() => handlePrintBuySheet(v)} title="Print" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>🧾</button>
-                      <button onClick={() => setConfirmDelete(v)} title="Delete" style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14 }}>🗑️</button>
+                      <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} data-tooltip="Edit" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>✏️</button>
+                      {['intake', 'recon', 'ready', 'no_sale'].includes(v.status) && (
+                        <button onClick={() => setRepairModal(v)} data-tooltip="Repairs" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>🔧</button>
+                      )}
+                      <button onClick={() => handlePrintBuySheet(v)} data-tooltip="Buy sheet" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>🧾</button>
+                      <button onClick={() => setConfirmDelete(v)} data-tooltip="Delete" style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14 }}>🗑️</button>
                     </div>
                   )}
                 </div>
@@ -1275,38 +1288,7 @@ export default function Acquisitions() {
 
       {/* Resolve arbitration modal */}
       {resolveModal && (
-        <div className="modal-overlay" onClick={() => setResolveModal(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
-            <div className="modal-header">
-              <h2>Resolve arbitration</h2>
-              <button onClick={() => setResolveModal(null)} style={{ background: 'none', border: 'none', fontSize: 22, color: '#9ca3af', cursor: 'pointer' }}>×</button>
-            </div>
-            <div className="modal-body">
-              <div style={{ marginBottom: 16, fontSize: 14, color: '#374151' }}>
-                <strong>{resolveModal.year} {resolveModal.make} {resolveModal.model}</strong> — {resolveModal.arbitration?.issueType}
-              </div>
-              <div className="form-group">
-                <label>Resolution notes</label>
-                <textarea
-                  id="resolution-notes"
-                  rows={4}
-                  placeholder="How was this resolved? (e.g. agreed to $500 allowance, vehicle returned, no action taken...)"
-                  style={{ width: '100%' }}
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-secondary" onClick={() => setResolveModal(null)}>Cancel</button>
-              <button className="btn-navy" onClick={async () => {
-                const notes = document.getElementById('resolution-notes').value;
-                try {
-                  await resolveArbitration(resolveModal.id, notes || 'Resolved by TRI-STATE');
-                  setResolveModal(null);
-                } catch (err) { alert('Failed to resolve: ' + err.message); }
-              }}>Mark resolved</button>
-            </div>
-          </div>
-        </div>
+        <ArbitrationResolveModal vehicle={resolveModal} onClose={() => setResolveModal(null)} />
       )}
 
       {/* Upload modal */}
@@ -1339,7 +1321,7 @@ export default function Acquisitions() {
               )}
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
                 <button className="btn-secondary" onClick={() => setConfirmDelete(null)}>Cancel</button>
-                <button className="btn-danger" onClick={async () => { try { await deleteVehicle(confirmDelete.id); setConfirmDelete(null); } catch (err) { alert('Delete failed: ' + err.message); } }}>Remove</button>
+                <button className="btn-danger" onClick={async () => { try { await deleteVehicle(confirmDelete.id); setConfirmDelete(null); showToast('Vehicle removed.', 'success'); } catch (err) { showToast('Delete failed: ' + err.message, 'error'); } }}>Remove</button>
               </div>
             </div>
           </div>

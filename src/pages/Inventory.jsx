@@ -31,7 +31,7 @@ function VehicleDetailModal({ vehicle, mileage, onBuyNow, onClose }) {
 
   const StatusBadge = ({ status }) => {
     const styles = {
-      listed:     { background: '#d1fae5', color: '#065f46', label: 'Available' },
+      ready:      { background: '#d1fae5', color: '#065f46', label: 'Available' },
       in_auction: { background: '#dbeafe', color: '#1e40af', label: 'In Auction' },
     };
     const s = styles[status] || { background: '#f3f4f6', color: '#6b7280', label: status };
@@ -126,6 +126,11 @@ export default function Inventory() {
 
   const orgId = user?.org_id;
 
+  const CONDITION_SCORE = { excellent: 5, good: 4, fair: 3, poor: 2 };
+  const CONDITION_COLOR = { 5: '#065f46', 4: '#1e40af', 3: '#92400e', 2: '#991b1b' };
+  const conditionScore = (c) => c ? (CONDITION_SCORE[c.toLowerCase()] ?? null) : null;
+  const conditionLabel = (c) => c ? (c.charAt(0).toUpperCase() + c.slice(1).toLowerCase()) : null;
+
   useEffect(() => {
     if (!orgId) return;
 
@@ -133,12 +138,11 @@ export default function Inventory() {
       const { data: vehicleData2, error } = await supabase
         .from('vehicles')
         .select('*')
-        .in('status', ['listed', 'in_auction'])
+        .in('status', ['ready', 'in_auction'])
         .eq('org_id', orgId)
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.log('Inventory fetch error:', error);
         setError(error.message);
       } else {
         const vehicleData = vehicleData2 || [];
@@ -168,7 +172,7 @@ export default function Inventory() {
     return () => supabase.removeChannel(channel);
   }, [orgId]);
 
-  const listed = vehicles.filter(v => v.status === 'listed');
+  const listed = vehicles.filter(v => v.status === 'ready');
   const inAuction = vehicles.filter(v => v.status === 'in_auction');
 
   const filteredVehicles = vehicles.filter(v => {
@@ -234,7 +238,7 @@ export default function Inventory() {
           />
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
-          {[['all','All'], ['listed','Available'], ['in_auction','In Auction']].map(([val, label]) => (
+          {[['all','All'], ['ready','Available'], ['in_auction','In Auction']].map(([val, label]) => (
             <button key={val} onClick={() => setStatusFilter(val)} style={{
               padding: '7px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: '1.5px solid',
               borderColor: statusFilter === val ? '#0d2550' : '#e5e7eb',
@@ -293,12 +297,24 @@ export default function Inventory() {
                   </button>
                 }
               >
-                {isInAuction && (
-                  <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
-                    {bidCount === 0 ? '0 bids' : `${bidCount} bid${bidCount !== 1 ? 's' : ''}`}
-                    {v.floor_price ? ` · floor $${parseFloat(v.floor_price).toLocaleString()}` : ''}
-                  </div>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
+                  {v.condition && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span style={{
+                        background: CONDITION_COLOR[conditionScore(v.condition)] || '#6b7280',
+                        color: '#fff', fontWeight: 800, fontSize: 12,
+                        width: 22, height: 22, borderRadius: 6,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>{conditionScore(v.condition)}</span>
+                      <span style={{ fontSize: 11, color: '#6b7280' }}>{conditionLabel(v.condition)}</span>
+                    </div>
+                  )}
+                  {isInAuction && (
+                    <div style={{ fontSize: 11, color: '#9ca3af' }}>
+                      {bidCount === 0 ? '0 bids' : `${bidCount} bid${bidCount !== 1 ? 's' : ''}`}
+                    </div>
+                  )}
+                </div>
               </VehicleCard>
             );
           })}
