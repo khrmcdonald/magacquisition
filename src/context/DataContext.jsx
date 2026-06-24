@@ -329,6 +329,16 @@ export function DataProvider({ children }) {
     await updateAuction(currentAuction.id, { status: 'closed', closed_at: now });
     setAuctions(prev => prev.map(a => a.id === currentAuction.id ? { ...a, isOpen: false, closedDate: now } : a));
 
+    // Update vehicle statuses in local state
+    setVehicles(prev => prev.map(v => {
+      if (v.status !== 'in_auction') return v;
+      const vehicleBids = bids.filter(b => b.vehicleId === v.id);
+      if (!vehicleBids.length) return { ...v, status: 'no_sale' };
+      const winner = [...vehicleBids].sort((a, b) => b.amount - a.amount)[0];
+      if (v.floorPrice && winner.amount < parseFloat(v.floorPrice)) return { ...v, status: 'no_sale' };
+      return { ...v, status: 'awarded', winnerId: winner.storeId, winnerName: winner.storeName, winningBid: winner.amount, awardedAt: now };
+    }));
+
     if (newTransport.length) {
       await supabase.from('transport').insert(newTransport.map(t => ({
         id: t.id,
@@ -341,6 +351,7 @@ export function DataProvider({ children }) {
         status: t.status,
         steps: t.steps,
       })));
+      setTransport(prev => [...prev, ...newTransport]);
     }
   };
 
@@ -395,6 +406,7 @@ export function DataProvider({ children }) {
   const deleteVehicle = async (id) => {
     const { error } = await supabase.from('vehicles').delete().eq('id', id);
     if (error) throw error;
+    setVehicles(prev => prev.filter(v => v.id !== id));
   };
 
   const listVehicle = async (id) => {
@@ -405,6 +417,7 @@ export function DataProvider({ children }) {
     await updateVehicle(id, { status: 'ready' });
     const { error } = await supabase.from('bids').delete().eq('vehicle_id', id);
     if (error) throw error;
+    setBids(prev => prev.filter(b => b.vehicleId !== id));
   };
 
   const getMileage = async (vehicleId) => {
@@ -421,7 +434,7 @@ export function DataProvider({ children }) {
   // ── Bid mutations ─────────────────────────────────────────────────────────
   // Primary: one bid per store per vehicle per auction (upserts)
   const addBid = async (bid) => {
-    const { error } = await supabase
+    const { data: row, error } = await supabase
       .from('bids')
       .upsert({
         org_id: ORG_ID,
@@ -432,8 +445,15 @@ export function DataProvider({ children }) {
         auction_id: bid.auctionId,
         placed_at: bid.placedAt || new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'vehicle_id,store_id,auction_id' });
+      }, { onConflict: 'vehicle_id,store_id,auction_id' })
+      .select()
+      .single();
     if (error) throw error;
+    const mapped = mapBid(row);
+    setBids(prev => {
+      const idx = prev.findIndex(b => b.vehicleId === bid.vehicleId && b.storeId === bid.storeId && b.auctionId === bid.auctionId);
+      return idx >= 0 ? prev.map((b, i) => i === idx ? mapped : b) : [...prev, mapped];
+    });
   };
 
   // Backward-compat wrapper used by existing components
