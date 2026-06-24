@@ -57,16 +57,11 @@ function mapBid(r) {
 function mapAuction(r) {
   return {
     id: r.id,
-    // Support both is_open (boolean) and status (string) column conventions
-    isOpen: r.is_open === true || r.status === 'open',
-    openDate: r.open_date,
-    closeDate: r.close_date,
+    isOpen: r.status === 'open',
+    openDate: r.open_at,
+    closeDate: r.close_at,
     label: r.label,
-    closedDate: r.closed_date,
-    vehicleCount: r.vehicle_count,
-    awardedCount: r.awarded_count,
-    noSaleCount: r.no_sale_count,
-    totalVolume: r.total_volume,
+    closedDate: r.closed_at,
   };
 }
 
@@ -262,7 +257,7 @@ export function DataProvider({ children }) {
     if (!currentAuction) return;
     const mapped = {};
     if ('isOpen' in fields) mapped.status = fields.isOpen ? 'open' : 'closed';
-    if ('closeDate' in fields) mapped.close_date = fields.closeDate;
+    if ('closeDate' in fields) mapped.close_at = fields.closeDate;
     if ('label' in fields) mapped.label = fields.label;
     await updateAuction(currentAuction.id, mapped);
   };
@@ -270,8 +265,8 @@ export function DataProvider({ children }) {
   const openAuction = async (closeDate, label) => {
     await addAuction({
       status: 'open',
-      open_date: new Date().toISOString(),
-      close_date: closeDate,
+      open_at: new Date().toISOString(),
+      close_at: closeDate,
       label: label || '',
     });
   };
