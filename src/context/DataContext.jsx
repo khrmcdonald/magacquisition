@@ -263,12 +263,13 @@ export function DataProvider({ children }) {
   };
 
   const openAuction = async (closeDate, label) => {
-    await addAuction({
+    const row = await addAuction({
       status: 'open',
       open_at: new Date().toISOString(),
       close_at: closeDate,
       label: label || '',
     });
+    if (row) setAuctions(prev => [...prev, mapAuction(row)]);
   };
 
   const closeAuction = async () => {
