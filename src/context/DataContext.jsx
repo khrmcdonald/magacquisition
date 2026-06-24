@@ -376,6 +376,7 @@ export function DataProvider({ children }) {
       .select()
       .single();
     if (error) throw error;
+    setVehicles(prev => [...prev, mapVehicle(row)]);
     return row;
   };
 

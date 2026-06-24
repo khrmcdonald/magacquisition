@@ -83,9 +83,10 @@ export default function AuctionManage() {
             <div className="alert alert-info" style={{ marginBottom: 16 }}>
               {readyVehicles.length} vehicle{readyVehicles.length !== 1 ? 's' : ''} are ready to list. You can list them from the Acquisitions page after opening the auction.
             </div>
-            <button type="submit" className="btn-navy" disabled={!closeDate}>
+            <button type="submit" className="btn-navy" disabled={!closeDate} style={{ opacity: !closeDate ? 0.5 : 1 }}>
               Open auction
             </button>
+            {!closeDate && <p style={{ marginTop: 8, fontSize: 12, color: '#9ca3af' }}>Select a close date & time to open the auction.</p>}
           </form>
         ) : (
           <div>
@@ -305,9 +306,7 @@ export default function AuctionManage() {
                       {h.totalVolume ? `$${h.totalVolume.toLocaleString()}` : '—'}
                     </td>
                     <td>
-                      <span className={`badge ${h.closedDate ? 'badge-gray' : 'badge-green'}`}>
-                        {h.closedDate ? 'Closed' : 'Open'}
-                      </span>
+                      <span className="badge badge-gray">Closed</span>
                     </td>
                   </tr>
                 ))}
