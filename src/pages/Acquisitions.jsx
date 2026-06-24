@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase, uploadVehiclePhoto } from '../lib/supabase';
 import { VehicleCard } from '../components/VehicleCard';
+import RepairOrdersModal from '../components/RepairOrdersModal';
 
 const CONDITIONS = ['Excellent', 'Good', 'Fair', 'Poor'];
 const RECON_ITEMS = ['Detail', 'Tires', 'Brakes', 'Body work', 'Mechanical', 'Glass', 'Interior', 'Paint', 'Other'];
@@ -757,6 +758,7 @@ export default function Acquisitions() {
   const { user } = useAuth();
   const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, resolveArbitration } = useData();
   const [resolveModal, setResolveModal] = useState(null);
+  const [repairModal, setRepairModal] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [viewVehicle, setViewVehicle] = useState(null);
@@ -1089,6 +1091,7 @@ export default function Acquisitions() {
                         <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { alert('Failed to remove: ' + err.message); } }} style={{ flex: 1, background: '#fef3c7', color: '#92400e', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
                       )}
                       <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} style={iconBtn} title="Edit">✏️</button>
+                      <button onClick={() => setRepairModal(v)} style={iconBtn} title="Repairs">🔧</button>
                       <button onClick={() => handlePrintBuySheet(v)} style={iconBtn} title="Print">🧾</button>
                       <button onClick={() => setConfirmDelete(v)} style={{ ...iconBtn, background: '#FEF2F2', border: '1px solid #FECACA' }} title="Delete">🗑️</button>
                     </div>
@@ -1266,6 +1269,9 @@ export default function Acquisitions() {
           </div>
         </div>
       )}
+
+      {/* Repair orders modal */}
+      {repairModal && <RepairOrdersModal vehicle={repairModal} onClose={() => setRepairModal(null)} />}
 
       {/* Resolve arbitration modal */}
       {resolveModal && (

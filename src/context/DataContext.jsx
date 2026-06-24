@@ -80,6 +80,36 @@ function mapTransport(r) {
   };
 }
 
+function mapRepairOrderLine(r) {
+  return {
+    id: r.id,
+    repairOrderId: r.repair_order_id,
+    description: r.description,
+    cost: parseFloat(r.cost) || 0,
+    status: r.status || 'pending',
+    notes: r.notes,
+    createdAt: r.created_at,
+  };
+}
+
+function mapRepairOrder(r) {
+  return {
+    id: r.id,
+    vehicleId: r.vehicle_id,
+    vin6: r.vin6,
+    vendorId: r.vendor_id,
+    status: r.status,
+    notes: r.notes,
+    totalCost: parseFloat(r.total_cost) || 0,
+    createdAt: r.created_at,
+    lines: (r.repair_order_lines || []).map(mapRepairOrderLine),
+  };
+}
+
+function mapRepairVendor(r) {
+  return { id: r.id, name: r.name, phone: r.phone, type: r.type };
+}
+
 // Map camelCase vehicle fields back to snake_case for Supabase writes
 const VEHICLE_FIELD_MAP = {
   status: 'status', year: 'year', make: 'make', model: 'model', trim: 'trim',
@@ -110,33 +140,41 @@ export function DataProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const [transport, setTransport] = useState([]);
+  const [repairOrders, setRepairOrders] = useState([]);
+  const [repairVendors, setRepairVendors] = useState([]);
   const [badges, setBadges] = useState({});
   const [storePhotos, setStorePhotos] = useState({});
 
   // ── Initial data fetch ───────────────────────────────────────────────────
   useEffect(() => {
     async function fetchAll() {
-      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes] = await Promise.all([
+      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes, repairOrdersRes, repairVendorsRes] = await Promise.all([
         supabase.from('vehicles').select('*').eq('org_id', ORG_ID),
         supabase.from('auctions').select('*').eq('org_id', ORG_ID),
         supabase.from('bids').select('*').eq('org_id', ORG_ID),
         supabase.from('locations').select('*').eq('org_id', ORG_ID),
         supabase.from('acquisition_sources').select('*').eq('org_id', ORG_ID),
         supabase.from('transport').select('*').eq('org_id', ORG_ID),
+        supabase.from('repair_orders').select('*, repair_order_lines(*)').eq('org_id', ORG_ID),
+        supabase.from('repair_vendors').select('*').eq('org_id', ORG_ID).eq('active', true),
       ]);
-      if (vehiclesRes.error)   console.log('vehicles fetch error:',  JSON.stringify(vehiclesRes.error));
-      if (auctionsRes.error)   console.log('auctions fetch error:',  JSON.stringify(auctionsRes.error));
-      if (bidsRes.error)       console.log('bids fetch error:',      JSON.stringify(bidsRes.error));
-      if (locationsRes.error)  console.log('locations fetch error:', JSON.stringify(locationsRes.error));
-      if (sourcesRes.error)    console.log('sources fetch error:',   JSON.stringify(sourcesRes.error));
-      if (transportRes.error)  console.log('transport fetch error:', JSON.stringify(transportRes.error));
+      if (vehiclesRes.error)      console.log('vehicles fetch error:',      JSON.stringify(vehiclesRes.error));
+      if (auctionsRes.error)      console.log('auctions fetch error:',      JSON.stringify(auctionsRes.error));
+      if (bidsRes.error)          console.log('bids fetch error:',          JSON.stringify(bidsRes.error));
+      if (locationsRes.error)     console.log('locations fetch error:',     JSON.stringify(locationsRes.error));
+      if (sourcesRes.error)       console.log('sources fetch error:',       JSON.stringify(sourcesRes.error));
+      if (transportRes.error)     console.log('transport fetch error:',     JSON.stringify(transportRes.error));
+      if (repairOrdersRes.error)  console.log('repair_orders fetch error:', JSON.stringify(repairOrdersRes.error));
+      if (repairVendorsRes.error) console.log('repair_vendors fetch error:', JSON.stringify(repairVendorsRes.error));
 
-      if (vehiclesRes.data)   setVehicles(vehiclesRes.data.map(mapVehicle));
-      if (auctionsRes.data)   setAuctions(auctionsRes.data.map(mapAuction));
-      if (bidsRes.data)       setBids(bidsRes.data.map(mapBid));
-      if (locationsRes.data)  setLocations(locationsRes.data);
-      if (sourcesRes.data)    setAcquisitionSources(sourcesRes.data);
-      if (transportRes.data)  setTransport(transportRes.data.map(mapTransport));
+      if (vehiclesRes.data)      setVehicles(vehiclesRes.data.map(mapVehicle));
+      if (auctionsRes.data)      setAuctions(auctionsRes.data.map(mapAuction));
+      if (bidsRes.data)          setBids(bidsRes.data.map(mapBid));
+      if (locationsRes.data)     setLocations(locationsRes.data);
+      if (sourcesRes.data)       setAcquisitionSources(sourcesRes.data);
+      if (transportRes.data)     setTransport(transportRes.data.map(mapTransport));
+      if (repairOrdersRes.data)  setRepairOrders(repairOrdersRes.data.map(mapRepairOrder));
+      if (repairVendorsRes.data) setRepairVendors(repairVendorsRes.data.map(mapRepairVendor));
       setLoading(false);
     }
     fetchAll();
@@ -492,6 +530,61 @@ export function DataProvider({ children }) {
     if (error) console.error('updateTransport error:', error);
   };
 
+  // ── Repair orders ─────────────────────────────────────────────────────────
+  const addRepairOrder = async (vehicleId, vin6, vendorId, notes) => {
+    const { data: row, error } = await supabase
+      .from('repair_orders')
+      .insert({ org_id: ORG_ID, vehicle_id: vehicleId, vin6: vin6 || null, vendor_id: vendorId || null, status: 'pending', notes: notes || null, total_cost: 0 })
+      .select('*, repair_order_lines(*)')
+      .single();
+    if (error) throw error;
+    const mapped = mapRepairOrder(row);
+    setRepairOrders(prev => [...prev, mapped]);
+    return mapped;
+  };
+
+  const updateRepairOrder = async (id, fields) => {
+    const { error } = await supabase.from('repair_orders').update(fields).eq('id', id);
+    if (error) throw error;
+    setRepairOrders(prev => prev.map(r => r.id === id ? { ...r, status: fields.status ?? r.status, notes: fields.notes ?? r.notes } : r));
+  };
+
+  const deleteRepairOrder = async (id) => {
+    const { error } = await supabase.from('repair_orders').delete().eq('id', id);
+    if (error) throw error;
+    setRepairOrders(prev => prev.filter(r => r.id !== id));
+  };
+
+  const addRepairOrderLine = async (repairOrderId, description, cost, notes) => {
+    const { data: row, error } = await supabase
+      .from('repair_order_lines')
+      .insert({ repair_order_id: repairOrderId, description, cost: parseFloat(cost) || 0, notes: notes || null, status: 'pending' })
+      .select()
+      .single();
+    if (error) throw error;
+    const mapped = mapRepairOrderLine(row);
+    setRepairOrders(prev => prev.map(r => {
+      if (r.id !== repairOrderId) return r;
+      const newLines = [...r.lines, mapped];
+      const newTotal = newLines.reduce((s, l) => s + l.cost, 0);
+      supabase.from('repair_orders').update({ total_cost: newTotal }).eq('id', repairOrderId);
+      return { ...r, lines: newLines, totalCost: newTotal };
+    }));
+    return mapped;
+  };
+
+  const deleteRepairOrderLine = async (lineId, repairOrderId) => {
+    const { error } = await supabase.from('repair_order_lines').delete().eq('id', lineId);
+    if (error) throw error;
+    setRepairOrders(prev => prev.map(r => {
+      if (r.id !== repairOrderId) return r;
+      const newLines = r.lines.filter(l => l.id !== lineId);
+      const newTotal = newLines.reduce((s, l) => s + l.cost, 0);
+      supabase.from('repair_orders').update({ total_cost: newTotal }).eq('id', repairOrderId);
+      return { ...r, lines: newLines, totalCost: newTotal };
+    }));
+  };
+
   // ── Arbitration ───────────────────────────────────────────────────────────
   const fileArbitration = async (vehicleId, storeId, storeName, issueType, details) => {
     await updateVehicle(vehicleId, {
@@ -591,6 +684,10 @@ export function DataProvider({ children }) {
       getHighBid, getMyBid, getAllBidsForVehicle,
       // Transport
       updateTransport,
+      // Repair orders
+      repairOrders, repairVendors,
+      addRepairOrder, updateRepairOrder, deleteRepairOrder,
+      addRepairOrderLine, deleteRepairOrderLine,
       // Arbitration
       fileArbitration, resolveArbitration,
       // Photos & badges
