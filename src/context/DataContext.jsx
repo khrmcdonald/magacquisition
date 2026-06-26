@@ -33,7 +33,8 @@ function mapVehicle(r) {
     id: r.id,
     status: r.status,
     year: r.year, make: r.make, model: r.model, trim: r.trim,
-    color: r.color, mileage: r.mileage, vin: r.vin,
+    color: r.color, interior_color: r.interior_color || null,
+    mileage: r.mileage, vin: r.vin,
     condition: r.condition,
     purchasePrice: r.purchase_price,
     overheadCosts: r.overhead_costs,
@@ -41,11 +42,12 @@ function mapVehicle(r) {
     totalCost: (parseFloat(r.purchase_price) || 0) + (parseFloat(r.overhead_costs) || 0) + (parseFloat(r.total_repair_costs) || 0) || null,
     floorPrice: r.floor_price,
     listPrice: r.list_price,
-    notes: r.disclosure_notes,   // DB column is disclosure_notes
+    notes: r.disclosure_notes,
     photos: Array.isArray(r.photos) ? r.photos : [],
-    currentLocation: r.current_location_id,  // UUID FK — text display needs a locations table join
+    currentLocation: r.current_location_id,
     titleStatus: r.title_status,
     titleElectronic: r.title_electronic,
+    title_tracker: r.title_tracker || null,
     canListBeforeTitle: r.can_list_before_title,
     winnerId: r.winner_id,
     winnerName: r.winner_name,
@@ -54,7 +56,8 @@ function mapVehicle(r) {
     listedAt: r.listed_at,
     createdAt: r.created_at,
     arbitration: r.arbitration,
-    keys: r.keys || null,
+    buyer_id: r.buyer_id || null,
+    buyer_name: r.buyer_name || null,
   };
 }
 
@@ -138,10 +141,13 @@ const VEHICLE_FIELD_MAP = {
   photos: 'photos',
   currentLocation: 'current_location_id',
   titleStatus: 'title_status', titleElectronic: 'title_electronic',
+  title_tracker: 'title_tracker',
   canListBeforeTitle: 'can_list_before_title',
   winnerId: 'winner_id', winnerName: 'winner_name', winningBid: 'winning_bid',
   awardedAt: 'awarded_at',
-  keys: 'keys',
+  interior_color: 'interior_color',
+  buyer_id: 'buyer_id',
+  buyer_name: 'buyer_name',
 };
 
 function toSnakeCase(fields) {
@@ -159,6 +165,7 @@ export function DataProvider({ children }) {
   const [bids, setBids] = useState([]);
   const [locations, setLocations] = useState([]);
   const [acquisitionSources, setAcquisitionSources] = useState([]);
+  const [buyers, setBuyers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [transport, setTransport] = useState([]);
@@ -171,7 +178,7 @@ export function DataProvider({ children }) {
   // ── Initial data fetch ───────────────────────────────────────────────────
   useEffect(() => {
     async function fetchAll() {
-      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes, repairOrdersRes, repairVendorsRes] = await Promise.all([
+      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes, repairOrdersRes, repairVendorsRes, buyersRes] = await Promise.all([
         supabase.from('vehicles').select('*').eq('org_id', ORG_ID),
         supabase.from('auctions').select('*').eq('org_id', ORG_ID),
         supabase.from('bids').select('*').eq('org_id', ORG_ID),
@@ -180,6 +187,7 @@ export function DataProvider({ children }) {
         supabase.from('transport').select('*').eq('org_id', ORG_ID),
         supabase.from('repair_orders').select('*, repair_order_lines(*)').eq('org_id', ORG_ID),
         supabase.from('repair_vendors').select('*').eq('org_id', ORG_ID).eq('active', true),
+        supabase.from('profiles').select('id, name, buyer_number, role').eq('org_id', ORG_ID).eq('role', 'wholesale'),
       ]);
       if (vehiclesRes.error) {
         setFetchError('Could not load vehicle data. Check your connection and refresh the page.');
@@ -195,6 +203,7 @@ export function DataProvider({ children }) {
       if (repairVendorsRes.error) console.warn('repair_vendors fetch error:', repairVendorsRes.error?.message);
 
       if (vehiclesRes.data)      setVehicles(vehiclesRes.data.map(mapVehicle));
+      if (buyersRes.data)        setBuyers(buyersRes.data);
       if (auctionsRes.data)      setAuctions(auctionsRes.data.map(mapAuction));
       if (bidsRes.data)          setBids(bidsRes.data.map(mapBid));
       if (locationsRes.data)     setLocations(locationsRes.data);
@@ -300,6 +309,7 @@ export function DataProvider({ children }) {
     auctions,
     locations,
     acquisition_sources: acquisitionSources,
+    buyers,
   };
 
   // ── Auction mutations ─────────────────────────────────────────────────────
@@ -775,6 +785,12 @@ export function DataProvider({ children }) {
     if (error) throw error;
     setAcquisitionSources(prev => prev.filter(s => s.id !== id));
   };
+  const updateBuyerNumber = async (userId, buyerNumber) => {
+    const { error } = await supabase.from('profiles').update({ buyer_number: buyerNumber || null }).eq('id', userId);
+    if (error) throw error;
+    setBuyers(prev => prev.map(b => b.id === userId ? { ...b, buyer_number: buyerNumber || null } : b));
+  };
+
   const addLocation = async (name) => {
     const { data: row, error } = await supabase.from('locations').insert({ org_id: ORG_ID, name: name.trim() }).select().single();
     if (error) throw error;
@@ -811,6 +827,7 @@ export function DataProvider({ children }) {
       // Sources & locations
       addAcquisitionSource, deleteAcquisitionSource,
       addLocation, deleteLocation,
+      updateBuyerNumber,
     }}>
       {children}
     </DataContext.Provider>

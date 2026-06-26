@@ -458,52 +458,16 @@ function YesNoToggle({ value, onChange }) {
   );
 }
 
-// ── KeyTracker ────────────────────────────────────────────────────────────────
-const KEY_OPTS = [
-  { value: 'on_lot',      label: 'On Lot',      color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' },
-  { value: 'checked_out', label: 'Checked Out', color: '#92400e', bg: '#fef3c7', border: '#fcd34d' },
-  { value: 'missing',     label: 'Missing',     color: '#991b1b', bg: '#fee2e2', border: '#fca5a5' },
-];
-
-function KeyTracker({ vehicle, onUpdate }) {
-  const status = vehicle.keys?.status || null;
-
-  return (
-    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-      {KEY_OPTS.map(opt => {
-        const active = status === opt.value;
-        return (
-          <button
-            key={opt.value}
-            onClick={e => { e.stopPropagation(); onUpdate({ status: active ? null : opt.value }); }}
-            style={{
-              padding: '4px 10px', borderRadius: 20,
-              border: `1.5px solid ${active ? opt.border : '#e5e7eb'}`,
-              background: active ? opt.bg : '#fff',
-              color: active ? opt.color : '#9ca3af',
-              fontSize: 11, fontWeight: active ? 700 : 500,
-              cursor: 'pointer', transition: 'all 0.12s', whiteSpace: 'nowrap',
-            }}
-            onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = opt.border; e.currentTarget.style.color = opt.color; } }}
-            onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.color = '#9ca3af'; } }}
-          >
-            {opt.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 // ── VehicleForm ───────────────────────────────────────────────────────────────
-function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], addLocation, pickupAddresses = [], buyerNames = [] }) {
+function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], addLocation, pickupAddresses = [], buyers = [] }) {
   const [form, setForm] = useState(initial ? {
     ...initial,
     photos: Array.isArray(initial.photos) ? initial.photos : [],
     source_id: sources.find(s => s.label === initial.source)?.value || '',
     interior_color: initial.interior_color || '',
-    // deal fields default empty on edit (deal_record already exists)
-    seller_name: '', buyer_rep: '', purchase_amount: '',
+    // deal fields default empty on edit
+    seller_name: '', buyer_id: initial.buyer_id || '', purchase_amount: '',
     lienholder: '', payoff_amount: '', cashiers_check: false,
     title_electronic: false, pickup_address: '',
     needsTransport: false,
@@ -514,7 +478,7 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
     overheadCosts: '', floorPrice: '', photos: [],
     titleStatus: 'pending', currentLocation: '',
     // deal record fields
-    seller_name: '', buyer_rep: '', purchase_amount: '',
+    seller_name: '', buyer_id: '', purchase_amount: '',
     lienholder: '', payoff_amount: '', cashiers_check: false,
     title_electronic: false, pickup_address: '',
     needsTransport: false,
@@ -746,11 +710,15 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
           <input type="text" value={form.seller_name} onChange={e => set('seller_name', e.target.value)} placeholder="John Smith" />
         </div>
         <div className="form-group">
-          <label>Buyer / Acq. rep</label>
-          <input list="buyer-names-list" value={form.buyer_rep} onChange={e => set('buyer_rep', e.target.value)} placeholder="Team member name" autoComplete="off" />
-          <datalist id="buyer-names-list">
-            {buyerNames.map(n => <option key={n} value={n} />)}
-          </datalist>
+          <label>Buyer</label>
+          <select value={form.buyer_id} onChange={e => set('buyer_id', e.target.value)}>
+            <option value="">— Unassigned —</option>
+            {buyers.map(b => (
+              <option key={b.id} value={b.id}>
+                {b.buyer_number ? `#${b.buyer_number} — ${b.name}` : b.name}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="form-group">
           <label>Lienholder</label>
@@ -867,6 +835,7 @@ const STATUS_LABELS = {
 export default function Acquisitions() {
   const { user } = useAuth();
   const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, addLocation } = useData();
+  const buyers = data.buyers || [];
   const { showToast } = useToast();
   const [resolveModal, setResolveModal] = useState(null);
   const [repairModal, setRepairModal] = useState(null);
@@ -874,6 +843,7 @@ export default function Acquisitions() {
   const [editing, setEditing] = useState(null);
   const [viewVehicle, setViewVehicle] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [myBuysOnly, setMyBuysOnly] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -907,12 +877,11 @@ export default function Acquisitions() {
   const pickupAddresses = [...new Set(
     (data.transport || []).filter(t => t.storeName === 'Intake' && t.notes).map(t => t.notes)
   )];
-  const buyerNames = [...new Set(
-    (data.vehicles || []).filter(v => v.buyer_name).map(v => v.buyer_name)
-  )];
 
   const allVehicles = data.vehicles;
-  const filtered = statusFilter === 'all' ? allVehicles : allVehicles.filter(v => v.status === statusFilter);
+  const filtered = allVehicles
+    .filter(v => statusFilter === 'all' || v.status === statusFilter)
+    .filter(v => !myBuysOnly || v.buyer_id === user?.id);
 
   const fmtErr = (e) => e?.message ?? e?.details ?? JSON.stringify(e);
 
@@ -920,16 +889,20 @@ export default function Acquisitions() {
     setSaveError(null);
     // Separate deal record fields from vehicle fields
     const {
-      seller_name, buyer_rep, purchase_amount, lienholder, payoff_amount,
+      seller_name, buyer_id: formBuyerId, purchase_amount, lienholder, payoff_amount,
       cashiers_check, title_electronic, pickup_address,
       source_id, needsTransport, vendorNotes,
       ...vehicleFields
     } = vehicleData;
 
     const orgId = user?.org_id || 'bf236d2b-4693-4606-bf3d-ece1767690ab';
+    const selectedBuyer = buyers.find(b => b.id === formBuyerId);
 
     const saveFields = { ...vehicleFields };
-    if (buyer_rep) saveFields.buyer_name = buyer_rep;
+    if (formBuyerId) {
+      saveFields.buyer_id = formBuyerId;
+      saveFields.buyer_name = selectedBuyer?.name || null;
+    }
 
     if (editing) {
       try { await updateVehicle(editing.id, { ...saveFields, status: editing.status }); }
@@ -952,7 +925,7 @@ export default function Acquisitions() {
             vehicle_id: newVehicle.id,
             org_id: orgId,
             seller_name: seller_name || null,
-            buyer_rep: buyer_rep || null,
+            buyer_rep: selectedBuyer?.name || null,
             purchase_amount: purchase_amount ? parseFloat(purchase_amount) : null,
             lienholder: lienholder || null,
             payoff_amount: lienholder && payoff_amount ? parseFloat(payoff_amount) : null,
@@ -1036,10 +1009,6 @@ export default function Acquisitions() {
     catch (err) { showToast('Status update failed: ' + err.message, 'error'); }
   };
 
-  const handleKeyUpdate = async (v, keysData) => {
-    try { await updateVehicle(v.id, { keys: { ...(v.keys || {}), ...keysData } }); }
-    catch (err) { showToast('Key status update failed: ' + err.message, 'error'); }
-  };
 
   const statusCounts = {};
   allVehicles.forEach(v => { statusCounts[v.status] = (statusCounts[v.status] || 0) + 1; });
@@ -1142,15 +1111,28 @@ export default function Acquisitions() {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {/* View toggle */}
-          <div style={{ display: 'flex', border: '1.5px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
-            {[['grid','⊞'],['list','☰']].map(([mode, icon]) => (
-              <button key={mode} onClick={() => setViewMode(mode)} style={{
-                padding: '7px 12px', border: 'none', cursor: 'pointer', fontSize: 14,
-                background: viewMode === mode ? '#0d2550' : '#fff',
-                color: viewMode === mode ? '#fff' : '#6b7280',
-                borderRight: mode === 'grid' ? '1px solid #e5e7eb' : 'none',
-              }}>{icon}</button>
-            ))}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {user?.role === 'wholesale' && (
+              <button
+                onClick={() => setMyBuysOnly(p => !p)}
+                style={{
+                  padding: '7px 14px', borderRadius: 8, border: `1.5px solid ${myBuysOnly ? '#0d2550' : '#e5e7eb'}`,
+                  background: myBuysOnly ? '#0d2550' : '#fff',
+                  color: myBuysOnly ? '#fff' : '#6b7280',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                }}
+              >My Buys</button>
+            )}
+            <div style={{ display: 'flex', border: '1.5px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+              {[['grid','⊞'],['list','☰']].map(([mode, icon]) => (
+                <button key={mode} onClick={() => setViewMode(mode)} style={{
+                  padding: '7px 12px', border: 'none', cursor: 'pointer', fontSize: 14,
+                  background: viewMode === mode ? '#0d2550' : '#fff',
+                  color: viewMode === mode ? '#fff' : '#6b7280',
+                  borderRight: mode === 'grid' ? '1px solid #e5e7eb' : 'none',
+                }}>{icon}</button>
+              ))}
+            </div>
           </div>
           {!isReadOnly && (
             <button className="btn-navy" onClick={() => { setEditing(null); setSaveError(null); setShowForm(true); }}>
@@ -1262,13 +1244,6 @@ export default function Acquisitions() {
                     {margin !== null && <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: 3, marginTop: 1 }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Margin</span><span style={{ fontSize: 12, fontWeight: 700, color: margin >= 0 ? '#065f46' : '#991b1b' }}>${margin.toLocaleString()}</span></div>}
                   </div>
                 )}
-                {/* Keys */}
-                {!isReadOnly && (
-                  <div style={{ marginTop: 8, borderTop: '1px solid #f3f4f6', paddingTop: 8 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>🔑 Keys</div>
-                    <KeyTracker vehicle={v} onUpdate={(keysData) => handleKeyUpdate(v, keysData)} />
-                  </div>
-                )}
                 {v.notes && (
                   <div style={{ fontSize: 11, color: '#6b7280', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '5px 8px', lineHeight: 1.4 }}>
                     {v.notes}
@@ -1359,12 +1334,6 @@ export default function Acquisitions() {
                   </div>
 
                   {/* Keys */}
-                  {!isReadOnly && (
-                    <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Keys</div>
-                      <KeyTracker vehicle={v} onUpdate={(keysData) => handleKeyUpdate(v, keysData)} />
-                    </div>
-                  )}
 
                   {/* Actions */}
                   {!isReadOnly && (
@@ -1452,7 +1421,7 @@ export default function Acquisitions() {
                 locations={locationOptions}
                 addLocation={addLocation}
                 pickupAddresses={pickupAddresses}
-                buyerNames={buyerNames}
+                buyers={buyers}
               />
             </div>
           </div>

@@ -52,6 +52,7 @@ async function fetchProfile(supabaseUser) {
     role: profile.role,
     org_id: profile.org_id,
     color: profile.color,
+    buyer_number: profile.buyer_number || null,
   };
 }
 
