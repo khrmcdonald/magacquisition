@@ -234,42 +234,6 @@ const TITLE_TRACKER_LABEL = {
   delivered:       'Delivered',
 };
 
-function TaskSection({ title, accent, items, onGoTo }) {
-  if (!items.length) return null;
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <div style={{ width: 3, height: 13, borderRadius: 2, background: accent, flexShrink: 0 }} />
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '.06em' }}>{title}</span>
-        <span style={{ fontSize: 10, fontWeight: 700, color: accent, background: accent + '18', borderRadius: 10, padding: '1px 7px' }}>{items.length}</span>
-        <button onClick={onGoTo} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: 11, color: '#9ca3af', cursor: 'pointer', fontWeight: 600, padding: 0 }}>View all →</button>
-      </div>
-      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
-        {items.map((item, i) => (
-          <div key={i} onClick={onGoTo} style={{
-            padding: '9px 14px', cursor: 'pointer',
-            borderTop: i > 0 ? '1px solid #f3f4f6' : 'none',
-            transition: 'background 0.1s',
-          }}
-            onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
-            onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-          >
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{item.primary}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
-              {item.badge && (
-                <span style={{ fontSize: 10, fontWeight: 700, color: item.badge.color, background: item.badge.bg, padding: '1px 8px', borderRadius: 20 }}>
-                  {item.badge.label}
-                </span>
-              )}
-              {item.secondary && <span style={{ fontSize: 11, color: '#9ca3af' }}>{item.secondary}</span>}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ── TODAY'S WORK ──
 function TodaysTasks({ data, navigate }) {
   const ros = data.repairOrders || [];
@@ -288,22 +252,14 @@ function TodaysTasks({ data, navigate }) {
     .map(r => {
       const v = vehicles.find(vv => vv.id === r.vehicleId);
       const desc = r.lines?.[0]?.description || r.notes || null;
-      return {
-        primary: v ? `${v.year} ${v.make} ${v.model}` : 'Unknown vehicle',
-        secondary: desc,
-        badge: STATUS_BADGE[r.status] || null,
-      };
+      return { primary: v ? `${v.year} ${v.make} ${v.model}` : 'Unknown vehicle', secondary: desc, badge: STATUS_BADGE[r.status] || null };
     });
 
   const transportItems = transport
     .filter(t => !['arrived','titleReceived'].includes(t.status))
     .map(t => {
       const st = TRANSPORT_STATUS_LABEL[t.status];
-      return {
-        primary: t.vehicleName || 'Unknown vehicle',
-        secondary: t.storeName ? `→ ${t.storeName}` : null,
-        badge: st || null,
-      };
+      return { primary: t.vehicleName || 'Unknown vehicle', secondary: t.storeName ? `→ ${t.storeName}` : null, badge: st || null };
     });
 
   const titleItems = vehicles
@@ -318,15 +274,17 @@ function TodaysTasks({ data, navigate }) {
       return {
         primary: `${v.year} ${v.make} ${v.model}`,
         secondary: null,
-        badge: ts
-          ? { label: statusLabel, color: '#6d28d9', bg: '#ede9fe' }
-          : { label: statusLabel || 'Unknown', color: '#92400e', bg: '#fef3c7' },
+        badge: ts ? { label: statusLabel, color: '#6d28d9', bg: '#ede9fe' } : { label: statusLabel || 'Unknown', color: '#92400e', bg: '#fef3c7' },
       };
     });
 
-  const hasAny = repairItems.length || transportItems.length || titleItems.length;
+  const sections = [
+    { key: 'repairs',   title: 'Repairs',   accent: '#3b82f6', items: repairItems,    route: '/repairs' },
+    { key: 'transport', title: 'Transport',  accent: '#e8b84b', items: transportItems, route: '/transport' },
+    { key: 'titles',    title: 'Titles',     accent: '#8b5cf6', items: titleItems,     route: '/acquisitions' },
+  ].filter(s => s.items.length > 0);
 
-  if (!hasAny) return (
+  if (!sections.length) return (
     <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '14px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
       <span style={{ fontSize: 16 }}>✓</span>
       <span style={{ fontSize: 13, fontWeight: 600, color: '#065f46' }}>All caught up — nothing needs attention right now.</span>
@@ -335,10 +293,45 @@ function TodaysTasks({ data, navigate }) {
 
   return (
     <div style={{ marginBottom: 24 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 14 }}>Needs Attention</div>
-      <TaskSection title="Repairs"   accent="#3b82f6" items={repairItems}    onGoTo={() => navigate('/repairs')} />
-      <TaskSection title="Transport" accent="#e8b84b" items={transportItems} onGoTo={() => navigate('/transport')} />
-      <TaskSection title="Titles"    accent="#8b5cf6" items={titleItems}     onGoTo={() => navigate('/acquisitions')} />
+      <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 12 }}>Needs Attention</div>
+      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+        {sections.map((section, si) => (
+          <div key={section.key} style={{ borderTop: si > 0 ? '1px solid #e5e7eb' : 'none' }}>
+            {/* Section heading */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 3, height: 13, borderRadius: 2, background: section.accent, flexShrink: 0 }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{section.title}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: section.accent, background: section.accent + '18', borderRadius: 10, padding: '1px 7px' }}>{section.items.length}</span>
+              </div>
+              <button onClick={() => navigate(section.route)} style={{ background: 'none', border: 'none', fontSize: 12, color: '#9ca3af', cursor: 'pointer', fontWeight: 600, padding: 0 }}>
+                View all →
+              </button>
+            </div>
+            {/* Items */}
+            {section.items.map((item, i) => (
+              <div key={i} onClick={() => navigate(section.route)} style={{
+                padding: '10px 16px',
+                borderTop: i > 0 ? '1px solid #f3f4f6' : 'none',
+                cursor: 'pointer', transition: 'background 0.1s',
+              }}
+                onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                onMouseLeave={e => e.currentTarget.style.background = ''}
+              >
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{item.primary}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                  {item.badge && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: item.badge.color, background: item.badge.bg, padding: '2px 8px', borderRadius: 20 }}>
+                      {item.badge.label}
+                    </span>
+                  )}
+                  {item.secondary && <span style={{ fontSize: 11, color: '#9ca3af' }}>{item.secondary}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

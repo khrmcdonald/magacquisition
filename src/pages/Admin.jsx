@@ -525,11 +525,12 @@ export default function Admin() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
               {[
-                { field: 'dealerName',    label: 'Dealer Name',           placeholder: 'McDonald Auto Group' },
-                { field: 'licenseNumber', label: 'Dealer License Number', placeholder: 'MI-12345678' },
-                { field: 'address',       label: 'Dealer Address',        placeholder: '123 Main St, Detroit, MI 48201' },
-                { field: 'phone',         label: 'Phone Number',          placeholder: '(313) 555-0100' },
-                { field: 'contactEmail',  label: 'Contact Email',         placeholder: 'contact@dealership.com' },
+                { field: 'dealerName',        label: 'Dealer Name',           placeholder: 'McDonald Auto Group' },
+                { field: 'licenseNumber',     label: 'Dealer License Number', placeholder: 'MI-12345678' },
+                { field: 'dealerBuyerNumber', label: 'Dealer Buyer Number',   placeholder: 'Auction access #' },
+                { field: 'address',           label: 'Dealer Address',        placeholder: '123 Main St, Detroit, MI 48201' },
+                { field: 'phone',             label: 'Phone Number',          placeholder: '(313) 555-0100' },
+                { field: 'contactEmail',      label: 'Contact Email',         placeholder: 'contact@dealership.com' },
               ].map(({ field, label, placeholder }) => (
                 <div key={field}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>{label}</div>
