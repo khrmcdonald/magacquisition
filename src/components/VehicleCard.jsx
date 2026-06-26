@@ -213,9 +213,19 @@ export function VehicleCard({
               {vehicle.vin || '—'}
             </div>
             <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
-              {[vehicle.condition, vehicle.color, mileage != null ? `${parseInt(mileage).toLocaleString()} mi` : null]
-                .filter(Boolean).join(' · ')}
+              {[
+                vehicle.condition,
+                vehicle.color && vehicle.interior_color
+                  ? `${vehicle.color} / ${vehicle.interior_color}`
+                  : (vehicle.color || vehicle.interior_color || null),
+                mileage != null ? `${parseInt(mileage).toLocaleString()} mi` : null,
+              ].filter(Boolean).join(' · ')}
             </div>
+            {vehicle.buyer_name && (
+              <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                Buyer: <span style={{ color: '#6b7280', fontWeight: 600 }}>{vehicle.buyer_name}</span>
+              </div>
+            )}
           </div>
 
           {/* Right: price + badge + age + action */}
@@ -289,9 +299,20 @@ export function VehicleCard({
         </div>
 
         {/* Trim + Color + Condition — 13px muted */}
-        {(vehicle.trim || vehicle.color || vehicle.condition) && (
+        {(vehicle.trim || vehicle.color || vehicle.interior_color || vehicle.condition) && (
           <div style={{ fontSize: 13, color: '#6b7280' }}>
-            {[vehicle.trim, vehicle.color, vehicle.condition].filter(Boolean).join(' · ')}
+            {[
+              vehicle.trim,
+              vehicle.color && vehicle.interior_color
+                ? `${vehicle.color} / ${vehicle.interior_color}`
+                : (vehicle.color || vehicle.interior_color || null),
+              vehicle.condition,
+            ].filter(Boolean).join(' · ')}
+          </div>
+        )}
+        {vehicle.buyer_name && (
+          <div style={{ fontSize: 11, color: '#9ca3af' }}>
+            Buyer: <span style={{ color: '#6b7280', fontWeight: 600 }}>{vehicle.buyer_name}</span>
           </div>
         )}
 

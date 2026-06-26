@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/Toast';
+import { VehicleCard } from '../components/VehicleCard';
 
 const STATUS = {
   draft:            { bg: '#fef3c7', color: '#92400e', label: 'Pending',     next: 'in_progress' },
@@ -170,98 +171,119 @@ export default function Repairs() {
         />
       </div>
 
-      {/* Table */}
+      {/* Grouped by vehicle */}
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: '#9ca3af' }}>
-          <div style={{ fontSize: 40, marginBottom: 10 }}>🔧</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#374151' }}>No repair orders</div>
+          <div style={{ fontSize: 40, marginBottom: 10, opacity: 0.3 }}>🔧</div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: '#374151' }}>No repair orders</div>
           <div style={{ fontSize: 13, marginTop: 4 }}>Add them from the 🔧 button on any vehicle in Acquisitions.</div>
         </div>
       ) : (
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '56px 1fr 160px 120px 90px 56px', gap: 0, padding: '10px 20px', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-            {['', 'Vehicle / Description', 'Vendor', 'Status', 'Cost', ''].map((h, i) => (
-              <div key={i} style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em' }}>{h}</div>
-            ))}
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {(() => {
+            const groups = [];
+            const seen = new Set();
+            filtered.forEach(ro => {
+              if (!seen.has(ro.vehicleId)) {
+                seen.add(ro.vehicleId);
+                groups.push({
+                  vehicle: vehicleMap[ro.vehicleId] || { id: ro.vehicleId, make: ro.vehicleId, model: '', year: '', photos: [], status: 'intake' },
+                  ros: filtered.filter(r => r.vehicleId === ro.vehicleId),
+                });
+              }
+            });
 
-          {filtered.map((ro, i) => {
-            const v      = vehicleMap[ro.vehicleId];
-            const vendor = vendorMap[ro.vendorId];
-            const st     = STATUS[ro.status] || STATUS.draft;
-            const isEditing = editing === ro.id;
-            const vehicleName = v ? `${v.year} ${v.make} ${v.model}` : 'Unknown vehicle';
-            const vin = v?.vin || null;
+            return groups.map(({ vehicle, ros }) => {
+              const totalCost = ros.reduce((s, r) => s + (r.totalCost || 0), 0);
+              const roCount = ros.length;
+              const vehicleName = vehicle.year ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : vehicle.make;
 
-            return (
-              <div key={ro.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
-                {/* Row */}
-                <div
-                  onClick={() => setEditing(isEditing ? null : ro.id)}
-                  style={{
-                    display: 'grid', gridTemplateColumns: '56px 1fr 160px 120px 90px 56px', gap: 0,
-                    padding: '13px 20px', alignItems: 'center', cursor: 'pointer',
-                    background: isEditing ? '#f0f4fb' : (i % 2 === 0 ? '#fff' : '#fafafa'),
-                    transition: 'background 0.1s',
-                  }}
-                  onMouseEnter={e => { if (!isEditing) e.currentTarget.style.background = '#f8faff'; }}
-                  onMouseLeave={e => { if (!isEditing) e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#fafafa'; }}
-                >
-                  {/* Thumbnail */}
-                  <div style={{ width: 48, height: 36, borderRadius: 5, overflow: 'hidden', background: '#f3f4f6', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {v?.photos?.[0]
-                      ? <img src={v.photos[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      : <span style={{ fontSize: 18, opacity: 0.3 }}>🚗</span>
-                    }
-                  </div>
-
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0d2550', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {vehicleName}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1, fontFamily: 'monospace', letterSpacing: '.04em' }}>
-                      {vin || '—'}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {ro.notes || '—'}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 12, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {vendor?.name || <span style={{ color: '#d1d5db' }}>No vendor</span>}
-                  </div>
-                  <div>
-                    <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                      {st.label}
+              return (
+                <VehicleCard
+                  key={vehicle.id}
+                  variant="list"
+                  vehicle={vehicle}
+                  badge={
+                    <span style={{ background: '#f0f4fb', color: '#0d2550', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
+                      {roCount} RO{roCount !== 1 ? 's' : ''}
                     </span>
-                  </div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: '#0d2550' }}>
-                    ${ro.totalCost.toLocaleString()}
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={e => { e.stopPropagation(); handleDelete(ro.id); }}
-                      style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 16, padding: '2px 4px', borderRadius: 4 }}
-                      onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-                      onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}
-                    >×</button>
-                  </div>
-                </div>
+                  }
+                  pricePill={totalCost > 0 ? (
+                    <div style={{ background: 'rgba(13,37,80,0.85)', color: '#e8b84b', padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 800 }}>
+                      ${totalCost.toLocaleString()}
+                    </div>
+                  ) : null}
+                >
+                  {/* RO strip */}
+                  <div style={{ borderTop: '1px solid #f3f4f6' }}>
+                    {/* Column header */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 150px 110px 80px 40px', padding: '7px 20px', background: '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
+                      {['Description', 'Vendor', 'Status', 'Cost', ''].map((h, i) => (
+                        <div key={i} style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em' }}>{h}</div>
+                      ))}
+                    </div>
 
-                {/* Inline edit */}
-                {isEditing && (
-                  <EditRow
-                    ro={ro}
-                    vehicleName={vehicleName}
-                    vin={vin}
-                    vendorMap={vendorMap}
-                    repairVendors={repairVendors}
-                    onSave={handleSave}
-                    onCancel={() => setEditing(null)}
-                  />
-                )}
-              </div>
-            );
-          })}
+                    {ros.map((ro, i) => {
+                      const vendor = vendorMap[ro.vendorId];
+                      const st = STATUS[ro.status] || STATUS.draft;
+                      const isEditing = editing === ro.id;
+
+                      return (
+                        <div key={ro.id} style={{ borderBottom: i < ros.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                          <div
+                            onClick={() => setEditing(isEditing ? null : ro.id)}
+                            style={{
+                              display: 'grid', gridTemplateColumns: '1fr 150px 110px 80px 40px',
+                              padding: '11px 20px', alignItems: 'center', cursor: 'pointer',
+                              background: isEditing ? '#f0f4fb' : '#fff',
+                              transition: 'background 0.1s',
+                            }}
+                            onMouseEnter={e => { if (!isEditing) e.currentTarget.style.background = '#f8faff'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = isEditing ? '#f0f4fb' : '#fff'; }}
+                          >
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {ro.notes || '—'}
+                            </div>
+                            <div style={{ fontSize: 12, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {vendor?.name || <span style={{ color: '#d1d5db' }}>No vendor</span>}
+                            </div>
+                            <div>
+                              <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
+                                {st.label}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: '#0d2550' }}>
+                              ${(ro.totalCost || 0).toLocaleString()}
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                              <button
+                                onClick={e => { e.stopPropagation(); handleDelete(ro.id); }}
+                                style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 16, padding: '2px 4px', borderRadius: 4 }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                                onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}
+                              >×</button>
+                            </div>
+                          </div>
+
+                          {isEditing && (
+                            <EditRow
+                              ro={ro}
+                              vehicleName={vehicleName}
+                              vin={vehicle.vin || null}
+                              vendorMap={vendorMap}
+                              repairVendors={repairVendors}
+                              onSave={handleSave}
+                              onCancel={() => setEditing(null)}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </VehicleCard>
+              );
+            });
+          })()}
         </div>
       )}
     </div>

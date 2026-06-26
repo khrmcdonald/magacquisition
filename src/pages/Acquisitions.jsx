@@ -428,11 +428,12 @@ function KeyTracker({ vehicle, onUpdate }) {
 }
 
 // ── VehicleForm ───────────────────────────────────────────────────────────────
-function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }) {
+function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], addLocation, pickupAddresses = [], buyerNames = [] }) {
   const [form, setForm] = useState(initial ? {
     ...initial,
     photos: Array.isArray(initial.photos) ? initial.photos : [],
     source_id: sources.find(s => s.label === initial.source)?.value || '',
+    interior_color: initial.interior_color || '',
     // deal fields default empty on edit (deal_record already exists)
     seller_name: '', buyer_rep: '', purchase_amount: '',
     lienholder: '', payoff_amount: '', cashiers_check: false,
@@ -440,15 +441,31 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }
     needsTransport: false,
   } : {
     vin: '', year: '', make: '', model: '', trim: '', mileage: '', color: '',
+    interior_color: '',
     source_id: '', purchasePrice: '', condition: 'Good', notes: '',
     overheadCosts: '', floorPrice: '', photos: [],
-    titleStatus: 'pending', titleNotes: '', currentLocation: '',
+    titleStatus: 'pending', currentLocation: '',
     // deal record fields
     seller_name: '', buyer_rep: '', purchase_amount: '',
     lienholder: '', payoff_amount: '', cashiers_check: false,
     title_electronic: false, pickup_address: '',
     needsTransport: false,
   });
+  const [addingLocation, setAddingLocation] = useState(false);
+  const [newLocationName, setNewLocationName] = useState('');
+  const [savingLocation, setSavingLocation] = useState(false);
+
+  const handleAddLocation = async () => {
+    if (!newLocationName.trim() || !addLocation) return;
+    setSavingLocation(true);
+    try {
+      const loc = await addLocation(newLocationName.trim());
+      set('currentLocation', loc.id);
+      setAddingLocation(false);
+      setNewLocationName('');
+    } catch (_) {}
+    setSavingLocation(false);
+  };
 
   const fileRef = useRef();
 
@@ -546,8 +563,12 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }
           <input type="number" value={form.mileage} onChange={e => set('mileage', e.target.value)} placeholder="42100" />
         </div>
         <div className="form-group">
-          <label>Color</label>
+          <label>Exterior color</label>
           <input type="text" value={form.color} onChange={e => set('color', e.target.value)} placeholder="White" />
+        </div>
+        <div className="form-group">
+          <label>Interior color</label>
+          <input type="text" value={form.interior_color || ''} onChange={e => set('interior_color', e.target.value)} placeholder="Black" />
         </div>
         <div className="form-group">
           <label>Source</label>
@@ -615,10 +636,38 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }
       {/* Location */}
       <div className="form-group">
         <label>Current location</label>
-        <select value={form.currentLocation || ''} onChange={e => set('currentLocation', e.target.value)}>
-          <option value="">Select location…</option>
-          {locations.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-        </select>
+        {addingLocation ? (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              autoFocus
+              value={newLocationName}
+              onChange={e => setNewLocationName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.preventDefault(); handleAddLocation(); }
+                if (e.key === 'Escape') { setAddingLocation(false); setNewLocationName(''); }
+              }}
+              placeholder="Location name…"
+              style={{ flex: 1, padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13 }}
+            />
+            <button type="button" onClick={handleAddLocation} disabled={!newLocationName.trim() || savingLocation}
+              style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              {savingLocation ? '…' : 'Save'}
+            </button>
+            <button type="button" onClick={() => { setAddingLocation(false); setNewLocationName(''); }}
+              style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, cursor: 'pointer', color: '#6b7280' }}>
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <select value={form.currentLocation || ''} onChange={e => {
+            if (e.target.value === '__add_new__') { setAddingLocation(true); }
+            else set('currentLocation', e.target.value);
+          }}>
+            <option value="">Select location…</option>
+            {locations.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+            <option value="__add_new__">+ New location…</option>
+          </select>
+        )}
       </div>
 
       {/* ── Deal Record Fields ─────────────────────────────────────────────── */}
@@ -629,8 +678,11 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }
           <input type="text" value={form.seller_name} onChange={e => set('seller_name', e.target.value)} placeholder="John Smith" />
         </div>
         <div className="form-group">
-          <label>Buyer rep (who found the deal)</label>
-          <input type="text" value={form.buyer_rep} onChange={e => set('buyer_rep', e.target.value)} placeholder="Team member name" />
+          <label>Buyer / Acq. rep</label>
+          <input list="buyer-names-list" value={form.buyer_rep} onChange={e => set('buyer_rep', e.target.value)} placeholder="Team member name" autoComplete="off" />
+          <datalist id="buyer-names-list">
+            {buyerNames.map(n => <option key={n} value={n} />)}
+          </datalist>
         </div>
         <div className="form-group">
           <label>Lienholder</label>
@@ -665,10 +717,6 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }
             {TITLE_STATUSES.map(ts => <option key={ts.value} value={ts.value}>{ts.label}</option>)}
           </select>
         </div>
-        <div className="form-group">
-          <label>Title notes</label>
-          <input type="text" value={form.titleNotes || ''} onChange={e => set('titleNotes', e.target.value)} placeholder="Lien holder, ETA, reference #..." />
-        </div>
       </div>
 
       {/* ── Transport ─────────────────────────────────────────────────────── */}
@@ -679,8 +727,11 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }
       </div>
       {form.needsTransport && (
         <div className="form-group">
-          <label>Pickup address / current location</label>
-          <input type="text" value={form.pickup_address} onChange={e => set('pickup_address', e.target.value)} placeholder="123 Main St, City, State" />
+          <label>Pickup address</label>
+          <input list="pickup-addresses-list" value={form.pickup_address} onChange={e => set('pickup_address', e.target.value)} placeholder="123 Main St, City, State" autoComplete="off" />
+          <datalist id="pickup-addresses-list">
+            {pickupAddresses.map((a, i) => <option key={i} value={a} />)}
+          </datalist>
         </div>
       )}
 
@@ -747,7 +798,7 @@ const STATUS_LABELS = {
 
 export default function Acquisitions() {
   const { user } = useAuth();
-  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle } = useData();
+  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, addLocation } = useData();
   const { showToast } = useToast();
   const [resolveModal, setResolveModal] = useState(null);
   const [repairModal, setRepairModal] = useState(null);
@@ -785,6 +836,12 @@ export default function Acquisitions() {
   // Map DB tables to option arrays
   const sourceOptions = (data.acquisition_sources || []).map(s => ({ value: s.id, label: s.name }));
   const locationOptions = (data.locations || []).map(l => ({ value: l.id, label: l.name }));
+  const pickupAddresses = [...new Set(
+    (data.transport || []).filter(t => t.storeName === 'Intake' && t.notes).map(t => t.notes)
+  )];
+  const buyerNames = [...new Set(
+    (data.vehicles || []).filter(v => v.buyer_name).map(v => v.buyer_name)
+  )];
 
   const allVehicles = data.vehicles;
   const filtered = statusFilter === 'all' ? allVehicles : allVehicles.filter(v => v.status === statusFilter);
@@ -804,6 +861,7 @@ export default function Acquisitions() {
     const orgId = user?.org_id || 'bf236d2b-4693-4606-bf3d-ece1767690ab';
 
     const saveFields = { ...vehicleFields };
+    if (buyer_rep) saveFields.buyer_name = buyer_rep;
 
     if (editing) {
       try { await updateVehicle(editing.id, { ...saveFields, status: editing.status }); }
@@ -1126,13 +1184,14 @@ export default function Acquisitions() {
                   ) : null
                 }
               >
-                {/* Compact financials */}
-                {(v.purchasePrice || v.floorPrice) && (
-                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
-                    {v.purchasePrice && <span>Buy: <strong style={{ color: '#374151' }}>${parseFloat(v.purchasePrice).toLocaleString()}</strong></span>}
-                    {v.totalRepairCosts > 0 && <span>Recon: <strong style={{ color: '#92400e' }}>${parseFloat(v.totalRepairCosts).toLocaleString()}</strong></span>}
-                    {v.floorPrice && <span>Floor: <strong style={{ color: '#374151' }}>${parseFloat(v.floorPrice).toLocaleString()}</strong></span>}
-                    {margin !== null && <span style={{ color: margin >= 0 ? '#065f46' : '#991b1b' }}>Margin: <strong>${margin.toLocaleString()}</strong></span>}
+                {/* Financials — accounting ledger */}
+                {(v.purchasePrice || v.floorPrice || v.totalCost) && (
+                  <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 8, marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {v.purchasePrice && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Purchase</span><span style={{ fontSize: 12, fontWeight: 700 }}>${parseFloat(v.purchasePrice).toLocaleString()}</span></div>}
+                    {v.totalRepairCosts > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Recon</span><span style={{ fontSize: 12, fontWeight: 700, color: '#92400e' }}>${parseFloat(v.totalRepairCosts).toLocaleString()}</span></div>}
+                    {v.totalCost && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Total cost</span><span style={{ fontSize: 12, fontWeight: 700, color: '#0d2550' }}>${parseFloat(v.totalCost).toLocaleString()}</span></div>}
+                    {v.floorPrice && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Floor</span><span style={{ fontSize: 12, fontWeight: 700 }}>${parseFloat(v.floorPrice).toLocaleString()}</span></div>}
+                    {margin !== null && <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: 3, marginTop: 1 }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Margin</span><span style={{ fontSize: 12, fontWeight: 700, color: margin >= 0 ? '#065f46' : '#991b1b' }}>${margin.toLocaleString()}</span></div>}
                   </div>
                 )}
                 {/* Key tracker */}
@@ -1307,7 +1366,7 @@ export default function Acquisitions() {
         <div className="modal-overlay" onClick={() => { setShowForm(false); setEditing(null); }}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 680 }}>
             <div className="modal-header">
-              <h2>{editing ? 'Edit vehicle' : 'Add vehicle to acquisitions'}</h2>
+              <h2>{editing ? 'Edit vehicle' : 'New Vehicle'}</h2>
               <button onClick={() => { setShowForm(false); setEditing(null); }} style={{ background: 'none', border: 'none', fontSize: 22, color: '#9ca3af', cursor: 'pointer' }}>×</button>
             </div>
             <div className="modal-body">
@@ -1322,6 +1381,9 @@ export default function Acquisitions() {
                 onCancel={() => { setShowForm(false); setEditing(null); setSaveError(null); }}
                 sources={sourceOptions}
                 locations={locationOptions}
+                addLocation={addLocation}
+                pickupAddresses={pickupAddresses}
+                buyerNames={buyerNames}
               />
             </div>
           </div>
