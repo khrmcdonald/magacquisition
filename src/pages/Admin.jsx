@@ -121,6 +121,72 @@ function readOrgSettings() {
   try { return JSON.parse(localStorage.getItem('org_settings') || '{}'); } catch { return {}; }
 }
 
+function TeamMembersCard({ profiles, onUpdateBuyerNumber, roleLabel, roleBadge }) {
+  const { showToast } = useToast();
+  const [editing, setEditing] = useState(null); // { id, value }
+
+  const handleSave = async () => {
+    if (!editing) return;
+    try {
+      await onUpdateBuyerNumber(editing.id, editing.value.trim());
+      showToast('Buyer number saved.', 'success');
+      setEditing(null);
+    } catch (err) {
+      showToast('Failed to save: ' + err.message, 'error');
+    }
+  };
+
+  return (
+    <div className="card" style={{ padding: 0, marginBottom: 24 }}>
+      <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>Team Members</h2>
+        <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>All users with access to this organization</p>
+      </div>
+      <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {profiles.length === 0 && <div style={{ fontSize: 13, color: '#9ca3af' }}>No users found.</div>}
+        {profiles.map(p => (
+          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: '#0d2550', color: '#e8b84b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>
+              {(p.name || '?')[0].toUpperCase()}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{p.name}</div>
+              <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>{roleLabel[p.role] || p.role}</div>
+            </div>
+            {editing?.id === p.id ? (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <input
+                  autoFocus
+                  value={editing.value}
+                  onChange={e => setEditing(prev => ({ ...prev, value: e.target.value }))}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(null); }}
+                  placeholder="Buyer #"
+                  style={{ width: 110, padding: '5px 9px', borderRadius: 6, border: '1.5px solid #0d2550', fontSize: 13, outline: 'none' }}
+                />
+                <button onClick={handleSave} style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 11px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Save</button>
+                <button onClick={() => setEditing(null)} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '5px 9px', fontSize: 12, cursor: 'pointer', color: '#6b7280' }}>Cancel</button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {p.buyer_number
+                  ? <span style={{ background: '#f0f4fb', color: '#0d2550', padding: '2px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, fontFamily: 'monospace' }}>#{p.buyer_number}</span>
+                  : null
+                }
+                <button
+                  onClick={() => setEditing({ id: p.id, value: p.buyer_number || '' })}
+                  style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '3px 9px', fontSize: 11, cursor: 'pointer', color: '#6b7280', fontWeight: 600, whiteSpace: 'nowrap' }}
+                >
+                  {p.buyer_number ? 'Edit #' : '+ Buyer #'}
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function BuyersCard({ buyers, onUpdateBuyerNumber }) {
   const { showToast } = useToast();
   const [editing, setEditing] = useState(null); // { id, value }
@@ -346,40 +412,7 @@ export default function Admin() {
       {activeTab === 'users' && (
         <div>
           <InviteUserCard />
-
-          {/* Team Members */}
-          <div className="card" style={{ padding: 0, marginBottom: 24 }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>Team Members</h2>
-              <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>All users with access to this organization</p>
-            </div>
-            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {(data.profiles || []).length === 0 && (
-                <div style={{ fontSize: 13, color: '#9ca3af' }}>No users found.</div>
-              )}
-              {(data.profiles || []).map(p => (
-                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-                    background: '#0d2550', color: '#e8b84b',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 14, fontWeight: 800,
-                  }}>
-                    {(p.name || '?')[0].toUpperCase()}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{p.name}</div>
-                    <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>
-                      {p.buyer_number ? `Buyer #${p.buyer_number} · ` : ''}{roleLabel[p.role] || p.role}
-                    </div>
-                  </div>
-                  <span className={`badge ${roleBadge[p.role] || 'badge-gray'}`}>{roleLabel[p.role] || p.role}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <BuyersCard buyers={data.buyers || []} onUpdateBuyerNumber={updateBuyerNumber} />
+          <TeamMembersCard profiles={data.profiles || []} onUpdateBuyerNumber={updateBuyerNumber} roleLabel={roleLabel} roleBadge={roleBadge} />
         </div>
       )}
 
