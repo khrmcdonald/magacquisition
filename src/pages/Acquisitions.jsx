@@ -137,6 +137,91 @@ function TitleStatusBadge({ value }) {
   );
 }
 
+const TITLE_CUSTODY_STEPS = [
+  { key: 'pending',         label: 'Pending',         short: 'Pending'  },
+  { key: 'awaiting_pickup', label: 'Awaiting Pickup', short: 'Awaiting' },
+  { key: 'in_hand',         label: 'In Hand',         short: 'In Hand'  },
+  { key: 'sent',            label: 'Sent to Store',   short: 'Sent'     },
+  { key: 'delivered',       label: 'Delivered',       short: 'Done'     },
+];
+
+function TitleCustodyTracker({ vehicle, onUpdate, canUpdate }) {
+  const tracker = vehicle.title_tracker || { status: 'pending', steps: {} };
+  const stepKeys = TITLE_CUSTODY_STEPS.map(s => s.key);
+  const currentIdx = Math.max(0, stepKeys.indexOf(tracker.status));
+  const nextStep = currentIdx < TITLE_CUSTODY_STEPS.length - 1 ? TITLE_CUSTODY_STEPS[currentIdx + 1] : null;
+
+  const setStep = (stepKey, idx) => {
+    if (!canUpdate) return;
+    const now = new Date().toISOString();
+    const newSteps = { ...tracker.steps };
+    for (let i = 0; i <= idx; i++) {
+      if (!newSteps[TITLE_CUSTODY_STEPS[i].key]) newSteps[TITLE_CUSTODY_STEPS[i].key] = now;
+    }
+    onUpdate({ ...tracker, status: stepKey, steps: newSteps });
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Title Custody</div>
+
+      {/* Step circles */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: 5 }}>
+        {TITLE_CUSTODY_STEPS.map((step, i) => {
+          const done = i <= currentIdx;
+          const active = i === currentIdx;
+          const date = tracker.steps?.[step.key];
+          return (
+            <React.Fragment key={step.key}>
+              <div
+                onClick={e => { e.stopPropagation(); setStep(step.key, i); }}
+                title={step.label + (date ? ' · ' + new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')}
+                style={{
+                  width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                  background: done ? '#0d2550' : '#f3f4f6',
+                  border: active ? '2.5px solid #e8b84b' : done ? '2.5px solid #0d2550' : '2.5px solid #e5e7eb',
+                  cursor: canUpdate ? 'pointer' : 'default',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 9, fontWeight: 800, color: done ? '#fff' : '#9ca3af',
+                  transition: 'transform 0.12s',
+                }}
+                onMouseEnter={e => { if (canUpdate) e.currentTarget.style.transform = 'scale(1.15)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = ''; }}
+              >
+                {i < currentIdx ? '✓' : i + 1}
+              </div>
+              {i < TITLE_CUSTODY_STEPS.length - 1 && (
+                <div style={{ width: 10, height: 2, background: i < currentIdx ? '#0d2550' : '#e5e7eb', flexShrink: 0 }} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      {/* Current label + date */}
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#374151' }}>{TITLE_CUSTODY_STEPS[currentIdx]?.label}</div>
+      {tracker.steps?.[tracker.status] && (
+        <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 1 }}>
+          {new Date(tracker.steps[tracker.status]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        </div>
+      )}
+
+      {/* Advance button */}
+      {canUpdate && nextStep && (
+        <button
+          onClick={e => { e.stopPropagation(); setStep(nextStep.key, currentIdx + 1); }}
+          style={{ marginTop: 6, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+        >
+          → {nextStep.short}
+        </button>
+      )}
+      {!nextStep && (
+        <div style={{ marginTop: 4, fontSize: 10, fontWeight: 700, color: '#10b981' }}>✓ Complete</div>
+      )}
+    </div>
+  );
+}
+
 function ExcelUploadModal({ onClose, onImport }) {
   const [rows, setRows] = React.useState([]);
   const [error, setError] = React.useState('');
@@ -1262,15 +1347,15 @@ export default function Acquisitions() {
                     }
                   </div>
 
-                  {/* Title */}
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Title</div>
-                    {!isReadOnly
-                      ? <TitleStatusDropdown vehicleId={v.id} current={v.titleStatus || 'pending'} onChange={async (val) => { try { await updateVehicle(v.id, { titleStatus: val }); } catch (err) { showToast('Title update failed: ' + err.message, 'error'); } }} />
-                      : <TitleStatusBadge value={v.titleStatus || 'pending'} />
-                    }
-                    {v.titleNotes && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{v.titleNotes}</div>}
-                  </div>
+                  {/* Title Custody */}
+                  <TitleCustodyTracker
+                    vehicle={v}
+                    canUpdate={!isReadOnly}
+                    onUpdate={async (newTracker) => {
+                      try { await updateVehicle(v.id, { title_tracker: newTracker }); }
+                      catch (err) { showToast('Title update failed: ' + err.message, 'error'); }
+                    }}
+                  />
 
                   {/* Location */}
                   <div>
