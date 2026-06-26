@@ -174,6 +174,7 @@ export function DataProvider({ children }) {
   const [transport, setTransport] = useState([]);
   const [repairOrders, setRepairOrders] = useState([]);
   const [repairVendors, setRepairVendors] = useState([]);
+  const [inspectors, setInspectors] = useState([]);
   const [badges, setBadges] = useState({});
   const [storePhotos, setStorePhotos] = useState({});
   const [fetchError, setFetchError] = useState(null);
@@ -181,7 +182,7 @@ export function DataProvider({ children }) {
   // ── Initial data fetch ───────────────────────────────────────────────────
   useEffect(() => {
     async function fetchAll() {
-      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes, repairOrdersRes, repairVendorsRes, buyersRes] = await Promise.all([
+      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes, repairOrdersRes, repairVendorsRes, buyersRes, inspectorsRes] = await Promise.all([
         supabase.from('vehicles').select('*').eq('org_id', ORG_ID),
         supabase.from('auctions').select('*').eq('org_id', ORG_ID),
         supabase.from('bids').select('*').eq('org_id', ORG_ID),
@@ -191,6 +192,7 @@ export function DataProvider({ children }) {
         supabase.from('repair_orders').select('*, repair_order_lines(*)').eq('org_id', ORG_ID),
         supabase.from('repair_vendors').select('*').eq('org_id', ORG_ID).eq('active', true),
         supabase.from('profiles').select('id, name, buyer_number, role').eq('org_id', ORG_ID),
+        supabase.from('inspectors').select('*').eq('org_id', ORG_ID).eq('active', true).order('name'),
       ]);
       if (vehiclesRes.error) {
         setFetchError('Could not load vehicle data. Check your connection and refresh the page.');
@@ -204,6 +206,7 @@ export function DataProvider({ children }) {
       if (transportRes.error)     console.warn('transport fetch error:',     transportRes.error?.message);
       if (repairOrdersRes.error)  console.warn('repair_orders fetch error:', repairOrdersRes.error?.message);
       if (repairVendorsRes.error) console.warn('repair_vendors fetch error:', repairVendorsRes.error?.message);
+      if (inspectorsRes.error)   console.warn('inspectors fetch error:',    inspectorsRes.error?.message);
 
       if (vehiclesRes.data)      setVehicles(vehiclesRes.data.map(mapVehicle));
       if (buyersRes.data) {
@@ -217,6 +220,7 @@ export function DataProvider({ children }) {
       if (transportRes.data)     setTransport(transportRes.data.map(mapTransport));
       if (repairOrdersRes.data)  setRepairOrders(repairOrdersRes.data.map(mapRepairOrder));
       if (repairVendorsRes.data) setRepairVendors(repairVendorsRes.data.map(mapRepairVendor));
+      if (inspectorsRes.data)   setInspectors(inspectorsRes.data);
       setLoading(false);
     }
     fetchAll();
@@ -319,6 +323,7 @@ export function DataProvider({ children }) {
     acquisition_sources: acquisitionSources,
     buyers,
     profiles,
+    inspectors,
   };
 
   // ── Auction mutations ─────────────────────────────────────────────────────
@@ -787,6 +792,13 @@ export function DataProvider({ children }) {
     </div>
   );
 
+  const addInspector = async (name) => {
+    const { data: row, error } = await supabase.from('inspectors').insert({ org_id: ORG_ID, name: name.trim() }).select().single();
+    if (error) throw error;
+    setInspectors(prev => [...prev, row].sort((a, b) => a.name.localeCompare(b.name)));
+    return row;
+  };
+
   const addAcquisitionSource = async (name) => {
     const { data: row, error } = await supabase.from('acquisition_sources').insert({ org_id: ORG_ID, name: name.trim() }).select().single();
     if (error) throw error;
@@ -839,6 +851,8 @@ export function DataProvider({ children }) {
       fileArbitration, resolveArbitration,
       // Photos & badges
       updateStorePhoto, checkAndAwardBadges, computeBadges, BADGE_DEFS,
+      // Inspectors
+      addInspector,
       // Sources & locations
       addAcquisitionSource, deleteAcquisitionSource,
       addLocation, deleteLocation,

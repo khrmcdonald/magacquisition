@@ -835,7 +835,7 @@ function printInspectionChecklist(vehicle) {
   .sig{flex:1}.sline{border-bottom:1px solid #888;margin-top:22px}.slbl{font-size:10px;color:#666;margin-top:3px}
   @media print{body{margin:10px 20px}}
 </style></head><body>
-<div class="hdr"><div><h1>McDonald Auto Group</h1><div class="org-sub">Post-Sale Vehicle Inspection Checklist</div></div><div style="text-align:right;font-size:11px;color:#666">PSI Form</div></div>
+<div class="hdr"><div><h1>${(JSON.parse(localStorage.getItem('orgSettings') || '{}')).dealerName || 'Tri-State Auto'}</h1><div class="org-sub">Post-Sale Vehicle Inspection Checklist</div></div><div style="text-align:right;font-size:11px;color:#666">PSI Form</div></div>
 <div class="vinfo">
   <div class="vf"><div class="vl">Year / Make / Model</div><div class="vv">${vehicle.year} ${vehicle.make} ${vehicle.model}${vehicle.trim ? ' ' + vehicle.trim : ''}</div></div>
   <div class="vf"><div class="vl">VIN</div><div class="vv">${vehicle.vin || '&nbsp;'}</div></div>
@@ -866,12 +866,15 @@ function printInspectionChecklist(vehicle) {
   w.document.close();
 }
 
-function InspectionModal({ vehicle, user, onSave, onClose }) {
+function InspectionModal({ vehicle, inspectors, addInspector, onSave, onClose }) {
   const emptyItems = Object.fromEntries(INSPECTION_CATS.map(c => [c.key, { rating: '', notes: '' }]));
   const [items, setItems] = React.useState(emptyItems);
   const [overallNotes, setOverallNotes] = React.useState('');
-  const [inspectorName, setInspectorName] = React.useState(user?.name || '');
+  const [inspectorId, setInspectorId] = React.useState('');
+  const [addingInspector, setAddingInspector] = React.useState(false);
+  const [newInspectorName, setNewInspectorName] = React.useState('');
   const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState(null);
 
   const setRating = (key, rating) => setItems(prev => ({ ...prev, [key]: { ...prev[key], rating } }));
   const setNotes  = (key, notes)  => setItems(prev => ({ ...prev, [key]: { ...prev[key], notes } }));
@@ -879,19 +882,38 @@ function InspectionModal({ vehicle, user, onSave, onClose }) {
   const hasNeedsWork = Object.values(items).some(i => i.rating === 'needs_work');
   const allRated = Object.values(items).every(i => i.rating !== '');
 
+  const handleAddInspector = async () => {
+    if (!newInspectorName.trim()) return;
+    try {
+      const row = await addInspector(newInspectorName.trim());
+      setInspectorId(row.id);
+      setAddingInspector(false);
+      setNewInspectorName('');
+    } catch (e) {
+      setSaveError('Could not save inspector: ' + e.message);
+    }
+  };
+
   const handleSubmit = async (nextStatus) => {
     setSaving(true);
+    setSaveError(null);
+    const selectedInspector = inspectors.find(i => i.id === inspectorId);
     const insp = {
       status: 'complete',
-      completed_by: inspectorName,
+      completed_by: selectedInspector?.name || '',
+      inspector_id: inspectorId || null,
       completed_at: new Date().toISOString(),
       result: hasNeedsWork ? 'recon_needed' : 'pass',
       items,
       overall_notes: overallNotes,
     };
-    await onSave(vehicle.id, insp, nextStatus);
-    setSaving(false);
-    onClose();
+    try {
+      await onSave(vehicle.id, insp, nextStatus);
+      onClose();
+    } catch (err) {
+      setSaving(false);
+      setSaveError(err.message || 'Save failed. Please try again.');
+    }
   };
 
   const RATINGS = [
@@ -910,7 +932,30 @@ function InspectionModal({ vehicle, user, onSave, onClose }) {
         <div className="modal-body" style={{ padding: '0 24px 24px' }}>
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', display: 'block', marginBottom: 4 }}>Inspector</label>
-            <input value={inspectorName} onChange={e => setInspectorName(e.target.value)} placeholder="Name" style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13 }} />
+            {addingInspector ? (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  autoFocus
+                  value={newInspectorName}
+                  onChange={e => setNewInspectorName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAddInspector(); if (e.key === 'Escape') { setAddingInspector(false); setNewInspectorName(''); } }}
+                  placeholder="Inspector name…"
+                  style={{ flex: 1, padding: '8px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13 }}
+                />
+                <button onClick={handleAddInspector} style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Add</button>
+                <button onClick={() => { setAddingInspector(false); setNewInspectorName(''); }} style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 8, padding: '8px 12px', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              </div>
+            ) : (
+              <select
+                value={inspectorId}
+                onChange={e => { if (e.target.value === '__new__') { setAddingInspector(true); setInspectorId(''); } else setInspectorId(e.target.value); }}
+                style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, background: '#fff' }}
+              >
+                <option value="">— Select inspector —</option>
+                {(inspectors || []).map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                <option value="__new__">+ Add new inspector…</option>
+              </select>
+            )}
           </div>
 
           {INSPECTION_CATS.map(cat => (
@@ -953,13 +998,19 @@ function InspectionModal({ vehicle, user, onSave, onClose }) {
             </div>
           )}
 
+          {saveError && (
+            <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 13, color: '#991b1b' }}>
+              {saveError}
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={onClose} className="btn-secondary">Cancel</button>
-            <button onClick={() => handleSubmit('recon')} disabled={saving || !allRated} style={{ opacity: allRated ? 1 : 0.4, background: '#fffbeb', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-              Complete → Recon
+            <button onClick={() => handleSubmit('recon')} disabled={saving || !allRated || !inspectorId} style={{ opacity: (allRated && inspectorId) ? 1 : 0.4, background: '#fffbeb', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              {saving ? 'Saving…' : 'Complete → Recon'}
             </button>
-            <button onClick={() => handleSubmit('ready')} disabled={saving || !allRated} style={{ opacity: allRated ? 1 : 0.4, background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-              Complete → Ready
+            <button onClick={() => handleSubmit('ready')} disabled={saving || !allRated || !inspectorId} style={{ opacity: (allRated && inspectorId) ? 1 : 0.4, background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              {saving ? 'Saving…' : 'Complete → Ready'}
             </button>
           </div>
         </div>
@@ -968,14 +1019,210 @@ function InspectionModal({ vehicle, user, onSave, onClose }) {
   );
 }
 
+const DETAIL_TRANSPORT_STEPS = [
+  { key: 'awarded',       label: 'Awarded' },
+  { key: 'dispatched',    label: 'Dispatched' },
+  { key: 'inTransit',     label: 'In Transit' },
+  { key: 'arrived',       label: 'Arrived' },
+  { key: 'titleReceived', label: 'Title Received' },
+];
+
+const DETAIL_RATING_STYLE = {
+  good:       { label: 'Good',       color: '#065f46', bg: '#d1fae5' },
+  fair:       { label: 'Fair',       color: '#92400e', bg: '#fef3c7' },
+  needs_work: { label: 'Needs Work', color: '#991b1b', bg: '#fee2e2' },
+};
+
+function VehicleDetailModal({ vehicle, onClose }) {
+  const { data } = useData();
+
+  const transport = (data.transport || []).find(t => t.vehicleId === vehicle.id);
+  const openRepairs = (data.repairOrders || []).filter(r =>
+    r.vehicleId === vehicle.id && !['complete', 'cancelled'].includes(r.status)
+  );
+  const insp = vehicle.inspection;
+  const inspComplete = insp?.status === 'complete';
+
+  const transportStepIdx = transport
+    ? DETAIL_TRANSPORT_STEPS.findIndex(s => s.key === transport.status)
+    : -1;
+
+  const listPrice = vehicle.list_price ? '$' + Number(vehicle.list_price).toLocaleString() : null;
+  const acv       = vehicle.acv        ? '$' + Number(vehicle.acv).toLocaleString()        : null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 700, maxHeight: '92vh', overflowY: 'auto', padding: 0 }}>
+        {/* Header */}
+        <div style={{ background: '#0d2550', color: '#fff', padding: '20px 24px 16px', borderRadius: '12px 12px 0 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#93c5fd', letterSpacing: '.06em', marginBottom: 4 }}>{vehicle.vin || '—'}</div>
+              <div style={{ fontSize: 20, fontWeight: 800 }}>{vehicle.year} {vehicle.make} {vehicle.model}{vehicle.trim ? ' ' + vehicle.trim : ''}</div>
+              <div style={{ fontSize: 13, color: '#93c5fd', marginTop: 3 }}>
+                {[vehicle.color, vehicle.interior_color].filter(Boolean).join(' / ')}
+                {vehicle.mileage ? ` · ${Number(vehicle.mileage).toLocaleString()} mi` : ''}
+                {vehicle.condition ? ` · ${vehicle.condition}` : ''}
+              </div>
+            </div>
+            <button onClick={onClose} style={{ background: 'rgba(255,255,255,.15)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 18, width: 34, height: 34, cursor: 'pointer', lineHeight: '34px', textAlign: 'center' }}>×</button>
+          </div>
+          {/* Quick stats row */}
+          <div style={{ display: 'flex', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
+            {[
+              { label: 'Status', value: STATUS_LABELS[vehicle.status]?.label || vehicle.status },
+              acv        && { label: 'ACV',        value: acv },
+              listPrice  && { label: 'List Price',  value: listPrice },
+              vehicle.buyer_name && { label: 'Buyer', value: vehicle.buyer_name },
+              vehicle.acquisitionSource && { label: 'Source', value: vehicle.acquisitionSource },
+            ].filter(Boolean).map(({ label, value }) => (
+              <div key={label} style={{ background: 'rgba(255,255,255,.1)', borderRadius: 8, padding: '5px 12px', minWidth: 80 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, marginTop: 1 }}>{value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ padding: '0 24px 24px' }}>
+
+          {/* Transport */}
+          {transport && (
+            <div style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: 18, marginBottom: 18 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 18, marginBottom: 10 }}>Transport</div>
+              {transport.storeName && (
+                <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
+                  From: <span style={{ fontWeight: 600, color: '#374151' }}>{transport.storeName}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 0, flexWrap: 'wrap' }}>
+                {DETAIL_TRANSPORT_STEPS.map((step, i) => {
+                  const done   = i <= transportStepIdx;
+                  const active = i === transportStepIdx;
+                  return (
+                    <React.Fragment key={step.key}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                        <div style={{
+                          width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: done ? '#0d2550' : '#f3f4f6',
+                          border: active ? '2.5px solid #3b82f6' : 'none',
+                          fontSize: 13, fontWeight: 700, color: done ? '#fff' : '#9ca3af',
+                        }}>
+                          {done ? '✓' : i + 1}
+                        </div>
+                        <span style={{ fontSize: 9, fontWeight: 600, color: done ? '#0d2550' : '#9ca3af', whiteSpace: 'nowrap' }}>{step.label}</span>
+                        {transport.steps?.[step.key] && (
+                          <span style={{ fontSize: 8, color: '#9ca3af' }}>
+                            {new Date(transport.steps[step.key]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                        )}
+                      </div>
+                      {i < DETAIL_TRANSPORT_STEPS.length - 1 && (
+                        <div style={{ flex: 1, height: 2, background: i < transportStepIdx ? '#0d2550' : '#e5e7eb', minWidth: 12, marginBottom: 18 }} />
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* PSI Results */}
+          <div style={{ borderBottom: openRepairs.length ? '1px solid #f3f4f6' : 'none', paddingBottom: openRepairs.length ? 18 : 0, marginBottom: openRepairs.length ? 18 : 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em' }}>Post-Sale Inspection</div>
+              {inspComplete && (
+                <div style={{
+                  fontSize: 11, fontWeight: 700, borderRadius: 20, padding: '3px 10px',
+                  background: insp.result === 'pass' ? '#d1fae5' : '#fee2e2',
+                  color: insp.result === 'pass' ? '#065f46' : '#991b1b',
+                }}>
+                  {insp.result === 'pass' ? '✓ Pass' : '⚠ Recon Needed'}
+                </div>
+              )}
+            </div>
+
+            {!inspComplete ? (
+              <div style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>
+                {vehicle.status === 'inspection' ? 'Inspection pending — not yet completed.' : 'No inspection on record.'}
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 10 }}>
+                  Inspector: <span style={{ fontWeight: 600, color: '#374151' }}>{insp.completed_by || '—'}</span>
+                  {insp.completed_at && (
+                    <span style={{ marginLeft: 10 }}>
+                      {new Date(insp.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {INSPECTION_CATS.map(cat => {
+                    const item = insp.items?.[cat.key];
+                    if (!item) return null;
+                    const style = DETAIL_RATING_STYLE[item.rating] || {};
+                    return (
+                      <div key={cat.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '7px 12px', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{cat.label}</div>
+                          {item.notes && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{item.notes}</div>}
+                        </div>
+                        {style.label && (
+                          <div style={{ fontSize: 11, fontWeight: 700, borderRadius: 20, padding: '2px 9px', background: style.bg, color: style.color, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            {style.label}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {insp.overall_notes && (
+                  <div style={{ marginTop: 10, padding: '8px 12px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, fontSize: 12, color: '#92400e' }}>
+                    <span style={{ fontWeight: 700 }}>Notes: </span>{insp.overall_notes}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Open Repairs */}
+          {openRepairs.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 18, marginBottom: 10 }}>
+                Open Repairs ({openRepairs.length})
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {openRepairs.map(ro => {
+                  const total = (ro.lines || []).reduce((s, l) => s + (l.cost || 0), 0);
+                  return (
+                    <div key={ro.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{ro.vendorName || 'Unknown vendor'}</div>
+                        <div style={{ fontSize: 11, color: '#9ca3af' }}>{ro.lines?.length || 0} line{ro.lines?.length !== 1 ? 's' : ''} · {ro.status}</div>
+                      </div>
+                      {total > 0 && <div style={{ fontSize: 14, fontWeight: 700, color: '#374151' }}>${total.toLocaleString()}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Acquisitions() {
   const { user } = useAuth();
-  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, addLocation } = useData();
+  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, addLocation, addInspector } = useData();
   const buyers = (data.profiles || []).filter(p => p.buyer_number);
   const { showToast } = useToast();
   const [resolveModal, setResolveModal] = useState(null);
   const [repairModal, setRepairModal] = useState(null);
   const [inspectionModal, setInspectionModal] = useState(null);
+  const [detailModal, setDetailModal] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [viewVehicle, setViewVehicle] = useState(null);
@@ -1386,8 +1633,9 @@ export default function Acquisitions() {
                         {v.status === 'in_auction' && (
                           <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { showToast('Failed to remove: ' + err.message, 'error'); } }} style={{ flex: 1, background: '#fef3c7', color: '#92400e', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
                         )}
+                        <button onClick={() => setDetailModal(v)} style={{ ...iconBtn, background: '#eff6ff', border: '1px solid #bfdbfe' }} data-tooltip="Details">🔍</button>
                         <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} style={iconBtn} data-tooltip="Edit">✏️</button>
-                        {['intake', 'recon', 'ready', 'no_sale'].includes(v.status) && (
+                        {['intake', 'inspection', 'recon', 'ready', 'no_sale'].includes(v.status) && (
                           <button onClick={() => setRepairModal(v)} style={iconBtn} data-tooltip="Repairs">🔧</button>
                         )}
                         <button onClick={() => handlePrintBuySheet(v)} style={iconBtn} data-tooltip="Buy sheet">🧾</button>
@@ -1555,6 +1803,7 @@ export default function Acquisitions() {
                         {v.status === 'in_auction' && (
                           <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { showToast('Failed to remove: ' + err.message, 'error'); } }} style={{ background: '#fef3c7', color: '#92400e', border: 'none', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
                         )}
+                        <button onClick={() => setDetailModal(v)} data-tooltip="Details" style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>🔍</button>
                         <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} data-tooltip="Edit" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>✏️</button>
                         {['intake', 'inspection', 'recon', 'ready', 'no_sale'].includes(v.status) && (
                           <button onClick={() => setRepairModal(v)} data-tooltip="Repairs" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>🔧</button>
@@ -1632,7 +1881,9 @@ export default function Acquisitions() {
       {repairModal && <RepairOrdersModal vehicle={repairModal} onClose={() => setRepairModal(null)} />}
 
       {/* Inspection modal */}
-      {inspectionModal && <InspectionModal vehicle={inspectionModal} user={user} onSave={handleInspectionSave} onClose={() => setInspectionModal(null)} />}
+      {inspectionModal && <InspectionModal vehicle={inspectionModal} inspectors={data.inspectors || []} addInspector={addInspector} onSave={handleInspectionSave} onClose={() => setInspectionModal(null)} />}
+
+      {detailModal && <VehicleDetailModal vehicle={detailModal} onClose={() => setDetailModal(null)} />}
 
       {/* Resolve arbitration modal */}
       {resolveModal && (
