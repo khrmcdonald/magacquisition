@@ -278,10 +278,19 @@ function TodaysTasks({ data, navigate }) {
       };
     });
 
+  const inspectionItems = vehicles
+    .filter(v => v.status === 'inspection' && v.inspection?.status !== 'complete')
+    .map(v => ({
+      primary: `${v.year} ${v.make} ${v.model}`,
+      secondary: v.acquisitionSource || null,
+      badge: { label: 'Pending', color: '#92400e', bg: '#fef3c7' },
+    }));
+
   const sections = [
-    { key: 'repairs',   title: 'Repairs',   accent: '#3b82f6', items: repairItems,    route: '/repairs' },
-    { key: 'transport', title: 'Transport',  accent: '#e8b84b', items: transportItems, route: '/transport' },
-    { key: 'titles',    title: 'Titles',     accent: '#8b5cf6', items: titleItems,     route: '/acquisitions' },
+    { key: 'inspection', title: 'Inspection', accent: '#f59e0b', items: inspectionItems, route: '/acquisitions' },
+    { key: 'repairs',    title: 'Repairs',    accent: '#3b82f6', items: repairItems,     route: '/repairs' },
+    { key: 'transport',  title: 'Transport',  accent: '#e8b84b', items: transportItems,  route: '/transport' },
+    { key: 'titles',     title: 'Titles',     accent: '#8b5cf6', items: titleItems,      route: '/acquisitions' },
   ].filter(s => s.items.length > 0);
 
   if (!sections.length) return (

@@ -824,13 +824,179 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
 }
 
 const STATUS_LABELS = {
-  intake:     { label: 'Intake',          color: '#6b7280', bg: '#f3f4f6', accent: '#9ca3af' },
-  recon:      { label: 'In Recon',        color: '#92400e', bg: '#fef3c7', accent: '#e8b84b' },
+  intake:      { label: 'Intake',      color: '#6b7280', bg: '#f3f4f6', accent: '#9ca3af' },
+  inspection:  { label: 'Inspection',  color: '#92400e', bg: '#fef3c7', accent: '#f59e0b' },
+  recon:       { label: 'In Recon',    color: '#92400e', bg: '#fef3c7', accent: '#e8b84b' },
   ready:      { label: 'Ready to List',   color: '#065f46', bg: '#d1fae5', accent: '#10b981' },
   in_auction: { label: 'Live in Auction', color: '#1e40af', bg: '#dbeafe', accent: '#3b82f6' },
   awarded:    { label: 'Awarded',         color: '#065f46', bg: '#d1fae5', accent: '#0d2550' },
   no_sale:    { label: 'No Sale',         color: '#991b1b', bg: '#fee2e2', accent: '#ef4444' },
 };
+
+// ── Inspection ────────────────────────────────────────────────────────────────
+const INSPECTION_CATS = [
+  { key: 'exterior',   label: 'Exterior / Body',      sub: 'Dents, scratches, rust, paint' },
+  { key: 'glass',      label: 'Glass',                sub: 'Windshield, windows, mirrors' },
+  { key: 'tires',      label: 'Tires & Wheels',       sub: 'Tread depth, sidewalls, rims' },
+  { key: 'interior',   label: 'Interior',             sub: 'Seats, carpet, dash, headliner' },
+  { key: 'mechanical', label: 'Mechanical',           sub: 'Engine, fluids, unusual sounds' },
+  { key: 'lights',     label: 'Lights & Electronics', sub: 'All lights, A/C, heat, windows' },
+];
+
+function printInspectionChecklist(vehicle) {
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const w = window.open('', '_blank', 'width=820,height=750');
+  w.document.write(`<!DOCTYPE html><html><head><title>PSI — ${vehicle.year} ${vehicle.make} ${vehicle.model}</title>
+<style>
+  *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:22px 38px;font-size:13px;color:#111}
+  h1{font-size:19px;margin:0 0 2px}.hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #0d2550;padding-bottom:10px;margin-bottom:13px}
+  .org-sub{font-size:12px;color:#444}.vinfo{display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid #bbb;margin-bottom:13px}
+  .vf{padding:6px 10px;border-right:1px solid #ddd}.vf:nth-child(3n){border-right:none}.vf:nth-child(n+4){border-top:1px solid #ddd}
+  .vl{font-size:9px;font-weight:700;text-transform:uppercase;color:#666;letter-spacing:.04em;margin-bottom:1px}.vv{font-size:14px;font-weight:700;min-height:18px}
+  table{width:100%;border-collapse:collapse;margin-bottom:13px;font-size:13px}th{background:#f3f4f6;font-size:10px;font-weight:700;text-transform:uppercase;padding:6px 10px;text-align:left;border:1px solid #ccc;letter-spacing:.04em}
+  td{border:1px solid #ddd;padding:8px 10px;vertical-align:middle}.cat{font-weight:700}.csub{font-size:11px;color:#777;margin-top:1px}
+  .chk{text-align:center;width:68px}.box{width:17px;height:17px;border:1.5px solid #555;display:inline-block}
+  .nlbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#555;margin-bottom:4px}
+  .narea{border:1px solid #ccc;min-height:50px;padding:8px;margin-bottom:13px}
+  .res{display:flex;align-items:center;gap:26px;border:2px solid #0d2550;padding:9px 14px;margin-bottom:13px;border-radius:3px}
+  .rslbl{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#0d2550;min-width:90px}
+  .rsopt{display:flex;align-items:center;gap:7px;font-size:13px}
+  .sigs{display:flex;gap:28px;border-top:1px solid #ccc;padding-top:13px}
+  .sig{flex:1}.sline{border-bottom:1px solid #888;margin-top:22px}.slbl{font-size:10px;color:#666;margin-top:3px}
+  @media print{body{margin:10px 20px}}
+</style></head><body>
+<div class="hdr"><div><h1>McDonald Auto Group</h1><div class="org-sub">Post-Sale Vehicle Inspection Checklist</div></div><div style="text-align:right;font-size:11px;color:#666">PSI Form</div></div>
+<div class="vinfo">
+  <div class="vf"><div class="vl">Year / Make / Model</div><div class="vv">${vehicle.year} ${vehicle.make} ${vehicle.model}${vehicle.trim ? ' ' + vehicle.trim : ''}</div></div>
+  <div class="vf"><div class="vl">VIN</div><div class="vv">${vehicle.vin || '&nbsp;'}</div></div>
+  <div class="vf"><div class="vl">Mileage</div><div class="vv">${vehicle.mileage ? Number(vehicle.mileage).toLocaleString() + ' mi' : '&nbsp;'}</div></div>
+  <div class="vf"><div class="vl">Color (Ext / Int)</div><div class="vv">${vehicle.color || ''}${vehicle.interior_color ? ' / ' + vehicle.interior_color : ''}</div></div>
+  <div class="vf"><div class="vl">Acquisition Source</div><div class="vv">${vehicle.acquisitionSource || '&nbsp;'}</div></div>
+  <div class="vf"><div class="vl">Inspection Date</div><div class="vv">${today}</div></div>
+</div>
+<table>
+  <thead><tr><th style="width:38%">Category / Check</th><th class="chk">Good</th><th class="chk">Fair</th><th class="chk">Needs Work</th><th>Notes / Details</th></tr></thead>
+  <tbody>${INSPECTION_CATS.map(c => `<tr><td><div class="cat">${c.label}</div><div class="csub">${c.sub}</div></td><td class="chk"><div class="box"></div></td><td class="chk"><div class="box"></div></td><td class="chk"><div class="box"></div></td><td></td></tr>`).join('')}</tbody>
+</table>
+<div class="nlbl">Overall Notes / Additional Findings</div>
+<div class="narea"></div>
+<div class="res">
+  <div class="rslbl">Result:</div>
+  <div class="rsopt"><div class="box"></div>&nbsp;Pass — No recon needed</div>
+  <div class="rsopt"><div class="box"></div>&nbsp;Recon Required</div>
+  <div class="rsopt"><div class="box"></div>&nbsp;Further Review Needed</div>
+</div>
+<div class="sigs">
+  <div class="sig"><div class="sline"></div><div class="slbl">Inspector Name (Print)</div></div>
+  <div class="sig"><div class="sline"></div><div class="slbl">Signature</div></div>
+  <div class="sig"><div class="sline"></div><div class="slbl">Date</div></div>
+</div>
+<script>window.onload=function(){window.print();};</script>
+</body></html>`);
+  w.document.close();
+}
+
+function InspectionModal({ vehicle, user, onSave, onClose }) {
+  const emptyItems = Object.fromEntries(INSPECTION_CATS.map(c => [c.key, { rating: '', notes: '' }]));
+  const [items, setItems] = React.useState(emptyItems);
+  const [overallNotes, setOverallNotes] = React.useState('');
+  const [inspectorName, setInspectorName] = React.useState(user?.name || '');
+  const [saving, setSaving] = React.useState(false);
+
+  const setRating = (key, rating) => setItems(prev => ({ ...prev, [key]: { ...prev[key], rating } }));
+  const setNotes  = (key, notes)  => setItems(prev => ({ ...prev, [key]: { ...prev[key], notes } }));
+
+  const hasNeedsWork = Object.values(items).some(i => i.rating === 'needs_work');
+  const allRated = Object.values(items).every(i => i.rating !== '');
+
+  const handleSubmit = async (nextStatus) => {
+    setSaving(true);
+    const insp = {
+      status: 'complete',
+      completed_by: inspectorName,
+      completed_at: new Date().toISOString(),
+      result: hasNeedsWork ? 'recon_needed' : 'pass',
+      items,
+      overall_notes: overallNotes,
+    };
+    await onSave(vehicle.id, insp, nextStatus);
+    setSaving(false);
+    onClose();
+  };
+
+  const RATINGS = [
+    { value: 'good',       label: 'Good',        color: '#065f46', bg: '#d1fae5' },
+    { value: 'fair',       label: 'Fair',         color: '#92400e', bg: '#fef3c7' },
+    { value: 'needs_work', label: 'Needs Work',   color: '#991b1b', bg: '#fee2e2' },
+  ];
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 620 }}>
+        <div className="modal-header">
+          <h2>Post-Sale Inspection — {vehicle.year} {vehicle.make} {vehicle.model}</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, color: '#9ca3af', cursor: 'pointer' }}>×</button>
+        </div>
+        <div className="modal-body" style={{ padding: '0 24px 24px' }}>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', display: 'block', marginBottom: 4 }}>Inspector</label>
+            <input value={inspectorName} onChange={e => setInspectorName(e.target.value)} placeholder="Name" style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13 }} />
+          </div>
+
+          {INSPECTION_CATS.map(cat => (
+            <div key={cat.key} style={{ marginBottom: 10, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: items[cat.key].rating ? 6 : 0 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{cat.label}</div>
+                  <div style={{ fontSize: 11, color: '#9ca3af' }}>{cat.sub}</div>
+                </div>
+                <div style={{ display: 'flex', gap: 5 }}>
+                  {RATINGS.map(r => (
+                    <button key={r.value} onClick={() => setRating(cat.key, r.value)} style={{
+                      padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                      border: items[cat.key].rating === r.value ? `2px solid ${r.color}` : '1.5px solid #e5e7eb',
+                      background: items[cat.key].rating === r.value ? r.bg : '#fff',
+                      color: items[cat.key].rating === r.value ? r.color : '#6b7280',
+                    }}>{r.label}</button>
+                  ))}
+                </div>
+              </div>
+              {(items[cat.key].rating === 'needs_work' || items[cat.key].rating === 'fair') && (
+                <input
+                  value={items[cat.key].notes}
+                  onChange={e => setNotes(cat.key, e.target.value)}
+                  placeholder={items[cat.key].rating === 'needs_work' ? 'Describe the issue…' : 'Optional note…'}
+                  style={{ width: '100%', padding: '6px 10px', border: `1px solid ${items[cat.key].rating === 'needs_work' ? '#fca5a5' : '#e5e7eb'}`, borderRadius: 6, fontSize: 12, background: '#fff', marginTop: 2 }}
+                />
+              )}
+            </div>
+          ))}
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', display: 'block', marginBottom: 4 }}>Overall Notes</label>
+            <textarea value={overallNotes} onChange={e => setOverallNotes(e.target.value)} rows={3} placeholder="Any additional findings…" style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, resize: 'vertical' }} />
+          </div>
+
+          {allRated && (
+            <div style={{ background: hasNeedsWork ? '#fee2e2' : '#d1fae5', border: `1.5px solid ${hasNeedsWork ? '#fca5a5' : '#6ee7b7'}`, borderRadius: 8, padding: '8px 14px', marginBottom: 16, fontSize: 13, fontWeight: 600, color: hasNeedsWork ? '#991b1b' : '#065f46' }}>
+              {hasNeedsWork ? '⚠ Recon required — one or more items need attention' : '✓ Pass — vehicle looks good'}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={onClose} className="btn-secondary">Cancel</button>
+            <button onClick={() => handleSubmit('recon')} disabled={saving || !allRated} style={{ opacity: allRated ? 1 : 0.4, background: '#fffbeb', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              Complete → Recon
+            </button>
+            <button onClick={() => handleSubmit('ready')} disabled={saving || !allRated} style={{ opacity: allRated ? 1 : 0.4, background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              Complete → Ready
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Acquisitions() {
   const { user } = useAuth();
@@ -839,6 +1005,7 @@ export default function Acquisitions() {
   const { showToast } = useToast();
   const [resolveModal, setResolveModal] = useState(null);
   const [repairModal, setRepairModal] = useState(null);
+  const [inspectionModal, setInspectionModal] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [viewVehicle, setViewVehicle] = useState(null);
@@ -1007,6 +1174,15 @@ export default function Acquisitions() {
   const handleStatusChange = async (v, status) => {
     try { await updateVehicle(v.id, { status }); }
     catch (err) { showToast('Status update failed: ' + err.message, 'error'); }
+  };
+
+  const handleInspectionSave = async (vehicleId, inspectionData, nextStatus) => {
+    try {
+      await updateVehicle(vehicleId, { inspection: inspectionData, status: nextStatus });
+      showToast('Inspection saved.', 'success');
+    } catch (err) {
+      showToast('Inspection save failed: ' + err.message, 'error');
+    }
   };
 
 
@@ -1208,8 +1384,15 @@ export default function Acquisitions() {
                       {/* Stage advancement */}
                       {(v.status === 'intake' || v.status === 'no_sale') && (
                         <div style={{ display: 'flex', gap: 5 }}>
-                          <button onClick={() => handleStatusChange(v, 'recon')} style={{ flex: 1, background: '#fffbeb', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>→ Recon</button>
-                          <button onClick={() => handleStatusChange(v, 'ready')} style={{ flex: 1, background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>→ Ready</button>
+                          <button onClick={() => handleStatusChange(v, 'inspection')} style={{ flex: 1, background: '#fef3c7', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>→ Inspect</button>
+                          <button onClick={() => handleStatusChange(v, 'recon')} style={{ flex: 1, background: '#fffbeb', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>→ Recon</button>
+                          <button onClick={() => handleStatusChange(v, 'ready')} style={{ flex: 1, background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>→ Ready</button>
+                        </div>
+                      )}
+                      {v.status === 'inspection' && (
+                        <div style={{ display: 'flex', gap: 5 }}>
+                          <button onClick={() => printInspectionChecklist(v)} style={{ flex: 1, background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 8, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Print</button>
+                          <button onClick={() => setInspectionModal(v)} style={{ flex: 1, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Enter Results</button>
                         </div>
                       )}
                       {v.status === 'recon' && (
@@ -1316,6 +1499,36 @@ export default function Acquisitions() {
                     }}
                   />
 
+                  {/* Inspection */}
+                  {(v.status === 'inspection' || v.inspection?.status === 'complete') && (
+                    <div style={{ minWidth: 170 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Inspection</div>
+                      {v.inspection?.status === 'complete' ? (
+                        <div>
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: v.inspection.result === 'pass' ? '#d1fae5' : '#fee2e2', color: v.inspection.result === 'pass' ? '#065f46' : '#991b1b', display: 'inline-block', marginBottom: 4 }}>
+                            {v.inspection.result === 'pass' ? '✓ Pass' : '⚠ Recon needed'}
+                          </span>
+                          {v.inspection.completed_by && <div style={{ fontSize: 11, color: '#6b7280' }}>by {v.inspection.completed_by}</div>}
+                          {Object.entries(v.inspection.items || {}).filter(([,val]) => val.rating === 'needs_work').map(([k]) => {
+                            const cat = INSPECTION_CATS.find(c => c.key === k);
+                            return <div key={k} style={{ fontSize: 10, color: '#dc2626', marginTop: 1 }}>• {cat?.label}</div>;
+                          })}
+                        </div>
+                      ) : (
+                        !isReadOnly && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <button onClick={() => printInspectionChecklist(v)} style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 6, padding: '5px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>
+                              Print checklist
+                            </button>
+                            <button onClick={() => setInspectionModal(v)} style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>
+                              Enter results
+                            </button>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+
                   {/* Location */}
                   <div>
                     <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Location</div>
@@ -1341,8 +1554,15 @@ export default function Acquisitions() {
                       {/* Stage advancement */}
                       {(v.status === 'intake' || v.status === 'no_sale') && (
                         <div style={{ display: 'flex', gap: 5 }}>
-                          <button onClick={() => handleStatusChange(v, 'recon')} style={{ background: '#fffbeb', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>→ Recon</button>
-                          <button onClick={() => handleStatusChange(v, 'ready')} style={{ background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>→ Ready</button>
+                          <button onClick={() => handleStatusChange(v, 'inspection')} style={{ background: '#fef3c7', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>→ Inspect</button>
+                          <button onClick={() => handleStatusChange(v, 'recon')} style={{ background: '#fffbeb', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>→ Recon</button>
+                          <button onClick={() => handleStatusChange(v, 'ready')} style={{ background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>→ Ready</button>
+                        </div>
+                      )}
+                      {v.status === 'inspection' && (
+                        <div style={{ display: 'flex', gap: 5 }}>
+                          <button onClick={() => handleStatusChange(v, 'recon')} style={{ background: '#fffbeb', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>→ Recon</button>
+                          <button onClick={() => handleStatusChange(v, 'ready')} style={{ background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>→ Ready</button>
                         </div>
                       )}
                       {v.status === 'recon' && (
@@ -1356,7 +1576,7 @@ export default function Acquisitions() {
                           <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { showToast('Failed to remove: ' + err.message, 'error'); } }} style={{ background: '#fef3c7', color: '#92400e', border: 'none', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
                         )}
                         <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} data-tooltip="Edit" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>✏️</button>
-                        {['intake', 'recon', 'ready', 'no_sale'].includes(v.status) && (
+                        {['intake', 'inspection', 'recon', 'ready', 'no_sale'].includes(v.status) && (
                           <button onClick={() => setRepairModal(v)} data-tooltip="Repairs" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>🔧</button>
                         )}
                         <button onClick={() => handlePrintBuySheet(v)} data-tooltip="Buy sheet" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>🧾</button>
@@ -1430,6 +1650,9 @@ export default function Acquisitions() {
 
       {/* Repair orders modal */}
       {repairModal && <RepairOrdersModal vehicle={repairModal} onClose={() => setRepairModal(null)} />}
+
+      {/* Inspection modal */}
+      {inspectionModal && <InspectionModal vehicle={inspectionModal} user={user} onSave={handleInspectionSave} onClose={() => setInspectionModal(null)} />}
 
       {/* Resolve arbitration modal */}
       {resolveModal && (

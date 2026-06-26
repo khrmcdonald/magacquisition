@@ -1,14 +1,14 @@
 {
   "files": {
     "main.css": "/static/css/main.a8614ccf.css",
-    "main.js": "/static/js/main.08afd61f.js",
+    "main.js": "/static/js/main.665cc3f2.js",
     "static/media/gmc-hero.jpg": "/static/media/gmc-hero.8f3f38703137c3f89d54.jpg",
     "index.html": "/index.html",
     "main.a8614ccf.css.map": "/static/css/main.a8614ccf.css.map",
-    "main.08afd61f.js.map": "/static/js/main.08afd61f.js.map"
+    "main.665cc3f2.js.map": "/static/js/main.665cc3f2.js.map"
   },
   "entrypoints": [
     "static/css/main.a8614ccf.css",
-    "static/js/main.08afd61f.js"
+    "static/js/main.665cc3f2.js"
   ]
 }
