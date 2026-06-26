@@ -360,16 +360,6 @@ function TriStateDashboard({ data, navigate, role }) {
       <AuctionBanner auction={data.auction} navigate={navigate} role={role} />
       <AgedInventorySummary vehicles={data.vehicles} navigate={navigate} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 28 }}>
-        <StatCard label="Total inventory" value={total} sub="all vehicles" onClick={() => navigate('/acquisitions')} />
-        <StatCard label="Ready to list" value={ready} sub="auction ready" color={ready > 0 ? '#065f46' : '#9ca3af'} onClick={() => navigate('/acquisitions')} />
-        <StatCard label="Live now" value={live} sub="in auction" color={live > 0 ? '#1e40af' : '#9ca3af'} onClick={() => navigate('/manage')} />
-        <StatCard label="Awarded" value={awarded} sub={`$${(totalVolume/1000).toFixed(0)}k volume`} color="#0d2550" onClick={() => navigate('/acquisitions')} />
-        <StatCard label="In recon" value={inRecon} sub="being prepped" color="#92400e" onClick={() => navigate('/acquisitions')} />
-        {openArbitrations.length > 0 && <StatCard label="Arbitrations" value={openArbitrations.length} sub="need review" color="#991b1b" onClick={() => navigate('/acquisitions')} />}
-        {pendingTitles.length > 0 && <StatCard label="Title issues" value={pendingTitles.length} sub="need attention" color="#92400e" onClick={() => navigate('/acquisitions')} />}
-      </div>
-
       {/* Open arbitrations alert */}
       {openArbitrations.length > 0 && (
         <div style={{ background: '#fee2e2', border: '2px solid #fca5a5', borderRadius: 12, padding: '16px 20px', marginBottom: 20, cursor: 'pointer' }} onClick={() => navigate('/acquisitions')}>
@@ -431,15 +421,6 @@ function GMDashboard({ data, navigate, role }) {
     <>
       <AuctionBanner auction={data.auction} navigate={navigate} role={role} />
       <AgedInventorySummary vehicles={data.vehicles} navigate={navigate} />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 28 }}>
-        <StatCard label="Total inventory" value={data.vehicles.length} sub="all vehicles" onClick={() => navigate('/acquisitions')} />
-        <StatCard label="Awarded" value={awarded.length} sub="cars sold" color="#0d2550" onClick={() => navigate('/acquisitions')} />
-        <StatCard label="Bid volume" value={`$${(totalVolume/1000).toFixed(0)}k`} sub="total awarded" color="#0d2550" />
-        <StatCard label="Group margin" value={`$${(totalMargin/1000).toFixed(0)}k`} sub="vs cost basis" color={totalMargin >= 0 ? '#065f46' : '#991b1b'} />
-        <StatCard label="Total bids" value={data.bids.length} sub="all stores" onClick={() => navigate('/auction')} />
-        {openArbitrations > 0 && <StatCard label="Arbitrations" value={openArbitrations} sub="open" color="#991b1b" onClick={() => navigate('/acquisitions')} />}
-      </div>
 
       <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 12 }}>Store performance</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
