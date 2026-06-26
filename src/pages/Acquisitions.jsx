@@ -747,12 +747,6 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
             )}
           </>
         )}
-        <div className="form-group">
-          <label>Title status</label>
-          <select value={form.titleStatus || 'pending'} onChange={e => set('titleStatus', e.target.value)}>
-            {TITLE_STATUSES.map(ts => <option key={ts.value} value={ts.value}>{ts.label}</option>)}
-          </select>
-        </div>
       </div>
 
       {/* ── Transport ─────────────────────────────────────────────────────── */}
@@ -1001,7 +995,7 @@ function InspectionModal({ vehicle, user, onSave, onClose }) {
 export default function Acquisitions() {
   const { user } = useAuth();
   const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, addLocation } = useData();
-  const buyers = data.buyers || [];
+  const buyers = (data.profiles || []).filter(p => p.buyer_number);
   const { showToast } = useToast();
   const [resolveModal, setResolveModal] = useState(null);
   const [repairModal, setRepairModal] = useState(null);
