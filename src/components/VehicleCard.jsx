@@ -199,18 +199,18 @@ export function VehicleCard({
 
           {/* Middle: vehicle identity */}
           <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontFamily: 'monospace', fontSize: 11, fontWeight: 600, color: '#6b7280',
+              background: '#f3f4f6', display: 'inline-block', padding: '1px 7px',
+              borderRadius: 4, border: '1px solid #e5e7eb', marginBottom: 3, letterSpacing: '.04em',
+            }}>
+              {vehicle.vin || '—'}
+            </div>
             <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', lineHeight: 1.2 }}>
               {vehicle.year} {vehicle.make} {vehicle.model}
               {vehicle.trim
                 ? <span style={{ fontWeight: 400, color: '#6b7280', fontSize: 13 }}> · {vehicle.trim}</span>
                 : null}
-            </div>
-            <div style={{
-              fontFamily: 'monospace', fontSize: 10, color: '#9ca3af', marginTop: 3,
-              background: '#f9fafb', display: 'inline-block', padding: '1px 6px',
-              borderRadius: 4, border: '1px solid #f0f2f5',
-            }}>
-              {vehicle.vin || '—'}
             </div>
             <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
               {[
@@ -288,8 +288,18 @@ export function VehicleCard({
           {vehicle.year}
         </div>
 
+        {/* VIN — above make/model */}
+        <div style={{
+          fontFamily: 'monospace', fontSize: 11, fontWeight: 600, color: '#6b7280',
+          background: '#f3f4f6', padding: '3px 8px', borderRadius: 4,
+          border: '1px solid #e5e7eb', display: 'inline-block', alignSelf: 'flex-start',
+          letterSpacing: '.04em',
+        }}>
+          {vehicle.vin || '—'}
+        </div>
+
         {/* Make + Model — 16px bold navy */}
-        <div style={{ fontSize: 16, fontWeight: 800, color: '#0d2550', lineHeight: 1.2, marginTop: -1 }}>
+        <div style={{ fontSize: 16, fontWeight: 800, color: '#0d2550', lineHeight: 1.2 }}>
           {vehicle.make} {vehicle.model}
         </div>
 
@@ -305,14 +315,6 @@ export function VehicleCard({
             ].filter(Boolean).join(' · ')}
           </div>
         )}
-        {/* VIN pill */}
-        <div style={{
-          fontFamily: 'monospace', fontSize: 10, color: '#9ca3af',
-          background: '#f9fafb', padding: '2px 8px', borderRadius: 4,
-          border: '1px solid #f0f2f5', display: 'inline-block', alignSelf: 'flex-start',
-        }}>
-          {vehicle.vin || '—'}
-        </div>
 
         {/* Mileage | List Price or Buyer — 2-col grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, paddingTop: 8, borderTop: '1px solid #f3f4f6', marginTop: 2 }}>
