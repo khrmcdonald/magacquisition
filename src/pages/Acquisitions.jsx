@@ -10,14 +10,6 @@ import { useToast } from '../components/Toast';
 
 const CONDITIONS = ['Excellent', 'Good', 'Fair', 'Poor'];
 
-const TITLE_STATUSES = [
-  { value: 'pending', label: 'Pending', bg: '#fef3c7', color: '#92400e' },
-  { value: 'in_transit', label: 'Title in Transit', bg: '#dbeafe', color: '#1e40af' },
-  { value: 'on_hand', label: 'On Hand', bg: '#d1fae5', color: '#065f46' },
-  { value: 'lien', label: 'Lien – Payoff Needed', bg: '#fee2e2', color: '#991b1b' },
-  { value: 'missing', label: 'Missing / Issue', bg: '#fee2e2', color: '#991b1b' },
-  { value: 'transferred', label: 'Transferred Out', bg: '#f3f4f6', color: '#6b7280' },
-];
 
 const AUCTION_STATUSES = [
   { value: 'intake', label: 'Intake', bg: '#f3f4f6', color: '#6b7280' },
@@ -124,18 +116,6 @@ function VehicleStatusDropdown({ vehicle, onChange }) {
   return <InlineSelect options={AUCTION_STATUSES} current={vehicle.status} onChange={onChange} minWidth={150} label="Vehicle status" />;
 }
 
-function TitleStatusDropdown({ vehicleId, current, onChange }) {
-  return <InlineSelect options={TITLE_STATUSES} current={current || 'pending'} onChange={onChange} minWidth={160} label="Title status" />;
-}
-
-function TitleStatusBadge({ value }) {
-  const ts = TITLE_STATUSES.find(t => t.value === value) || TITLE_STATUSES[0];
-  return (
-    <span style={{ background: ts.bg, color: ts.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
-      {ts.label}
-    </span>
-  );
-}
 
 const TITLE_CUSTODY_STEPS = [
   { key: 'pending',         label: 'Pending',         short: 'Pending'  },
