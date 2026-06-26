@@ -1006,10 +1006,10 @@ function InspectionModal({ vehicle, inspectors, addInspector, onSave, onClose })
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={onClose} className="btn-secondary">Cancel</button>
-            <button onClick={() => handleSubmit('recon')} disabled={saving || !allRated || !inspectorId} style={{ opacity: (allRated && inspectorId) ? 1 : 0.4, background: '#fffbeb', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={() => handleSubmit('recon')} disabled={saving || !allRated} style={{ opacity: allRated ? 1 : 0.4, background: '#fffbeb', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
               {saving ? 'Saving…' : 'Complete → Recon'}
             </button>
-            <button onClick={() => handleSubmit('ready')} disabled={saving || !allRated || !inspectorId} style={{ opacity: (allRated && inspectorId) ? 1 : 0.4, background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={() => handleSubmit('ready')} disabled={saving || !allRated} style={{ opacity: allRated ? 1 : 0.4, background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
               {saving ? 'Saving…' : 'Complete → Ready'}
             </button>
           </div>
@@ -1404,12 +1404,8 @@ export default function Acquisitions() {
   };
 
   const handleInspectionSave = async (vehicleId, inspectionData, nextStatus) => {
-    try {
-      await updateVehicle(vehicleId, { inspection: inspectionData, status: nextStatus });
-      showToast('Inspection saved.', 'success');
-    } catch (err) {
-      showToast('Inspection save failed: ' + err.message, 'error');
-    }
+    await updateVehicle(vehicleId, { inspection: inspectionData, status: nextStatus });
+    showToast('Inspection saved.', 'success');
   };
 
 
