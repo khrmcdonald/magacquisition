@@ -460,54 +460,37 @@ function YesNoToggle({ value, onChange }) {
 
 // ── KeyTracker ────────────────────────────────────────────────────────────────
 const KEY_OPTS = [
-  { value: 'on_lot',      label: 'On Lot',      color: '#065f46', bg: '#d1fae5' },
-  { value: 'checked_out', label: 'Checked Out', color: '#92400e', bg: '#fef3c7' },
-  { value: 'missing',     label: 'Missing',     color: '#991b1b', bg: '#fee2e2' },
+  { value: 'on_lot',      label: 'On Lot',      color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' },
+  { value: 'checked_out', label: 'Checked Out', color: '#92400e', bg: '#fef3c7', border: '#fcd34d' },
+  { value: 'missing',     label: 'Missing',     color: '#991b1b', bg: '#fee2e2', border: '#fca5a5' },
 ];
 
 function KeyTracker({ vehicle, onUpdate }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    if (open) document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
-  }, [open]);
-
-  const status = vehicle.keys?.status || 'untracked';
-  const current = KEY_OPTS.find(o => o.value === status);
+  const status = vehicle.keys?.status || null;
 
   return (
-    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
-      <div onClick={() => setOpen(o => !o)} style={{
-        display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer',
-        background: current?.bg || '#f3f4f6', color: current?.color || '#9ca3af',
-        padding: '3px 9px', borderRadius: 12, fontSize: 11, fontWeight: 700,
-      }}>
-        🔑 {current?.label || 'Keys?'}
-      </div>
-      {open && (
-        <div style={{
-          position: 'absolute', top: '100%', left: 0, zIndex: 100,
-          background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 8, minWidth: 145, marginTop: 4,
-        }}>
-          {KEY_OPTS.map(opt => (
-            <button key={opt.value} onClick={() => { onUpdate({ status: opt.value }); setOpen(false); }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-                padding: '7px 10px', borderRadius: 6, border: 'none',
-                background: status === opt.value ? opt.bg : 'transparent',
-                color: status === opt.value ? opt.color : '#374151',
-                fontSize: 12, fontWeight: status === opt.value ? 700 : 500, cursor: 'pointer',
-              }}>
-              <span style={{ width: 14 }}>{status === opt.value ? '✓' : ''}</span>
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
+    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+      {KEY_OPTS.map(opt => {
+        const active = status === opt.value;
+        return (
+          <button
+            key={opt.value}
+            onClick={e => { e.stopPropagation(); onUpdate({ status: active ? null : opt.value }); }}
+            style={{
+              padding: '4px 10px', borderRadius: 20,
+              border: `1.5px solid ${active ? opt.border : '#e5e7eb'}`,
+              background: active ? opt.bg : '#fff',
+              color: active ? opt.color : '#9ca3af',
+              fontSize: 11, fontWeight: active ? 700 : 500,
+              cursor: 'pointer', transition: 'all 0.12s', whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = opt.border; e.currentTarget.style.color = opt.color; } }}
+            onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.color = '#9ca3af'; } }}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -1279,9 +1262,10 @@ export default function Acquisitions() {
                     {margin !== null && <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: 3, marginTop: 1 }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Margin</span><span style={{ fontSize: 12, fontWeight: 700, color: margin >= 0 ? '#065f46' : '#991b1b' }}>${margin.toLocaleString()}</span></div>}
                   </div>
                 )}
-                {/* Key tracker */}
+                {/* Keys */}
                 {!isReadOnly && (
-                  <div style={{ marginTop: 6 }}>
+                  <div style={{ marginTop: 8, borderTop: '1px solid #f3f4f6', paddingTop: 8 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>🔑 Keys</div>
                     <KeyTracker vehicle={v} onUpdate={(keysData) => handleKeyUpdate(v, keysData)} />
                   </div>
                 )}
