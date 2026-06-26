@@ -296,6 +296,8 @@ export function DataProvider({ children }) {
     vehicles,
     bids,
     transport,
+    repairOrders,
+    repairVendors,
     auctionHistory: auctions
       .filter(a => !a.isOpen)
       .map(a => ({

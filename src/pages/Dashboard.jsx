@@ -223,43 +223,41 @@ function BidderDashboard({ user, data, navigate, role }) {
 
 // ── TODAY'S WORK ──
 function TodaysTasks({ data, navigate }) {
-  const pendingRepairs = (data.repairOrders || []).filter(r => ['draft','pending','pending_approval','in_progress'].includes(r.status));
-  const needsDispatch  = (data.transport   || []).filter(t => t.status === 'awarded');
-  const inReconNoROs   = (data.vehicles    || []).filter(v => {
-    if (v.status !== 'recon') return false;
-    const vROs = (data.repairOrders || []).filter(r => r.vehicleId === v.id);
-    return vROs.length === 0;
+  const ros = data.repairOrders || [];
+  const transport = data.transport || [];
+  const vehicles = data.vehicles || [];
+
+  const openRepairs = ros.filter(r => ['draft','pending','pending_approval','in_progress'].includes(r.status));
+  const openTransport = transport.filter(t => !['arrived','titleReceived'].includes(t.status));
+  const titleNeeded = vehicles.filter(v => {
+    const ts = v.title_tracker?.status;
+    // show if tracker is in an early stage OR titleStatus needs attention
+    return ['pending','awaiting_pickup','in_hand'].includes(ts)
+      || (!ts && ['pending','lien','missing','in_transit'].includes(v.titleStatus));
   });
-  const titlePending   = (data.vehicles    || []).filter(v =>
-    v.title_tracker && ['pending','awaiting_pickup'].includes(v.title_tracker?.status)
-  );
 
   const tasks = [
-    pendingRepairs.length > 0 && {
-      count: pendingRepairs.length,
-      label: 'open repair order' + (pendingRepairs.length !== 1 ? 's' : ''),
-      detail: `${pendingRepairs.filter(r => r.status === 'in_progress').length} in progress`,
+    openRepairs.length > 0 && {
+      count: openRepairs.length,
+      label: 'open repair order' + (openRepairs.length !== 1 ? 's' : ''),
+      detail: openRepairs.map(r => {
+        const v = vehicles.find(vv => vv.id === r.vehicleId);
+        return v ? `${v.year} ${v.make} ${v.model}` : null;
+      }).filter(Boolean).slice(0, 3).join(', '),
       accent: '#3b82f6',
       onClick: () => navigate('/repairs'),
     },
-    needsDispatch.length > 0 && {
-      count: needsDispatch.length,
-      label: 'transport' + (needsDispatch.length !== 1 ? 's' : '') + ' waiting for dispatch',
-      detail: needsDispatch.map(t => t.vehicleName || '—').slice(0, 2).join(', ') + (needsDispatch.length > 2 ? ` +${needsDispatch.length - 2}` : ''),
+    openTransport.length > 0 && {
+      count: openTransport.length,
+      label: 'open transport' + (openTransport.length !== 1 ? 's' : ''),
+      detail: openTransport.map(t => t.vehicleName || '—').slice(0, 3).join(', '),
       accent: '#e8b84b',
       onClick: () => navigate('/transport'),
     },
-    inReconNoROs.length > 0 && {
-      count: inReconNoROs.length,
-      label: 'recon vehicle' + (inReconNoROs.length !== 1 ? 's' : '') + ' with no ROs started',
-      detail: inReconNoROs.map(v => `${v.year} ${v.make} ${v.model}`).slice(0, 2).join(', ') + (inReconNoROs.length > 2 ? ` +${inReconNoROs.length - 2}` : ''),
-      accent: '#f59e0b',
-      onClick: () => navigate('/repairs'),
-    },
-    titlePending.length > 0 && {
-      count: titlePending.length,
-      label: 'title' + (titlePending.length !== 1 ? 's' : '') + ' awaiting pickup or action',
-      detail: titlePending.map(v => `${v.year} ${v.make}`).slice(0, 2).join(', ') + (titlePending.length > 2 ? ` +${titlePending.length - 2}` : ''),
+    titleNeeded.length > 0 && {
+      count: titleNeeded.length,
+      label: 'title' + (titleNeeded.length !== 1 ? 's' : '') + ' in progress',
+      detail: titleNeeded.map(v => `${v.year} ${v.make} ${v.model}`).slice(0, 3).join(', '),
       accent: '#8b5cf6',
       onClick: () => navigate('/acquisitions'),
     },
@@ -267,14 +265,14 @@ function TodaysTasks({ data, navigate }) {
 
   if (tasks.length === 0) return (
     <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '14px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-      <span style={{ fontSize: 18 }}>✓</span>
+      <span style={{ fontSize: 16 }}>✓</span>
       <span style={{ fontSize: 13, fontWeight: 600, color: '#065f46' }}>All caught up — nothing needs attention right now.</span>
     </div>
   );
 
   return (
     <div style={{ marginBottom: 24 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>Needs Attention</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>Needs Attention</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {tasks.map((task, i) => (
           <div key={i} onClick={task.onClick} style={{
@@ -287,12 +285,12 @@ function TodaysTasks({ data, navigate }) {
             onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)'}
             onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
           >
-            <div style={{ minWidth: 32, height: 32, borderRadius: 8, background: task.accent + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span style={{ fontSize: 16, fontWeight: 800, color: task.accent, lineHeight: 1 }}>{task.count}</span>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: task.accent + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <span style={{ fontSize: 17, fontWeight: 800, color: task.accent, lineHeight: 1 }}>{task.count}</span>
             </div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{task.count} {task.label}</div>
-              {task.detail && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>{task.detail}</div>}
+              {task.detail && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.detail}</div>}
             </div>
             <div style={{ fontSize: 12, color: '#9ca3af', flexShrink: 0 }}>Go →</div>
           </div>
@@ -317,7 +315,6 @@ function TriStateDashboard({ data, navigate, role }) {
   return (
     <>
       <AuctionBanner auction={data.auction} navigate={navigate} role={role} />
-      <TodaysTasks data={data} navigate={navigate} />
       <AgedInventorySummary vehicles={data.vehicles} navigate={navigate} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 28 }}>
@@ -390,7 +387,6 @@ function GMDashboard({ data, navigate, role }) {
   return (
     <>
       <AuctionBanner auction={data.auction} navigate={navigate} role={role} />
-      <TodaysTasks data={data} navigate={navigate} />
       <AgedInventorySummary vehicles={data.vehicles} navigate={navigate} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 28 }}>
@@ -464,6 +460,8 @@ export default function Dashboard() {
           </p>
         </div>
       </div>
+
+      <TodaysTasks data={data} navigate={navigate} />
 
       {user.role === 'bidder' && <BidderDashboard user={user} data={data} navigate={navigate} role={user.role} />}
       {user.role === 'wholesale' && <TriStateDashboard data={data} navigate={navigate} role={user.role} />}

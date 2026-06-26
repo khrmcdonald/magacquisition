@@ -241,7 +241,7 @@ export default function Admin() {
   };
 
   // Org settings state
-  const [activeTab, setActiveTab] = useState('users');
+  const [activeTab, setActiveTab] = useState('org');
   const [orgSettings, setOrgSettings] = useState(() => readOrgSettings());
   const [orgLogo, setOrgLogo] = useState(() => {
     try { return localStorage.getItem('org_logo') || null; } catch { return null; }
@@ -316,10 +316,10 @@ export default function Admin() {
   const photoEligible = (role) => ['bidder', 'wholesale', 'gm'].includes(role);
 
   const TABS = [
-    { key: 'users',  label: 'Users' },
+    { key: 'org',    label: 'Organization' },
     { key: 'acq',    label: 'Acquisitions' },
     { key: 'stores', label: 'Retail Stores' },
-    { key: 'org',    label: 'Organization' },
+    { key: 'users',  label: 'Users' },
   ];
 
   return (
