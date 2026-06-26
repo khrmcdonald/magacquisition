@@ -1320,7 +1320,7 @@ export default function Acquisitions() {
 
       {/* Status KPI tiles — click to filter */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, marginBottom: 20 }}>
-        {Object.entries(STATUS_LABELS).map(([key, { label, color, accent }]) => {
+        {Object.entries(STATUS_LABELS).filter(([key]) => key !== 'no_sale').map(([key, { label, color, accent }]) => {
           const active = statusFilter === key;
           return (
             <div
