@@ -724,6 +724,14 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
           <label>Lienholder</label>
           <input type="text" value={form.lienholder} onChange={e => set('lienholder', e.target.value)} placeholder="Bank or lender name" />
         </div>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Cashier's Check</div>
+          <YesNoToggle value={form.cashiers_check} onChange={v => set('cashiers_check', v)} />
+        </div>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Electronic Title</div>
+          <YesNoToggle value={form.title_electronic} onChange={v => set('title_electronic', v)} />
+        </div>
         {form.lienholder && (
           <>
             <div className="form-group">
@@ -764,18 +772,6 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
           </datalist>
         </div>
       )}
-
-      {/* Yes/No toggles */}
-      <div style={{ display: 'flex', gap: 32, marginTop: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Cashier's Check</div>
-          <YesNoToggle value={form.cashiers_check} onChange={v => set('cashiers_check', v)} />
-        </div>
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Electronic Title</div>
-          <YesNoToggle value={form.title_electronic} onChange={v => set('title_electronic', v)} />
-        </div>
-      </div>
 
       {/* ── Photos ────────────────────────────────────────────────────────── */}
       {sectionLabel('Photos')}
@@ -1068,6 +1064,14 @@ export default function Acquisitions() {
     if (editing) {
       try { await updateVehicle(editing.id, { ...saveFields, status: editing.status }); }
       catch (err) { showToast(`Update failed: ${fmtErr(err)}`, 'error'); setSaveError(`Update failed: ${fmtErr(err)}`); return; }
+      if (vehicleData.mileage) {
+        const orgId = user?.org_id || 'bf236d2b-4693-4606-bf3d-ece1767690ab';
+        await supabase.from('mileage_log').insert({
+          vehicle_id: editing.id, org_id: orgId,
+          vin6: (vehicleData.vin || editing.vin || '').slice(-6),
+          reading: parseInt(vehicleData.mileage), reason: 'edit',
+        }).catch(() => {});
+      }
     } else {
       let newVehicle;
       try {
@@ -1130,7 +1134,7 @@ export default function Acquisitions() {
               org_id: orgId,
               vehicle_id: newVehicle.id,
               vehicle_name: `${vehicleFields.year || ''} ${vehicleFields.make || ''} ${vehicleFields.model || ''}`.trim(),
-              store_id: orgId,
+              store_id: null,
               store_name: 'Intake',
               winning_bid: null,
               status: 'awarded',

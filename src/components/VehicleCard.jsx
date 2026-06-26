@@ -230,7 +230,7 @@ export function VehicleCard({
 
           {/* Right: price + badge + age + action */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#0d2550' }}>{listPrice}</div>
+            {vehicle.list_price && <div style={{ fontSize: 17, fontWeight: 800, color: '#0d2550' }}>{listPrice}</div>}
             {badgeContent}
             {showAge && <AgePill vehicle={vehicle} />}
             {actionButton && (
@@ -325,15 +325,24 @@ export function VehicleCard({
           {vehicle.vin || '—'}
         </div>
 
-        {/* Mileage | List Price — 2-col grid */}
+        {/* Mileage | List Price or Buyer — 2-col grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, paddingTop: 8, borderTop: '1px solid #f3f4f6', marginTop: 2 }}>
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Mileage</div>
             <div style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>{mileageDisplay}</div>
           </div>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>List Price</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#0d2550' }}>{listPrice}</div>
+            {vehicle.list_price ? (
+              <>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>List Price</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#0d2550' }}>{listPrice}</div>
+              </>
+            ) : vehicle.buyer_name ? (
+              <>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Buyer</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{vehicle.buyer_name}</div>
+              </>
+            ) : null}
           </div>
         </div>
 
