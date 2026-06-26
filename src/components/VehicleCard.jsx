@@ -221,11 +221,6 @@ export function VehicleCard({
                 mileage != null ? `${parseInt(mileage).toLocaleString()} mi` : null,
               ].filter(Boolean).join(' · ')}
             </div>
-            {vehicle.buyer_name && (
-              <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
-                Buyer: <span style={{ color: '#6b7280', fontWeight: 600 }}>{vehicle.buyer_name}</span>
-              </div>
-            )}
           </div>
 
           {/* Right: price + badge + age + action */}
@@ -310,12 +305,6 @@ export function VehicleCard({
             ].filter(Boolean).join(' · ')}
           </div>
         )}
-        {vehicle.buyer_name && (
-          <div style={{ fontSize: 11, color: '#9ca3af' }}>
-            Buyer: <span style={{ color: '#6b7280', fontWeight: 600 }}>{vehicle.buyer_name}</span>
-          </div>
-        )}
-
         {/* VIN pill */}
         <div style={{
           fontFamily: 'monospace', fontSize: 10, color: '#9ca3af',

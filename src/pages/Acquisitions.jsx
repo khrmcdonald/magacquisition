@@ -1046,11 +1046,13 @@ export default function Acquisitions() {
       catch (err) { showToast(`Update failed: ${fmtErr(err)}`, 'error'); setSaveError(`Update failed: ${fmtErr(err)}`); return; }
       if (vehicleData.mileage) {
         const orgId = user?.org_id || 'bf236d2b-4693-4606-bf3d-ece1767690ab';
-        await supabase.from('mileage_log').insert({
-          vehicle_id: editing.id, org_id: orgId,
-          vin6: (vehicleData.vin || editing.vin || '').slice(-6),
-          reading: parseInt(vehicleData.mileage), reason: 'edit',
-        }).catch(() => {});
+        try {
+          await supabase.from('mileage_log').insert({
+            vehicle_id: editing.id, org_id: orgId,
+            vin6: (vehicleData.vin || editing.vin || '').slice(-6),
+            reading: parseInt(vehicleData.mileage), reason: 'edit',
+          });
+        } catch (_) {}
       }
     } else {
       let newVehicle;
