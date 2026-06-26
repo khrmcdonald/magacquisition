@@ -221,50 +221,116 @@ function BidderDashboard({ user, data, navigate, role }) {
   );
 }
 
+const TRANSPORT_STATUS_LABEL = {
+  awarded:    { label: 'Pending dispatch', color: '#92400e', bg: '#fef3c7' },
+  dispatched: { label: 'Dispatched',       color: '#1e40af', bg: '#dbeafe' },
+  inTransit:  { label: 'In Transit',       color: '#0369a1', bg: '#e0f2fe' },
+};
+const TITLE_TRACKER_LABEL = {
+  pending:         'Pending',
+  awaiting_pickup: 'Awaiting Pickup',
+  in_hand:         'In Hand',
+  sent:            'Sent to Store',
+  delivered:       'Delivered',
+};
+
+function TaskSection({ title, accent, items, onGoTo }) {
+  if (!items.length) return null;
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 3, height: 14, borderRadius: 2, background: accent }} />
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '.06em' }}>{title}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: accent, background: accent + '18', borderRadius: 10, padding: '1px 8px' }}>{items.length}</span>
+        </div>
+        <button onClick={onGoTo} style={{ background: 'none', border: 'none', fontSize: 12, color: '#9ca3af', cursor: 'pointer', fontWeight: 600 }}>View all →</button>
+      </div>
+      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
+        {items.map((item, i) => (
+          <div key={i} onClick={onGoTo} style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '10px 14px', cursor: 'pointer',
+            borderTop: i > 0 ? '1px solid #f3f4f6' : 'none',
+            transition: 'background 0.1s',
+          }}
+            onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
+            onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.primary}</div>
+              {item.secondary && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>{item.secondary}</div>}
+            </div>
+            {item.badge && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: item.badge.color, background: item.badge.bg, padding: '2px 10px', borderRadius: 20, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                {item.badge.label}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── TODAY'S WORK ──
 function TodaysTasks({ data, navigate }) {
   const ros = data.repairOrders || [];
   const transport = data.transport || [];
   const vehicles = data.vehicles || [];
 
-  const openRepairs = ros.filter(r => ['draft','pending','pending_approval','in_progress'].includes(r.status));
-  const openTransport = transport.filter(t => !['arrived','titleReceived'].includes(t.status));
-  const titleNeeded = vehicles.filter(v => {
-    const ts = v.title_tracker?.status;
-    // show if tracker is in an early stage OR titleStatus needs attention
-    return ['pending','awaiting_pickup','in_hand'].includes(ts)
-      || (!ts && ['pending','lien','missing','in_transit'].includes(v.titleStatus));
-  });
+  const STATUS_BADGE = {
+    draft:            { label: 'Pending',     color: '#92400e', bg: '#fef3c7' },
+    pending:          { label: 'Pending',     color: '#92400e', bg: '#fef3c7' },
+    pending_approval: { label: 'Approval',    color: '#1e40af', bg: '#dbeafe' },
+    in_progress:      { label: 'In Progress', color: '#065f46', bg: '#d1fae5' },
+  };
 
-  const tasks = [
-    openRepairs.length > 0 && {
-      count: openRepairs.length,
-      label: 'open repair order' + (openRepairs.length !== 1 ? 's' : ''),
-      detail: openRepairs.map(r => {
-        const v = vehicles.find(vv => vv.id === r.vehicleId);
-        return v ? `${v.year} ${v.make} ${v.model}` : null;
-      }).filter(Boolean).slice(0, 3).join(', '),
-      accent: '#3b82f6',
-      onClick: () => navigate('/repairs'),
-    },
-    openTransport.length > 0 && {
-      count: openTransport.length,
-      label: 'open transport' + (openTransport.length !== 1 ? 's' : ''),
-      detail: openTransport.map(t => t.vehicleName || '—').slice(0, 3).join(', '),
-      accent: '#e8b84b',
-      onClick: () => navigate('/transport'),
-    },
-    titleNeeded.length > 0 && {
-      count: titleNeeded.length,
-      label: 'title' + (titleNeeded.length !== 1 ? 's' : '') + ' in progress',
-      detail: titleNeeded.map(v => `${v.year} ${v.make} ${v.model}`).slice(0, 3).join(', '),
-      accent: '#8b5cf6',
-      onClick: () => navigate('/acquisitions'),
-    },
-  ].filter(Boolean);
+  const repairItems = ros
+    .filter(r => ['draft','pending','pending_approval','in_progress'].includes(r.status))
+    .map(r => {
+      const v = vehicles.find(vv => vv.id === r.vehicleId);
+      const desc = r.lines?.[0]?.description || r.notes || null;
+      return {
+        primary: v ? `${v.year} ${v.make} ${v.model}` : 'Unknown vehicle',
+        secondary: desc,
+        badge: STATUS_BADGE[r.status] || null,
+      };
+    });
 
-  if (tasks.length === 0) return (
-    <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '14px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+  const transportItems = transport
+    .filter(t => !['arrived','titleReceived'].includes(t.status))
+    .map(t => {
+      const st = TRANSPORT_STATUS_LABEL[t.status];
+      return {
+        primary: t.vehicleName || 'Unknown vehicle',
+        secondary: t.storeName ? `→ ${t.storeName}` : null,
+        badge: st || null,
+      };
+    });
+
+  const titleItems = vehicles
+    .filter(v => {
+      const ts = v.title_tracker?.status;
+      return ['pending','awaiting_pickup','in_hand'].includes(ts)
+        || (!ts && ['pending','lien','missing','in_transit'].includes(v.titleStatus));
+    })
+    .map(v => {
+      const ts = v.title_tracker?.status;
+      const statusLabel = ts ? TITLE_TRACKER_LABEL[ts] : v.titleStatus;
+      return {
+        primary: `${v.year} ${v.make} ${v.model}`,
+        secondary: null,
+        badge: ts
+          ? { label: statusLabel, color: '#6d28d9', bg: '#ede9fe' }
+          : { label: statusLabel || 'Unknown', color: '#92400e', bg: '#fef3c7' },
+      };
+    });
+
+  const hasAny = repairItems.length || transportItems.length || titleItems.length;
+
+  if (!hasAny) return (
+    <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '14px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
       <span style={{ fontSize: 16 }}>✓</span>
       <span style={{ fontSize: 13, fontWeight: 600, color: '#065f46' }}>All caught up — nothing needs attention right now.</span>
     </div>
@@ -272,30 +338,10 @@ function TodaysTasks({ data, navigate }) {
 
   return (
     <div style={{ marginBottom: 24 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>Needs Attention</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {tasks.map((task, i) => (
-          <div key={i} onClick={task.onClick} style={{
-            background: '#fff', border: '1px solid #e5e7eb',
-            borderLeft: `4px solid ${task.accent}`,
-            borderRadius: 10, padding: '12px 16px',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14,
-            transition: 'box-shadow 0.12s',
-          }}
-            onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)'}
-            onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
-          >
-            <div style={{ width: 36, height: 36, borderRadius: 8, background: task.accent + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span style={{ fontSize: 17, fontWeight: 800, color: task.accent, lineHeight: 1 }}>{task.count}</span>
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{task.count} {task.label}</div>
-              {task.detail && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.detail}</div>}
-            </div>
-            <div style={{ fontSize: 12, color: '#9ca3af', flexShrink: 0 }}>Go →</div>
-          </div>
-        ))}
-      </div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 14 }}>Needs Attention</div>
+      <TaskSection title="Repairs"   accent="#3b82f6" items={repairItems}    onGoTo={() => navigate('/repairs')} />
+      <TaskSection title="Transport" accent="#e8b84b" items={transportItems} onGoTo={() => navigate('/transport')} />
+      <TaskSection title="Titles"    accent="#8b5cf6" items={titleItems}     onGoTo={() => navigate('/acquisitions')} />
     </div>
   );
 }
