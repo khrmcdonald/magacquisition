@@ -237,35 +237,32 @@ const TITLE_TRACKER_LABEL = {
 function TaskSection({ title, accent, items, onGoTo }) {
   if (!items.length) return null;
   return (
-    <div style={{ marginBottom: 18 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 3, height: 14, borderRadius: 2, background: accent }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '.06em' }}>{title}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: accent, background: accent + '18', borderRadius: 10, padding: '1px 8px' }}>{items.length}</span>
-        </div>
-        <button onClick={onGoTo} style={{ background: 'none', border: 'none', fontSize: 12, color: '#9ca3af', cursor: 'pointer', fontWeight: 600 }}>View all →</button>
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <div style={{ width: 3, height: 13, borderRadius: 2, background: accent, flexShrink: 0 }} />
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '.06em' }}>{title}</span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: accent, background: accent + '18', borderRadius: 10, padding: '1px 7px' }}>{items.length}</span>
+        <button onClick={onGoTo} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: 11, color: '#9ca3af', cursor: 'pointer', fontWeight: 600, padding: 0 }}>View all →</button>
       </div>
       <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
         {items.map((item, i) => (
           <div key={i} onClick={onGoTo} style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '10px 14px', cursor: 'pointer',
+            padding: '9px 14px', cursor: 'pointer',
             borderTop: i > 0 ? '1px solid #f3f4f6' : 'none',
             transition: 'background 0.1s',
           }}
             onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
             onMouseLeave={e => e.currentTarget.style.background = '#fff'}
           >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.primary}</div>
-              {item.secondary && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>{item.secondary}</div>}
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{item.primary}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
+              {item.badge && (
+                <span style={{ fontSize: 10, fontWeight: 700, color: item.badge.color, background: item.badge.bg, padding: '1px 8px', borderRadius: 20 }}>
+                  {item.badge.label}
+                </span>
+              )}
+              {item.secondary && <span style={{ fontSize: 11, color: '#9ca3af' }}>{item.secondary}</span>}
             </div>
-            {item.badge && (
-              <span style={{ fontSize: 11, fontWeight: 700, color: item.badge.color, background: item.badge.bg, padding: '2px 10px', borderRadius: 20, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                {item.badge.label}
-              </span>
-            )}
           </div>
         ))}
       </div>

@@ -346,8 +346,40 @@ export default function Admin() {
       {activeTab === 'users' && (
         <div>
           <InviteUserCard />
-          <BuyersCard buyers={data.buyers || []} onUpdateBuyerNumber={updateBuyerNumber} />
 
+          {/* Team Members */}
+          <div className="card" style={{ padding: 0, marginBottom: 24 }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>Team Members</h2>
+              <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>All users with access to this organization</p>
+            </div>
+            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {(data.profiles || []).length === 0 && (
+                <div style={{ fontSize: 13, color: '#9ca3af' }}>No users found.</div>
+              )}
+              {(data.profiles || []).map(p => (
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                    background: '#0d2550', color: '#e8b84b',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 14, fontWeight: 800,
+                  }}>
+                    {(p.name || '?')[0].toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{p.name}</div>
+                    <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>
+                      {p.buyer_number ? `Buyer #${p.buyer_number} · ` : ''}{roleLabel[p.role] || p.role}
+                    </div>
+                  </div>
+                  <span className={`badge ${roleBadge[p.role] || 'badge-gray'}`}>{roleLabel[p.role] || p.role}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <BuyersCard buyers={data.buyers || []} onUpdateBuyerNumber={updateBuyerNumber} />
         </div>
       )}
 

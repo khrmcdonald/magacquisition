@@ -166,6 +166,7 @@ export function DataProvider({ children }) {
   const [locations, setLocations] = useState([]);
   const [acquisitionSources, setAcquisitionSources] = useState([]);
   const [buyers, setBuyers] = useState([]);
+  const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [transport, setTransport] = useState([]);
@@ -187,7 +188,7 @@ export function DataProvider({ children }) {
         supabase.from('transport').select('*').eq('org_id', ORG_ID),
         supabase.from('repair_orders').select('*, repair_order_lines(*)').eq('org_id', ORG_ID),
         supabase.from('repair_vendors').select('*').eq('org_id', ORG_ID).eq('active', true),
-        supabase.from('profiles').select('id, name, buyer_number, role').eq('org_id', ORG_ID).eq('role', 'wholesale'),
+        supabase.from('profiles').select('id, name, buyer_number, role').eq('org_id', ORG_ID),
       ]);
       if (vehiclesRes.error) {
         setFetchError('Could not load vehicle data. Check your connection and refresh the page.');
@@ -203,7 +204,10 @@ export function DataProvider({ children }) {
       if (repairVendorsRes.error) console.warn('repair_vendors fetch error:', repairVendorsRes.error?.message);
 
       if (vehiclesRes.data)      setVehicles(vehiclesRes.data.map(mapVehicle));
-      if (buyersRes.data)        setBuyers(buyersRes.data);
+      if (buyersRes.data) {
+        setBuyers(buyersRes.data.filter(p => p.role === 'wholesale'));
+        setProfiles(buyersRes.data);
+      }
       if (auctionsRes.data)      setAuctions(auctionsRes.data.map(mapAuction));
       if (bidsRes.data)          setBids(bidsRes.data.map(mapBid));
       if (locationsRes.data)     setLocations(locationsRes.data);
@@ -312,6 +316,7 @@ export function DataProvider({ children }) {
     locations,
     acquisition_sources: acquisitionSources,
     buyers,
+    profiles,
   };
 
   // ── Auction mutations ─────────────────────────────────────────────────────
@@ -790,7 +795,9 @@ export function DataProvider({ children }) {
   const updateBuyerNumber = async (userId, buyerNumber) => {
     const { error } = await supabase.from('profiles').update({ buyer_number: buyerNumber || null }).eq('id', userId);
     if (error) throw error;
-    setBuyers(prev => prev.map(b => b.id === userId ? { ...b, buyer_number: buyerNumber || null } : b));
+    const updated = p => p.id === userId ? { ...p, buyer_number: buyerNumber || null } : p;
+    setBuyers(prev => prev.map(updated));
+    setProfiles(prev => prev.map(updated));
   };
 
   const addLocation = async (name) => {
