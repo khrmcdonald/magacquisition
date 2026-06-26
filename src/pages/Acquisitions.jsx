@@ -9,7 +9,6 @@ import ArbitrationResolveModal from '../components/ArbitrationResolveModal';
 import { useToast } from '../components/Toast';
 
 const CONDITIONS = ['Excellent', 'Good', 'Fair', 'Poor'];
-const RECON_ITEMS = ['Detail', 'Tires', 'Brakes', 'Body work', 'Mechanical', 'Glass', 'Interior', 'Paint', 'Other'];
 
 const TITLE_STATUSES = [
   { value: 'pending', label: 'Pending', bg: '#fef3c7', color: '#92400e' },
@@ -374,6 +373,60 @@ function YesNoToggle({ value, onChange }) {
   );
 }
 
+// ── KeyTracker ────────────────────────────────────────────────────────────────
+const KEY_OPTS = [
+  { value: 'on_lot',      label: 'On Lot',      color: '#065f46', bg: '#d1fae5' },
+  { value: 'checked_out', label: 'Checked Out', color: '#92400e', bg: '#fef3c7' },
+  { value: 'missing',     label: 'Missing',     color: '#991b1b', bg: '#fee2e2' },
+];
+
+function KeyTracker({ vehicle, onUpdate }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    if (open) document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  const status = vehicle.keys?.status || 'untracked';
+  const current = KEY_OPTS.find(o => o.value === status);
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <div onClick={() => setOpen(o => !o)} style={{
+        display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+        background: current?.bg || '#f3f4f6', color: current?.color || '#9ca3af',
+        padding: '3px 9px', borderRadius: 12, fontSize: 11, fontWeight: 700,
+      }}>
+        🔑 {current?.label || 'Keys?'}
+      </div>
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, zIndex: 100,
+          background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 8, minWidth: 145, marginTop: 4,
+        }}>
+          {KEY_OPTS.map(opt => (
+            <button key={opt.value} onClick={() => { onUpdate({ status: opt.value }); setOpen(false); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                padding: '7px 10px', borderRadius: 6, border: 'none',
+                background: status === opt.value ? opt.bg : 'transparent',
+                color: status === opt.value ? opt.color : '#374151',
+                fontSize: 12, fontWeight: status === opt.value ? 700 : 500, cursor: 'pointer',
+              }}>
+              <span style={{ width: 14 }}>{status === opt.value ? '✓' : ''}</span>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── VehicleForm ───────────────────────────────────────────────────────────────
 function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }) {
   const [form, setForm] = useState(initial ? {
@@ -383,20 +436,20 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }
     // deal fields default empty on edit (deal_record already exists)
     seller_name: '', buyer_rep: '', purchase_amount: '',
     lienholder: '', payoff_amount: '', cashiers_check: false,
-    title_electronic: false, pickup_address: '', pickup_scheduled_at: '',
-    driver_id: '',
+    title_electronic: false, pickup_address: '',
+    needsTransport: false,
   } : {
     vin: '', year: '', make: '', model: '', trim: '', mileage: '', color: '',
     source_id: '', purchasePrice: '', condition: 'Good', notes: '',
-    overheadCosts: '', reconItems: [], reconNotes: '', floorPrice: '', photos: [],
-    titleStatus: 'pending', titleNotes: '', currentLocation: '', vendorNotes: '',
+    overheadCosts: '', floorPrice: '', photos: [],
+    titleStatus: 'pending', titleNotes: '', currentLocation: '',
     // deal record fields
     seller_name: '', buyer_rep: '', purchase_amount: '',
     lienholder: '', payoff_amount: '', cashiers_check: false,
-    title_electronic: false, pickup_address: '', pickup_scheduled_at: '',
-    driver_id: '',
+    title_electronic: false, pickup_address: '',
+    needsTransport: false,
   });
-  const [reconCosts, setReconCosts] = useState(initial?.reconCosts || {});
+
   const fileRef = useRef();
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -404,8 +457,7 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }
   const totalCost = () => {
     const purchase = parseFloat(form.purchasePrice) || 0;
     const overhead = parseFloat(form.overheadCosts) || 0;
-    const recon = Object.values(reconCosts).reduce((a, b) => a + (parseFloat(b) || 0), 0);
-    return purchase + overhead + recon;
+    return purchase + overhead;
   };
 
   const handlePhoto = (e) => {
@@ -454,13 +506,9 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }
     e.preventDefault();
     // Derive source name from source_id for backward-compat display elsewhere
     const sourceObj = sources.find(s => s.value === form.source_id);
-    onSave({ ...form, reconCosts, totalCost: totalCost(), source: sourceObj?.label || form.source || '' });
+    onSave({ ...form, totalCost: totalCost(), source: sourceObj?.label || form.source || '' });
   };
 
-  const toggleRecon = (item) => {
-    const items = form.reconItems || [];
-    set('reconItems', items.includes(item) ? items.filter(i => i !== item) : [...items, item]);
-  };
 
   const sectionLabel = (text) => (
     <div style={{ fontSize: 11, fontWeight: 700, color: '#1a3d76', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 12, marginTop: 20, borderBottom: '1px solid #e5e7eb', paddingBottom: 6 }}>
@@ -530,56 +578,6 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }
         </div>
       </div>
 
-      {/* Recon */}
-      <div style={{ margin: '8px 0 16px' }}>
-        <label style={{ marginBottom: 10, display: 'block' }}>Reconditioning needed</label>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-          {RECON_ITEMS.map(item => {
-            const active = (form.reconItems || []).includes(item);
-            return (
-              <button
-                key={item}
-                type="button"
-                onClick={() => toggleRecon(item)}
-                style={{
-                  padding: '6px 12px', borderRadius: 20,
-                  border: `1px solid ${active ? '#1a3d76' : '#e5e7eb'}`,
-                  background: active ? '#1a3d76' : '#fff',
-                  color: active ? '#fff' : '#374151',
-                  fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                }}
-              >
-                {item}
-              </button>
-            );
-          })}
-        </div>
-        {(form.reconItems || []).length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {form.reconItems.map(item => (
-              <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 13, color: '#374151', minWidth: 80 }}>{item}</span>
-                <div style={{ position: 'relative', flex: 1 }}>
-                  <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#6b7280', fontSize: 13 }}>$</span>
-                  <input
-                    type="number"
-                    value={reconCosts[item] || ''}
-                    onChange={e => setReconCosts(c => ({ ...c, [item]: e.target.value }))}
-                    placeholder="0"
-                    style={{ paddingLeft: 22, fontSize: 13, padding: '7px 8px 7px 22px' }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="form-group">
-        <label>Notes (recon details, issues, etc.)</label>
-        <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={3} placeholder="E.g. Needs front bumper clip, driver seat wear..." />
-      </div>
-
       <div className="form-group">
         <label>Suggested floor price for auction</label>
         <div style={{ position: 'relative' }}>
@@ -600,10 +598,6 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }
             <span>Overhead / fees</span>
             <span>${(parseFloat(form.overheadCosts) || 0).toLocaleString()}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#374151', marginBottom: 4 }}>
-            <span>Recon costs</span>
-            <span>${Object.values(reconCosts).reduce((a, b) => a + (parseFloat(b) || 0), 0).toLocaleString()}</span>
-          </div>
           <div style={{ height: 1, background: '#c7d6ef', margin: '8px 0' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700, color: '#1a3d76' }}>
             <span>Total cost basis</span>
@@ -618,19 +612,13 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }
         </div>
       )}
 
-      {/* Location & vendor */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div className="form-group">
-          <label>Current location</label>
-          <select value={form.currentLocation || ''} onChange={e => set('currentLocation', e.target.value)}>
-            <option value="">Select location…</option>
-            {locations.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-          </select>
-        </div>
-        <div className="form-group">
-          <label>Vendor / work notes</label>
-          <input type="text" value={form.vendorNotes || ''} onChange={e => set('vendorNotes', e.target.value)} placeholder="e.g. Arbor Auto — brakes, ETA Friday" />
-        </div>
+      {/* Location */}
+      <div className="form-group">
+        <label>Current location</label>
+        <select value={form.currentLocation || ''} onChange={e => set('currentLocation', e.target.value)}>
+          <option value="">Select location…</option>
+          {locations.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+        </select>
       </div>
 
       {/* ── Deal Record Fields ─────────────────────────────────────────────── */}
@@ -681,19 +669,20 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }
           <label>Title notes</label>
           <input type="text" value={form.titleNotes || ''} onChange={e => set('titleNotes', e.target.value)} placeholder="Lien holder, ETA, reference #..." />
         </div>
+      </div>
+
+      {/* ── Transport ─────────────────────────────────────────────────────── */}
+      {sectionLabel('Transport')}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Does this vehicle need transport to arrive?</div>
+        <YesNoToggle value={form.needsTransport} onChange={v => set('needsTransport', v)} />
+      </div>
+      {form.needsTransport && (
         <div className="form-group">
-          <label>Pickup address</label>
+          <label>Pickup address / current location</label>
           <input type="text" value={form.pickup_address} onChange={e => set('pickup_address', e.target.value)} placeholder="123 Main St, City, State" />
         </div>
-        <div className="form-group">
-          <label>Pickup scheduled</label>
-          <input type="datetime-local" value={form.pickup_scheduled_at} onChange={e => set('pickup_scheduled_at', e.target.value)} />
-        </div>
-        <div className="form-group">
-          <label>Driver</label>
-          <input type="text" value={form.driver_id} onChange={e => set('driver_id', e.target.value)} placeholder="Driver name or ID" />
-        </div>
-      </div>
+      )}
 
       {/* Yes/No toggles */}
       <div style={{ display: 'flex', gap: 32, marginTop: 8, marginBottom: 16, flexWrap: 'wrap' }}>
@@ -748,12 +737,12 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [] }
 }
 
 const STATUS_LABELS = {
-  intake: { label: 'Intake', color: '#6b7280', bg: '#f3f4f6' },
-  recon: { label: 'In Recon', color: '#92400e', bg: '#fef3c7' },
-  ready: { label: 'Ready to List', color: '#065f46', bg: '#d1fae5' },
-  in_auction: { label: 'Live in Auction', color: '#1e40af', bg: '#dbeafe' },
-  awarded: { label: 'Awarded', color: '#065f46', bg: '#d1fae5' },
-  no_sale: { label: 'No Sale', color: '#991b1b', bg: '#fee2e2' },
+  intake:     { label: 'Intake',          color: '#6b7280', bg: '#f3f4f6', accent: '#9ca3af' },
+  recon:      { label: 'In Recon',        color: '#92400e', bg: '#fef3c7', accent: '#e8b84b' },
+  ready:      { label: 'Ready to List',   color: '#065f46', bg: '#d1fae5', accent: '#10b981' },
+  in_auction: { label: 'Live in Auction', color: '#1e40af', bg: '#dbeafe', accent: '#3b82f6' },
+  awarded:    { label: 'Awarded',         color: '#065f46', bg: '#d1fae5', accent: '#0d2550' },
+  no_sale:    { label: 'No Sale',         color: '#991b1b', bg: '#fee2e2', accent: '#ef4444' },
 };
 
 export default function Acquisitions() {
@@ -807,16 +796,14 @@ export default function Acquisitions() {
     // Separate deal record fields from vehicle fields
     const {
       seller_name, buyer_rep, purchase_amount, lienholder, payoff_amount,
-      cashiers_check, title_electronic, pickup_address, pickup_scheduled_at,
-      driver_id, source_id,
+      cashiers_check, title_electronic, pickup_address,
+      source_id, needsTransport, vendorNotes,
       ...vehicleFields
     } = vehicleData;
 
     const orgId = user?.org_id || 'bf236d2b-4693-4606-bf3d-ece1767690ab';
 
-    // reconCosts comes in as an object { Detail: 50, Brakes: 200 } — convert to numeric total
-    const reconTotal = Object.values(vehicleFields.reconCosts || {}).reduce((a, b) => a + (parseFloat(b) || 0), 0);
-    const saveFields = { ...vehicleFields, reconCosts: reconTotal };
+    const saveFields = { ...vehicleFields };
 
     if (editing) {
       try { await updateVehicle(editing.id, { ...saveFields, status: editing.status }); }
@@ -846,8 +833,6 @@ export default function Acquisitions() {
             cashiers_check: cashiers_check || false,
             title_electronic: title_electronic || false,
             pickup_address: pickup_address || null,
-            pickup_scheduled_at: pickup_scheduled_at || null,
-            driver_id: driver_id || null,
             source_id: source_id || null,
           });
           if (dealRes.error) {
@@ -878,6 +863,24 @@ export default function Acquisitions() {
           }
         }
 
+        if (needsTransport) {
+          try {
+            const { error: tErr } = await supabase.from('transport').insert({
+              id: crypto.randomUUID(),
+              org_id: orgId,
+              vehicle_id: newVehicle.id,
+              vehicle_name: `${vehicleFields.year || ''} ${vehicleFields.make || ''} ${vehicleFields.model || ''}`.trim(),
+              store_id: orgId,
+              store_name: 'Intake',
+              winning_bid: null,
+              status: 'awarded',
+              notes: pickup_address || null,
+              steps: { awarded: new Date().toISOString() },
+            });
+            if (tErr) showToast(`Vehicle saved. Transport request failed: ${tErr.message}`, 'info');
+          } catch (err) { showToast(`Vehicle saved. Transport request failed: ${err.message}`, 'info'); }
+        }
+
         if (errors.length > 0) {
           setSaveError(errors.join(' | '));
           return; // keep form open so user can see the error
@@ -905,6 +908,11 @@ export default function Acquisitions() {
   const handleStatusChange = async (v, status) => {
     try { await updateVehicle(v.id, { status }); }
     catch (err) { showToast('Status update failed: ' + err.message, 'error'); }
+  };
+
+  const handleKeyUpdate = async (v, keysData) => {
+    try { await updateVehicle(v.id, { keys: { ...(v.keys || {}), ...keysData } }); }
+    catch (err) { showToast('Key status update failed: ' + err.message, 'error'); }
   };
 
   const statusCounts = {};
@@ -1026,31 +1034,28 @@ export default function Acquisitions() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
-        {Object.entries(STATUS_LABELS).map(([key, { label, color, bg }]) => (
-          <button
-            key={key}
-            onClick={() => setStatusFilter(statusFilter === key ? 'all' : key)}
-            style={{
-              padding: '8px 16px', borderRadius: 20, fontSize: 12, fontWeight: 700,
-              cursor: 'pointer', border: '1.5px solid',
-              borderColor: statusFilter === key ? color : '#e5e7eb',
-              background: statusFilter === key ? bg : '#fff',
-              color: statusFilter === key ? color : '#6b7280',
-              transition: 'all 0.12s',
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}
-          >
-            <span style={{ fontWeight: 800, fontSize: 14 }}>{statusCounts[key] || 0}</span>
-            {label}
-          </button>
-        ))}
-        {statusFilter !== 'all' && (
-          <button onClick={() => setStatusFilter('all')} style={{ padding: '8px 16px', borderRadius: 20, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1.5px solid #e5e7eb', background: '#fff', color: '#9ca3af' }}>
-            × Clear
-          </button>
-        )}
+      {/* Status KPI tiles — click to filter */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, marginBottom: 20 }}>
+        {Object.entries(STATUS_LABELS).map(([key, { label, color, accent }]) => {
+          const active = statusFilter === key;
+          return (
+            <div
+              key={key}
+              onClick={() => setStatusFilter(active ? 'all' : key)}
+              style={{
+                background: '#fff',
+                border: `1px solid ${active ? accent : '#e5e7eb'}`,
+                borderTop: `3px solid ${accent}`,
+                borderRadius: 10, padding: '12px 16px', cursor: 'pointer',
+                transition: 'border-color 0.15s',
+                boxShadow: active ? `0 0 0 2px ${accent}33` : 'none',
+              }}
+            >
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{statusCounts[key] || 0}</div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Vehicle count */}
@@ -1091,19 +1096,32 @@ export default function Acquisitions() {
                 }
                 actionButton={
                   !isReadOnly ? (
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {v.status === 'ready' && data.auction.isOpen && (
-                        <button onClick={() => handleList(v)} style={{ flex: 1, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>List now</button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {/* Stage advancement */}
+                      {(v.status === 'intake' || v.status === 'no_sale') && (
+                        <div style={{ display: 'flex', gap: 5 }}>
+                          <button onClick={() => handleStatusChange(v, 'recon')} style={{ flex: 1, background: '#fffbeb', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>→ Recon</button>
+                          <button onClick={() => handleStatusChange(v, 'ready')} style={{ flex: 1, background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>→ Ready</button>
+                        </div>
                       )}
-                      {v.status === 'in_auction' && (
-                        <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { showToast('Failed to remove: ' + err.message, 'error'); } }} style={{ flex: 1, background: '#fef3c7', color: '#92400e', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
+                      {v.status === 'recon' && (
+                        <button onClick={() => handleStatusChange(v, 'ready')} style={{ width: '100%', background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✓ Mark Ready</button>
                       )}
-                      <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} style={iconBtn} data-tooltip="Edit">✏️</button>
-                      {['intake', 'recon', 'ready', 'no_sale'].includes(v.status) && (
-                        <button onClick={() => setRepairModal(v)} style={iconBtn} data-tooltip="Repairs">🔧</button>
-                      )}
-                      <button onClick={() => handlePrintBuySheet(v)} style={iconBtn} data-tooltip="Buy sheet">🧾</button>
-                      <button onClick={() => setConfirmDelete(v)} style={{ ...iconBtn, background: '#FEF2F2', border: '1px solid #FECACA' }} data-tooltip="Delete">🗑️</button>
+                      {/* Other actions row */}
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {v.status === 'ready' && data.auction.isOpen && (
+                          <button onClick={() => handleList(v)} style={{ flex: 1, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>List now</button>
+                        )}
+                        {v.status === 'in_auction' && (
+                          <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { showToast('Failed to remove: ' + err.message, 'error'); } }} style={{ flex: 1, background: '#fef3c7', color: '#92400e', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
+                        )}
+                        <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} style={iconBtn} data-tooltip="Edit">✏️</button>
+                        {['intake', 'recon', 'ready', 'no_sale'].includes(v.status) && (
+                          <button onClick={() => setRepairModal(v)} style={iconBtn} data-tooltip="Repairs">🔧</button>
+                        )}
+                        <button onClick={() => handlePrintBuySheet(v)} style={iconBtn} data-tooltip="Buy sheet">🧾</button>
+                        <button onClick={() => setConfirmDelete(v)} style={{ ...iconBtn, background: '#FEF2F2', border: '1px solid #FECACA' }} data-tooltip="Delete">🗑️</button>
+                      </div>
                     </div>
                   ) : null
                 }
@@ -1112,8 +1130,15 @@ export default function Acquisitions() {
                 {(v.purchasePrice || v.floorPrice) && (
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
                     {v.purchasePrice && <span>Buy: <strong style={{ color: '#374151' }}>${parseFloat(v.purchasePrice).toLocaleString()}</strong></span>}
+                    {v.totalRepairCosts > 0 && <span>Recon: <strong style={{ color: '#92400e' }}>${parseFloat(v.totalRepairCosts).toLocaleString()}</strong></span>}
                     {v.floorPrice && <span>Floor: <strong style={{ color: '#374151' }}>${parseFloat(v.floorPrice).toLocaleString()}</strong></span>}
                     {margin !== null && <span style={{ color: margin >= 0 ? '#065f46' : '#991b1b' }}>Margin: <strong>${margin.toLocaleString()}</strong></span>}
+                  </div>
+                )}
+                {/* Key tracker */}
+                {!isReadOnly && (
+                  <div style={{ marginTop: 6 }}>
+                    <KeyTracker vehicle={v} onUpdate={(keysData) => handleKeyUpdate(v, keysData)} />
                   </div>
                 )}
                 {v.notes && (
@@ -1162,6 +1187,7 @@ export default function Acquisitions() {
                     <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Financials</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {v.purchasePrice && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Purchase</span><span style={{ fontSize: 12, fontWeight: 700 }}>${parseFloat(v.purchasePrice).toLocaleString()}</span></div>}
+                      {v.totalRepairCosts > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Recon</span><span style={{ fontSize: 12, fontWeight: 700, color: '#92400e' }}>${parseFloat(v.totalRepairCosts).toLocaleString()}</span></div>}
                       {v.totalCost && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Total cost</span><span style={{ fontSize: 12, fontWeight: 700, color: '#0d2550' }}>${parseFloat(v.totalCost).toLocaleString()}</span></div>}
                       {v.floorPrice && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Floor</span><span style={{ fontSize: 12, fontWeight: 700 }}>${parseFloat(v.floorPrice).toLocaleString()}</span></div>}
                       {margin !== null && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, borderTop: '1px solid #e5e7eb', paddingTop: 4 }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Margin</span><span style={{ fontSize: 12, fontWeight: 700, color: margin >= 0 ? '#065f46' : '#991b1b' }}>${margin.toLocaleString()}</span></div>}
@@ -1202,24 +1228,43 @@ export default function Acquisitions() {
                     ) : (
                       <span style={{ fontSize: 13, color: '#374151' }}>{locationOptions.find(l => l.value === v.currentLocation)?.label || '—'}</span>
                     )}
-                    {v.vendorNotes && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{v.vendorNotes}</div>}
                   </div>
+
+                  {/* Keys */}
+                  {!isReadOnly && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Keys</div>
+                      <KeyTracker vehicle={v} onUpdate={(keysData) => handleKeyUpdate(v, keysData)} />
+                    </div>
+                  )}
 
                   {/* Actions */}
                   {!isReadOnly && (
-                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                      {v.status === 'ready' && data.auction.isOpen && (
-                        <button onClick={() => handleList(v)} style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>List now</button>
+                    <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+                      {/* Stage advancement */}
+                      {(v.status === 'intake' || v.status === 'no_sale') && (
+                        <div style={{ display: 'flex', gap: 5 }}>
+                          <button onClick={() => handleStatusChange(v, 'recon')} style={{ background: '#fffbeb', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>→ Recon</button>
+                          <button onClick={() => handleStatusChange(v, 'ready')} style={{ background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>→ Ready</button>
+                        </div>
                       )}
-                      {v.status === 'in_auction' && (
-                        <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { showToast('Failed to remove: ' + err.message, 'error'); } }} style={{ background: '#fef3c7', color: '#92400e', border: 'none', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
+                      {v.status === 'recon' && (
+                        <button onClick={() => handleStatusChange(v, 'ready')} style={{ background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>✓ Mark Ready</button>
                       )}
-                      <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} data-tooltip="Edit" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>✏️</button>
-                      {['intake', 'recon', 'ready', 'no_sale'].includes(v.status) && (
-                        <button onClick={() => setRepairModal(v)} data-tooltip="Repairs" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>🔧</button>
-                      )}
-                      <button onClick={() => handlePrintBuySheet(v)} data-tooltip="Buy sheet" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>🧾</button>
-                      <button onClick={() => setConfirmDelete(v)} data-tooltip="Delete" style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14 }}>🗑️</button>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        {v.status === 'ready' && data.auction.isOpen && (
+                          <button onClick={() => handleList(v)} style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>List now</button>
+                        )}
+                        {v.status === 'in_auction' && (
+                          <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { showToast('Failed to remove: ' + err.message, 'error'); } }} style={{ background: '#fef3c7', color: '#92400e', border: 'none', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
+                        )}
+                        <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} data-tooltip="Edit" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>✏️</button>
+                        {['intake', 'recon', 'ready', 'no_sale'].includes(v.status) && (
+                          <button onClick={() => setRepairModal(v)} data-tooltip="Repairs" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>🔧</button>
+                        )}
+                        <button onClick={() => handlePrintBuySheet(v)} data-tooltip="Buy sheet" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>🧾</button>
+                        <button onClick={() => setConfirmDelete(v)} data-tooltip="Delete" style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14 }}>🗑️</button>
+                      </div>
                     </div>
                   )}
                 </div>

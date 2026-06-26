@@ -1,11 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import {
   LayoutGrid, Gavel, Car, Truck, LayoutDashboard, BarChart2,
   Trophy, Download, HelpCircle, Settings, FileText, Bell, Award, Wrench,
+  LogOut, User,
 } from 'lucide-react';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getGreeting(name) {
+  const h = new Date().getHours();
+  const salutation = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  return `${salutation}, ${name}`;
+}
 
 // ─── Auction Status Bar ───────────────────────────────────────────────────────
 
@@ -63,15 +72,29 @@ export default function Layout() {
 
   const [navExpanded, setNavExpanded] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const [orgLogo, setOrgLogo] = useState(() => {
     try { return localStorage.getItem('org_logo') || null; } catch { return null; }
   });
 
-  // Sync logo if admin updates it in the same session
+  const userMenuRef = useRef(null);
+  const notifRef = useRef(null);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setUserMenuOpen(false);
+      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Sync logo
   useEffect(() => {
     const onStorage = () => setOrgLogo(localStorage.getItem('org_logo') || null);
     window.addEventListener('storage', onStorage);
-    // also poll once on mount in case it changed in same tab
     onStorage();
     return () => window.removeEventListener('storage', onStorage);
   }, []);
@@ -88,7 +111,7 @@ export default function Layout() {
     '/auction': 'Auction Floor',
     '/acquisitions': 'Acquisitions',
     '/manage': 'Manage Auction',
-    '/repairs':   'Repairs',
+    '/repairs': 'Repairs',
     '/transport': 'Transport & Title',
     '/overview': 'GM Overview',
     '/wins': 'My Wins',
@@ -99,7 +122,8 @@ export default function Layout() {
     '/inventory': 'Inventory',
     '/help': 'Help',
   };
-  const pageTitle = PAGE_TITLES[location.pathname] || 'MAG Acquisition';
+  const pageTitle = PAGE_TITLES[location.pathname] || 'Stockyard';
+  const isHome = location.pathname === '/dashboard';
 
   // ── Nav definition ──────────────────────────────────────────────────────────
   const role = user.role;
@@ -151,6 +175,10 @@ export default function Layout() {
   const bottomItems = filterItems(BOTTOM_ITEMS);
 
   const showText = navExpanded || mobileOpen;
+  const fullName = user.name || user.email || 'User';
+  const firstName = fullName.split(' ')[0];
+  const displayName = firstName;
+  const avatarLetter = firstName[0].toUpperCase();
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleLogout = () => { logout(); navigate('/login'); };
@@ -172,7 +200,7 @@ export default function Layout() {
         zIndex: 300,
         position: 'relative',
       }}>
-        {/* Left: mobile hamburger + breadcrumb */}
+        {/* Left: hamburger + breadcrumb / greeting */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button
             className="mobile-menu-btn"
@@ -183,7 +211,7 @@ export default function Layout() {
             ☰
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-            <span style={{ color: '#9ca3af', fontWeight: 500 }}>MAG</span>
+            <span style={{ color: '#9ca3af', fontWeight: 500 }}>Stockyard</span>
             <span style={{ color: '#d1d5db' }}>/</span>
             <span style={{ color: '#0d2550', fontWeight: 700 }}>{pageTitle}</span>
           </div>
@@ -191,13 +219,28 @@ export default function Layout() {
 
         {/* Right: bell, help, divider, user avatar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <button
-            style={{ width: 34, height: 34, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', position: 'relative' }}
-            title="Notifications"
-          >
-            <Bell size={18} />
-            <span style={{ position: 'absolute', top: 7, right: 7, width: 7, height: 7, background: '#ef4444', borderRadius: '50%', border: '2px solid #fff' }} />
-          </button>
+
+          {/* Notification bell */}
+          <div ref={notifRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => { setNotifOpen(o => !o); setUserMenuOpen(false); }}
+              style={{ width: 34, height: 34, borderRadius: 8, border: 'none', background: notifOpen ? '#f0f2f5' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', position: 'relative' }}
+            >
+              <Bell size={18} />
+              <span style={{ position: 'absolute', top: 7, right: 7, width: 7, height: 7, background: '#ef4444', borderRadius: '50%', border: '2px solid #fff' }} />
+            </button>
+            {notifOpen && (
+              <div style={{ position: 'absolute', top: 40, right: 0, width: 300, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 500, overflow: 'hidden' }}>
+                <div style={{ padding: '14px 16px', borderBottom: '1px solid #f3f4f6', fontWeight: 700, fontSize: 13, color: '#111827' }}>Notifications</div>
+                <div style={{ padding: '32px 16px', textAlign: 'center', color: '#9ca3af' }}>
+                  <Bell size={28} style={{ marginBottom: 8, opacity: 0.3 }} />
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>All caught up</div>
+                  <div style={{ fontSize: 12, marginTop: 4 }}>No new notifications</div>
+                </div>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={() => navigate('/help')}
             style={{ width: 34, height: 34, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}
@@ -205,13 +248,48 @@ export default function Layout() {
           >
             <HelpCircle size={18} />
           </button>
+
           <div style={{ width: 1, height: 20, background: '#e8eaed', margin: '0 4px' }} />
-          <div
-            onClick={handleLogout}
-            title="Sign out"
-            style={{ width: 32, height: 32, borderRadius: '50%', background: '#e8b84b', color: '#0d2550', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}
-          >
-            {(user.name || user.email || '?')[0].toUpperCase()}
+
+          {/* User avatar + dropdown */}
+          <div ref={userMenuRef} style={{ position: 'relative' }}>
+            <div
+              onClick={() => { setUserMenuOpen(o => !o); setNotifOpen(false); }}
+              style={{ width: 32, height: 32, borderRadius: '50%', background: '#e8b84b', color: '#0d2550', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, cursor: 'pointer', flexShrink: 0, border: userMenuOpen ? '2px solid #0d2550' : '2px solid transparent' }}
+            >
+              {avatarLetter}
+            </div>
+            {userMenuOpen && (
+              <div style={{ position: 'absolute', top: 40, right: 0, width: 220, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 500, overflow: 'hidden' }}>
+                {/* Profile header */}
+                <div style={{ padding: '14px 16px', borderBottom: '1px solid #f3f4f6' }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{displayName}</div>
+                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{user.email}</div>
+                  <div style={{ display: 'inline-block', marginTop: 6, background: '#f0f4fb', color: '#0d2550', borderRadius: 8, padding: '2px 8px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                    {user.role}
+                  </div>
+                </div>
+                {/* Menu items */}
+                {['admin', 'wholesale', 'gm'].includes(role) && (
+                  <button
+                    onClick={() => { navigate('/admin'); setUserMenuOpen(false); }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: 'none', border: 'none', fontSize: 13, color: '#374151', cursor: 'pointer', textAlign: 'left' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                  >
+                    <Settings size={15} /> Settings
+                  </button>
+                )}
+                <button
+                  onClick={handleLogout}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: 'none', border: 'none', fontSize: 13, color: '#dc2626', cursor: 'pointer', textAlign: 'left', borderTop: '1px solid #f3f4f6' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                >
+                  <LogOut size={15} /> Sign out
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -247,22 +325,8 @@ export default function Layout() {
             transition: 'width 200ms ease, min-width 200ms ease',
           }}
         >
-          {/* Logo row */}
-          <div style={{ height: 52, display: 'flex', alignItems: 'center', padding: '0 18px', gap: 10, borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-            {orgLogo
-              ? <img src={orgLogo} alt="Logo" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
-              : (
-                <div style={{ width: 28, height: 28, background: '#e8b84b', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <span style={{ color: '#0d2550', fontWeight: 900, fontSize: 14 }}>M</span>
-                </div>
-              )
-            }
-            {showText && (
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>MAG Acquisition</span>
-            )}
-          </div>
 
-          {/* Nav sections — scrollable middle area */}
+          {/* Nav sections */}
           <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '8px 0' }}>
             {navSections.map((section, si) => (
               <div key={section.label}>
@@ -345,16 +409,11 @@ export default function Layout() {
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '12px 14px', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#e8b84b', color: '#0d2550', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
-                {(user.name || user.email || '?')[0].toUpperCase()}
+                {avatarLetter}
               </div>
               {showText && (
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ color: '#fff', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {user.name || user.email}
-                  </div>
-                  <div style={{ display: 'inline-block', marginTop: 2, background: 'rgba(232,184,75,0.15)', color: '#e8b84b', border: '1px solid rgba(232,184,75,0.3)', borderRadius: 10, padding: '1px 7px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>
-                    {user.role}
-                  </div>
+                <div style={{ display: 'inline-block', background: 'rgba(232,184,75,0.15)', color: '#e8b84b', border: '1px solid rgba(232,184,75,0.3)', borderRadius: 10, padding: '2px 8px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                  {user.role}
                 </div>
               )}
             </div>

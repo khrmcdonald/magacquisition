@@ -110,25 +110,18 @@ export default function AuctionManage() {
                 Close auction & award winners
               </button>
             </div>
-            <div className="stat-grid" style={{ marginBottom: 0 }}>
-              <div className="stat-card">
-                <div className="stat-label">Live vehicles</div>
-                <div className="stat-value">{activeVehicles.length}</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Total bids</div>
-                <div className="stat-value">{data.bids.length}</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Cars with bids</div>
-                <div className="stat-value">{activeVehicles.filter(v => data.bids.some(b => b.vehicleId === v.id)).length}</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">No bids yet</div>
-                <div className="stat-value" style={{ color: '#991b1b' }}>
-                  {activeVehicles.filter(v => !data.bids.some(b => b.vehicleId === v.id)).length}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+              {[
+                { label: 'Live vehicles',  value: activeVehicles.length,                                                               accent: '#0d2550', color: '#0d2550' },
+                { label: 'Total bids',     value: data.bids.length,                                                                    accent: '#3b82f6', color: '#1e40af' },
+                { label: 'Cars with bids', value: activeVehicles.filter(v => data.bids.some(b => b.vehicleId === v.id)).length,        accent: '#10b981', color: '#065f46' },
+                { label: 'No bids yet',    value: activeVehicles.filter(v => !data.bids.some(b => b.vehicleId === v.id)).length,       accent: '#ef4444', color: '#991b1b' },
+              ].map(({ label, value, accent, color }) => (
+                <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 10, padding: '12px 16px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{label}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{value}</div>
                 </div>
-              </div>
+              ))}
             </div>
           </div>
         )}

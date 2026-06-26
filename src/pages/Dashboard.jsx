@@ -49,20 +49,23 @@ function AgedInventorySummary({ vehicles, navigate }) {
 }
 
 function StatCard({ label, value, sub, color, onClick }) {
+  const accent = color || '#0d2550';
   return (
     <div
       onClick={onClick}
       style={{
-        background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10,
-        padding: '18px 20px', cursor: onClick ? 'pointer' : 'default',
-        transition: 'box-shadow 0.15s, border-color 0.15s',
+        background: '#fff', border: '1px solid #e5e7eb',
+        borderTop: `3px solid ${accent}`,
+        borderRadius: 10, padding: '12px 16px',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'box-shadow 0.15s',
       }}
-      onMouseEnter={e => { if (onClick) { e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.07)'; e.currentTarget.style.borderColor = '#0d2550'; } }}
-      onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#e5e7eb'; }}
+      onMouseEnter={e => { if (onClick) e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.07)'; }}
+      onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}
     >
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 10 }}>{label}</div>
-      <div style={{ fontSize: 34, fontWeight: 800, color: color || '#0d2550', lineHeight: 1, letterSpacing: '-.01em' }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>{sub}</div>}
+      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: accent, lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>{sub}</div>}
     </div>
   );
 }
@@ -338,10 +341,10 @@ function GMDashboard({ data, navigate, role }) {
                 <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{store.name}</div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                {[['Cars won', store.wins], ['Spend', `$${(store.spend/1000).toFixed(0)}k`], ['Bids', store.bids]].map(([l, v]) => (
-                  <div key={l} style={{ background: '#f0f2f5', borderRadius: 8, padding: '8px 10px' }}>
-                    <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 2 }}>{l}</div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: '#0d2550' }}>{v}</div>
+                {[['Cars won', store.wins, '#0d2550'], ['Spend', `$${(store.spend/1000).toFixed(0)}k`, '#065f46'], ['Bids', store.bids, '#1e40af']].map(([l, v, c]) => (
+                  <div key={l} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `2px solid ${c}`, borderRadius: 8, padding: '8px 10px' }}>
+                    <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 2 }}>{l}</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: c }}>{v}</div>
                   </div>
                 ))}
               </div>
@@ -369,12 +372,14 @@ export default function Dashboard() {
   return (
     <div>
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 14 }}>
-        <StoreAvatar storeId={user.id} size={52} />
+        <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#e8b84b', color: '#0d2550', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, flexShrink: 0 }}>
+          {(user.name || user.email || '?')[0].toUpperCase()}
+        </div>
         <div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#111827' }}>{greeting()}, {user.name} 👋</h1>
-        <p style={{ fontSize: 14, color: '#6b7280', marginTop: 2 }}>
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-        </p>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827' }}>{greeting()}, {(user.name || '').split(' ')[0] || user.email} 👋</h1>
+          <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 2 }}>
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          </p>
         </div>
       </div>
 

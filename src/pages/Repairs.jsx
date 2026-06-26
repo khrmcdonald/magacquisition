@@ -110,10 +110,10 @@ export default function Repairs() {
   });
 
   const kpis = [
-    { id: 'all',         label: 'Total ROs',   color: '#0d2550', bg: '#fff',     border: '#e5e7eb', count: repairOrders.length },
-    { id: 'draft',       label: 'Pending',     color: '#92400e', bg: '#fffbeb',  border: '#fde68a', count: repairOrders.filter(r => ['draft','pending','pending_approval'].includes(r.status)).length },
-    { id: 'in_progress', label: 'In Progress', color: '#1e40af', bg: '#eff6ff',  border: '#bfdbfe', count: repairOrders.filter(r => r.status === 'in_progress').length },
-    { id: 'complete',    label: 'Complete',    color: '#065f46', bg: '#f0fdf4',  border: '#86efac', count: repairOrders.filter(r => r.status === 'complete').length },
+    { id: 'all',         label: 'Total ROs',   accent: '#0d2550', color: '#0d2550', count: repairOrders.length },
+    { id: 'draft',       label: 'Pending',     accent: '#e8b84b', color: '#92400e', count: repairOrders.filter(r => ['draft','pending','pending_approval'].includes(r.status)).length },
+    { id: 'in_progress', label: 'In Progress', accent: '#3b82f6', color: '#1e40af', count: repairOrders.filter(r => r.status === 'in_progress').length },
+    { id: 'complete',    label: 'Complete',    accent: '#10b981', color: '#065f46', count: repairOrders.filter(r => r.status === 'complete').length },
   ];
 
   const handleSave = async (id, fields) => {
@@ -131,23 +131,31 @@ export default function Repairs() {
   };
 
   return (
-    <div style={{ padding: '24px 28px' }}>
+    <div>
 
-      {/* KPI cards — click to filter */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 180px))', gap: 12, marginBottom: 24 }}>
+      {/* Page header */}
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>Repairs</h1>
+        <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 2, marginBottom: 0 }}>All repair orders across the group — click a tile to filter</p>
+      </div>
+
+      {/* KPI tiles — click to filter */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
         {kpis.map(k => (
           <div
             key={k.id}
-            onClick={() => setStatusFilter(k.id)}
+            onClick={() => setStatusFilter(statusFilter === k.id ? 'all' : k.id)}
             style={{
-              background: k.bg,
-              border: `2px solid ${statusFilter === k.id ? k.color : k.border}`,
-              borderRadius: 10, padding: '14px 18px', cursor: 'pointer',
+              background: '#fff',
+              border: `1px solid ${statusFilter === k.id ? k.accent : '#e5e7eb'}`,
+              borderTop: `3px solid ${k.accent}`,
+              borderRadius: 10, padding: '12px 16px', cursor: 'pointer',
               transition: 'border-color 0.15s',
+              boxShadow: statusFilter === k.id ? `0 0 0 2px ${k.accent}33` : 'none',
             }}
           >
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>{k.label}</div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: k.color }}>{k.count}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{k.label}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: k.color, lineHeight: 1 }}>{k.count}</div>
           </div>
         ))}
       </div>

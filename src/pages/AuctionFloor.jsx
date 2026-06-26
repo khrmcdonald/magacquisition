@@ -122,6 +122,9 @@ export default function AuctionFloor() {
   const { data, getHighBid, getMyBid } = useData();
   const [filter, setFilter] = useState('all');
   const [viewMode, setViewMode] = useState('grid');
+  const [showMonitor, setShowMonitor] = useState(false);
+
+  const canBid = user.role === 'bidder';
 
   const activeVehicles = data.vehicles.filter(v => v.status === 'in_auction');
   const myBids = activeVehicles.filter(v => getMyBid(v.id, user.id));
@@ -147,29 +150,10 @@ export default function AuctionFloor() {
 
       {data.auction.isOpen && (
         <>
-          {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
-            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: '3px solid #0d2550', borderRadius: 10, padding: '14px 18px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>Cars available</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: '#0d2550' }}>{activeVehicles.length}</div>
-              <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 3 }}>this auction</div>
-            </div>
-            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: '3px solid #e8b84b', borderRadius: 10, padding: '14px 18px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>My bids</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: '#0d2550' }}>{myBids.length}</div>
-              <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 3 }}>{user.name}</div>
-            </div>
-            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: '3px solid #10b981', borderRadius: 10, padding: '14px 18px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>Currently winning</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: '#065f46' }}>{winning.length}</div>
-              <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 3 }}>high bid</div>
-            </div>
-          </div>
-
-          {/* Controls: filter pills + view toggle */}
+          {/* Controls: filter pills + view toggle + monitor button */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 20, alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', gap: 6, flex: 1 }}>
-              {[['all', 'All cars'], ['my', 'My bids'], ['winning', 'Winning']].map(([key, label]) => (
+              {(canBid ? [['all', 'All cars'], ['my', 'My bids'], ['winning', 'Winning']] : [['all', 'All cars']]).map(([key, label]) => (
                 <button key={key} onClick={() => setFilter(key)} style={{
                   padding: '7px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
                   border: '1.5px solid',
@@ -182,6 +166,19 @@ export default function AuctionFloor() {
                 </button>
               ))}
             </div>
+            <button
+              onClick={() => setShowMonitor(v => !v)}
+              style={{
+                padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0,
+                border: '1.5px solid', borderColor: showMonitor ? '#0d2550' : '#e5e7eb',
+                background: showMonitor ? '#0d2550' : '#fff',
+                color: showMonitor ? '#e8b84b' : '#374151',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              <span style={{ fontSize: 10, color: showMonitor ? '#e8b84b' : '#ef4444' }}>●</span>
+              Live Monitor
+            </button>
             <div style={{ display: 'flex', border: '1.5px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
               {[['grid','⊞'],['list','☰']].map(([mode, icon]) => (
                 <button key={mode} onClick={() => setViewMode(mode)} style={{
@@ -194,7 +191,9 @@ export default function AuctionFloor() {
             </div>
           </div>
 
-          {/* Vehicles */}
+          {/* Vehicles + optional monitor panel */}
+          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
           {filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9ca3af' }}>
               <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }}>🔍</div>
@@ -211,7 +210,7 @@ export default function AuctionFloor() {
 
                 return (
                   <div key={v.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                    {/* Card — no bottom radius, connects to BidStrip */}
+                    {/* Card — no bottom radius, connects to bid strip */}
                     <div style={{
                       borderRadius: '12px 12px 0 0',
                       overflow: 'hidden',
@@ -239,13 +238,16 @@ export default function AuctionFloor() {
                         </div>
                       </VehicleCard>
                     </div>
-                    {/* Bid strip — no top radius */}
-                    <BidStrip
-                      vehicleId={v.id}
-                      storeId={user.id}
-                      storeName={user.name}
-                      isOpen={data.auction.isOpen}
-                    />
+                    {canBid ? (
+                      <BidStrip
+                        vehicleId={v.id}
+                        storeId={user.id}
+                        storeName={user.name}
+                        isOpen={data.auction.isOpen}
+                      />
+                    ) : (
+                      <ReadOnlyBidStrip vehicleId={v.id} highBid={highBid} bidCount={bidCount} bids={data.bids} />
+                    )}
                   </div>
                 );
               })}
@@ -294,7 +296,17 @@ export default function AuctionFloor() {
                             </div>
                           </div>
                         )}
-                        <ListBidForm vehicleId={v.id} storeId={user.id} storeName={user.name} isOpen={data.auction.isOpen} highBid={highBid} myBid={myBid} />
+                        {canBid
+                          ? <ListBidForm vehicleId={v.id} storeId={user.id} storeName={user.name} isOpen={data.auction.isOpen} highBid={highBid} myBid={myBid} />
+                          : highBid && (
+                            <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                              <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Leader</div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: '#0d2550' }}>
+                                {(data.bids || []).filter(b => b.vehicleId === v.id).reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null)?.storeName || '—'}
+                              </div>
+                            </div>
+                          )
+                        }
                       </div>
                     </div>
                   </VehicleCard>
@@ -302,6 +314,15 @@ export default function AuctionFloor() {
               })}
             </div>
           )}
+          </div>{/* end flex:1 */}
+          {showMonitor && (
+            <BidMonitorPanel
+              vehicles={activeVehicles}
+              bids={data.bids}
+              onClose={() => setShowMonitor(false)}
+            />
+          )}
+          </div>{/* end flex row */}
         </>
       )}
 
@@ -312,6 +333,107 @@ export default function AuctionFloor() {
           <span style={{ fontSize: 14, color: '#9ca3af' }}>TRI-STATE will open the next auction when ready.</span>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Read-only bid strip for non-bidder grid cards ────────────────────────────
+function ReadOnlyBidStrip({ vehicleId, highBid, bidCount, bids }) {
+  const leader = (bids || [])
+    .filter(b => b.vehicleId === vehicleId)
+    .reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null);
+
+  return (
+    <div style={{
+      background: '#0d2550', borderRadius: '0 0 12px 12px',
+      padding: '10px 14px',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>
+            High bid
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: highBid ? '#e8b84b' : '#4b6587' }}>
+            {highBid ? `$${highBid.toLocaleString()}` : 'No bids'}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>
+            {bidCount} bid{bidCount !== 1 ? 's' : ''}
+          </div>
+          {leader && (
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{leader.storeName}</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Side panel bid monitor ────────────────────────────────────────────────────
+function BidMonitorPanel({ vehicles, bids, onClose }) {
+  const enriched = vehicles.map(v => {
+    const vBids = (bids || []).filter(b => b.vehicleId === v.id);
+    const highBid = vBids.reduce((max, b) => b.amount > max ? b.amount : max, 0);
+    const leader = vBids.reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null);
+    const latestAt = vBids.reduce((latest, b) => {
+      const t = new Date(b.placedAt || 0).getTime();
+      return t > latest ? t : latest;
+    }, 0);
+    return { ...v, vBids, highBid: highBid || null, leader, latestAt };
+  }).sort((a, b) => b.latestAt - a.latestAt);
+
+  const totalBids = (bids || []).length;
+
+  return (
+    <div style={{
+      width: 290, flexShrink: 0, background: '#0d2550', borderRadius: 12, overflow: 'hidden',
+      position: 'sticky', top: 0, alignSelf: 'flex-start',
+      maxHeight: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column',
+    }}>
+      {/* Header */}
+      <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid #1e3a5f' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 9, color: '#ef4444' }}>●</span>
+              Live Monitor
+            </div>
+            <div style={{ fontSize: 11, color: '#93c5fd', marginTop: 2 }}>
+              {totalBids} total bid{totalBids !== 1 ? 's' : ''} · {vehicles.length} vehicles
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#93c5fd', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '0 2px' }}>×</button>
+        </div>
+      </div>
+      {/* Vehicle rows */}
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        {enriched.map((v, i) => (
+          <div key={v.id} style={{
+            padding: '11px 16px',
+            borderBottom: '1px solid #1e3a5f',
+            background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.03)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {v.year} {v.make} {v.model}
+                </div>
+                {v.leader ? (
+                  <div style={{ fontSize: 11, color: '#93c5fd', marginTop: 2 }}>
+                    {v.vBids.length} bid{v.vBids.length !== 1 ? 's' : ''} · {v.leader.storeName}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 11, color: '#374b66', marginTop: 2 }}>No bids yet</div>
+                )}
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: v.highBid ? '#e8b84b' : '#374b66', flexShrink: 0, lineHeight: 1.1 }}>
+                {v.highBid ? `$${v.highBid.toLocaleString()}` : '—'}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

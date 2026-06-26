@@ -174,6 +174,9 @@ export default function Inventory() {
 
   const listed = vehicles.filter(v => v.status === 'ready');
   const inAuction = vehicles.filter(v => v.status === 'in_auction');
+  const availablePrices = listed.map(v => parseFloat(v.listPrice)).filter(p => p > 0);
+  const avgAsk = availablePrices.length ? Math.round(availablePrices.reduce((s, p) => s + p, 0) / availablePrices.length) : null;
+  const lowestAsk = availablePrices.length ? Math.min(...availablePrices) : null;
 
   const filteredVehicles = vehicles.filter(v => {
     if (statusFilter !== 'all' && v.status !== statusFilter) return false;
@@ -210,19 +213,20 @@ export default function Inventory() {
       </div>
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: '3px solid #10b981', borderRadius: 10, padding: '14px 18px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>Available</div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: '#1D9E75' }}>{listed.length}</div>
-        </div>
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: '3px solid #3b82f6', borderRadius: 10, padding: '14px 18px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>In Auction</div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: '#0d2550' }}>{inAuction.length}</div>
-        </div>
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: '3px solid #e8b84b', borderRadius: 10, padding: '14px 18px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>Total Listed</div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: '#111827' }}>{vehicles.length}</div>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+        {[
+          { label: 'Available Now', value: listed.length, color: '#065f46', accent: '#10b981', suffix: ' cars' },
+          { label: 'In Auction',    value: inAuction.length, color: '#1e40af', accent: '#3b82f6', suffix: ' live' },
+          { label: 'Avg Ask',       value: avgAsk ? `$${avgAsk.toLocaleString()}` : '—', color: '#0d2550', accent: '#0d2550' },
+          { label: 'Lowest Ask',    value: lowestAsk ? `$${lowestAsk.toLocaleString()}` : '—', color: '#92400e', accent: '#e8b84b' },
+        ].map(({ label, value, color, accent, suffix }) => (
+          <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 8, padding: '10px 14px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{label}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color, lineHeight: 1 }}>
+              {value}{typeof value === 'number' && suffix ? <span style={{ fontSize: 11, fontWeight: 500, color: '#9ca3af', marginLeft: 2 }}>{suffix}</span> : null}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Controls: search + filter pills + view toggle */}
@@ -278,6 +282,7 @@ export default function Inventory() {
                 vehicle={v}
                 mileage={mileageMap[v.id] ?? null}
                 auctionCloseDate={data.auction?.closeDate}
+                badge={isInAuction ? null : undefined}
                 pricePill={isInAuction ? <AuctionCountdownPill closeDate={data.auction?.closeDate} /> : undefined}
                 onDetails={() => setDetailVehicle(v)}
                 actionButton={

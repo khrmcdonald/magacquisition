@@ -4,6 +4,7 @@ import { useData } from '../context/DataContext';
 import { Navigate } from 'react-router-dom';
 import { StoreAvatar } from '../components/StoreAvatar';
 import { supabase } from '../lib/supabase';
+import { useToast } from '../components/Toast';
 
 const ROLE_OPTIONS = [
   { value: 'bidder',    label: 'Retail Store (Bidder)' },
@@ -105,9 +106,54 @@ function readOrgSettings() {
 
 export default function Admin() {
   const { user } = useAuth();
-  const { data, updateStorePhoto } = useData();
+  const { data, updateStorePhoto, addAcquisitionSource, deleteAcquisitionSource, addLocation, deleteLocation } = useData();
+  const { showToast } = useToast();
   const fileRefs = useRef({});
   const logoRef = useRef(null);
+
+  // Sources state
+  const [newSource, setNewSource] = useState('');
+  const [savingSource, setSavingSource] = useState(false);
+
+  // Locations state
+  const [newLocation, setNewLocation] = useState('');
+  const [savingLocation, setSavingLocation] = useState(false);
+
+  const handleAddSource = async (e) => {
+    e.preventDefault();
+    if (!newSource.trim()) return;
+    setSavingSource(true);
+    try {
+      await addAcquisitionSource(newSource.trim());
+      setNewSource('');
+      showToast('Source added.', 'success');
+    } catch (err) { showToast('Failed to add source: ' + err.message, 'error'); }
+    setSavingSource(false);
+  };
+
+  const handleDeleteSource = async (id) => {
+    if (!window.confirm('Delete this source?')) return;
+    try { await deleteAcquisitionSource(id); showToast('Source removed.', 'success'); }
+    catch (err) { showToast('Failed to remove: ' + err.message, 'error'); }
+  };
+
+  const handleAddLocation = async (e) => {
+    e.preventDefault();
+    if (!newLocation.trim()) return;
+    setSavingLocation(true);
+    try {
+      await addLocation(newLocation.trim());
+      setNewLocation('');
+      showToast('Location added.', 'success');
+    } catch (err) { showToast('Failed to add location: ' + err.message, 'error'); }
+    setSavingLocation(false);
+  };
+
+  const handleDeleteLocation = async (id) => {
+    if (!window.confirm('Delete this location?')) return;
+    try { await deleteLocation(id); showToast('Location removed.', 'success'); }
+    catch (err) { showToast('Failed to remove: ' + err.message, 'error'); }
+  };
 
   // Org settings state
   const [orgSettings, setOrgSettings] = useState(() => readOrgSettings());
@@ -302,6 +348,74 @@ export default function Admin() {
         <div className="stat-card">
           <div className="stat-label">Transport records</div>
           <div className="stat-value">{data.transport.length}</div>
+        </div>
+      </div>
+
+      {/* ── Acquisition Sources ─────────────────────────────────────────────── */}
+      <div className="card" style={{ padding: 0, marginBottom: 24 }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>Acquisition Sources</h2>
+          <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>Where vehicles come from — shown in the Add Vehicle form</p>
+        </div>
+        <div style={{ padding: '16px 20px' }}>
+          {(data.acquisition_sources || []).length === 0 && (
+            <div style={{ fontSize: 13, color: '#9ca3af', marginBottom: 12 }}>No sources yet.</div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+            {(data.acquisition_sources || []).map(s => (
+              <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{s.name}</span>
+                <button onClick={() => handleDeleteSource(s.id)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 18, padding: '0 2px' }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}>×</button>
+              </div>
+            ))}
+          </div>
+          <form onSubmit={handleAddSource} style={{ display: 'flex', gap: 8 }}>
+            <input
+              value={newSource}
+              onChange={e => setNewSource(e.target.value)}
+              placeholder="e.g. Trade-in, Auction, Street buy…"
+              style={{ flex: 1, padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none' }}
+            />
+            <button type="submit" disabled={savingSource || !newSource.trim()} className="btn-navy" style={{ padding: '9px 18px', fontSize: 13, opacity: savingSource ? 0.7 : 1 }}>
+              {savingSource ? 'Adding…' : '+ Add'}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* ── Locations ───────────────────────────────────────────────────────── */}
+      <div className="card" style={{ padding: 0, marginBottom: 24 }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>Locations</h2>
+          <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>Lots and storage sites — shown in the Add Vehicle form and inventory view</p>
+        </div>
+        <div style={{ padding: '16px 20px' }}>
+          {(data.locations || []).length === 0 && (
+            <div style={{ fontSize: 13, color: '#9ca3af', marginBottom: 12 }}>No locations yet.</div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+            {(data.locations || []).map(l => (
+              <div key={l.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{l.name}</span>
+                <button onClick={() => handleDeleteLocation(l.id)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 18, padding: '0 2px' }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}>×</button>
+              </div>
+            ))}
+          </div>
+          <form onSubmit={handleAddLocation} style={{ display: 'flex', gap: 8 }}>
+            <input
+              value={newLocation}
+              onChange={e => setNewLocation(e.target.value)}
+              placeholder="e.g. Main lot, Back row, Shop…"
+              style={{ flex: 1, padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none' }}
+            />
+            <button type="submit" disabled={savingLocation || !newLocation.trim()} className="btn-navy" style={{ padding: '9px 18px', fontSize: 13, opacity: savingLocation ? 0.7 : 1 }}>
+              {savingLocation ? 'Adding…' : '+ Add'}
+            </button>
+          </form>
         </div>
       </div>
 

@@ -103,25 +103,18 @@ export default function Transport() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: '3px solid #0d2550', borderRadius: 10, padding: '14px 18px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>Total vehicles</div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: '#0d2550' }}>{myTransport.length}</div>
-        </div>
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: '3px solid #3b82f6', borderRadius: 10, padding: '14px 18px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>In transit</div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: '#0369a1' }}>
-            {myTransport.filter(t => ['dispatched', 'inTransit'].includes(t.status)).length}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+        {[
+          { label: 'Total vehicles', value: myTransport.length,                                                              accent: '#0d2550', color: '#0d2550' },
+          { label: 'In transit',     value: myTransport.filter(t => ['dispatched','inTransit'].includes(t.status)).length,   accent: '#3b82f6', color: '#1e40af' },
+          { label: 'Arrived',        value: myTransport.filter(t => t.status === 'arrived').length,                          accent: '#10b981', color: '#065f46' },
+          { label: 'Title received', value: myTransport.filter(t => t.status === 'titleReceived').length,                    accent: '#e8b84b', color: '#92400e' },
+        ].map(({ label, value, accent, color }) => (
+          <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 10, padding: '12px 16px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{label}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{value}</div>
           </div>
-        </div>
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: '3px solid #10b981', borderRadius: 10, padding: '14px 18px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>Arrived</div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: '#065f46' }}>{myTransport.filter(t => t.status === 'arrived').length}</div>
-        </div>
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: '3px solid #e8b84b', borderRadius: 10, padding: '14px 18px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>Title received</div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: '#065f46' }}>{myTransport.filter(t => t.status === 'titleReceived').length}</div>
-        </div>
+        ))}
       </div>
 
       {/* Filter pills */}
@@ -187,23 +180,36 @@ export default function Transport() {
                 {/* Transport details strip */}
                 <div style={{ padding: '10px 16px 14px', borderTop: '1px solid #f3f4f6', background: '#f9fafb' }}>
                   {/* Destination + winning bid */}
-                  <div style={{ display: 'flex', gap: 20, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Going to</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <StoreAvatar storeId={t.storeId} size={22} />
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#0d2550' }}>{t.storeName}</span>
+                  {t.storeName === 'Intake' ? (
+                    <div style={{ display: 'flex', gap: 20, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Pickup from</div>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>{t.notes || 'Address not set'}</span>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Leg type</div>
+                        <span style={{ background: '#fef3c7', color: '#92400e', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Intake Pickup</span>
                       </div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Winning bid</div>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: '#0d2550' }}>${t.winningBid?.toLocaleString() ?? '—'}</div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 20, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Going to</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <StoreAvatar storeId={t.storeId} size={22} />
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#0d2550' }}>{t.storeName}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Winning bid</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: '#0d2550' }}>${t.winningBid?.toLocaleString() ?? '—'}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Leg type</div>
+                        <span style={{ background: '#eff6ff', color: '#1e40af', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Auction Delivery</span>
+                      </div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Leg type</div>
-                      <span style={{ background: '#eff6ff', color: '#1e40af', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Acquisition</span>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Step tracker */}
                   <StepTracker

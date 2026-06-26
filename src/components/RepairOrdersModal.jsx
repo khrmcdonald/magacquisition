@@ -53,8 +53,7 @@ export default function RepairOrdersModal({ vehicle, onClose }) {
     setSaving(true);
     try {
       const vin6 = (vehicle.vin || '').slice(-6) || null;
-      const ro = await addRepairOrder(vehicle.id, vin6, vendorId || null, description.trim());
-      await updateRepairOrder(ro.id, { total_cost: parseFloat(cost) });
+      await addRepairOrder(vehicle.id, vin6, vendorId || null, description.trim(), parseFloat(cost) || 0);
       resetForm();
     } catch (err) { showToast('Failed to add repair order: ' + err.message, 'error'); }
     setSaving(false);
@@ -101,13 +100,13 @@ export default function RepairOrdersModal({ vehicle, onClose }) {
           {/* Cost summary */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
             {[
-              { label: 'Repair costs', value: `$${totalRepairs.toLocaleString()}` },
-              { label: 'Open ROs',     value: vehicleROs.filter(r => r.status !== 'completed').length },
-              { label: 'Cost basis',   value: `$${costBasis.toLocaleString()}` },
-            ].map(({ label, value }) => (
-              <div key={label} style={{ background: '#f0f4fb', borderRadius: 8, padding: '10px 14px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>{label}</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: '#0d2550' }}>{value}</div>
+              { label: 'Repair costs', value: `$${totalRepairs.toLocaleString()}`, accent: '#e8b84b', color: '#92400e' },
+              { label: 'Open ROs',     value: vehicleROs.filter(r => r.status !== 'completed').length, accent: '#3b82f6', color: '#1e40af' },
+              { label: 'Cost basis',   value: `$${costBasis.toLocaleString()}`,   accent: '#0d2550', color: '#0d2550' },
+            ].map(({ label, value, accent, color }) => (
+              <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 8, padding: '10px 14px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{label}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color, lineHeight: 1 }}>{value}</div>
               </div>
             ))}
           </div>

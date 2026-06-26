@@ -53,7 +53,8 @@ function mapVehicle(r) {
     awardedAt: r.awarded_at,
     listedAt: r.listed_at,
     createdAt: r.created_at,
-    arbitration: r.arbitration,  // may be null if column doesn't exist
+    arbitration: r.arbitration,
+    keys: r.keys || null,
   };
 }
 
@@ -140,6 +141,7 @@ const VEHICLE_FIELD_MAP = {
   canListBeforeTitle: 'can_list_before_title',
   winnerId: 'winner_id', winnerName: 'winner_name', winningBid: 'winning_bid',
   awardedAt: 'awarded_at',
+  keys: 'keys',
 };
 
 function toSnakeCase(fields) {
@@ -578,10 +580,10 @@ export function DataProvider({ children }) {
     }));
   };
 
-  const addRepairOrder = async (vehicleId, vin6, vendorId, notes) => {
+  const addRepairOrder = async (vehicleId, vin6, vendorId, notes, cost = 0) => {
     const { data: row, error } = await supabase
       .from('repair_orders')
-      .insert({ org_id: ORG_ID, vehicle_id: vehicleId, vin6: vin6 || null, vendor_id: vendorId || null, status: 'draft', notes: notes || null, total_cost: 0 })
+      .insert({ org_id: ORG_ID, vehicle_id: vehicleId, vin6: vin6 || null, vendor_id: vendorId || null, status: 'draft', notes: notes || null, total_cost: parseFloat(cost) || 0 })
       .select('*, repair_order_lines(*)')
       .single();
     if (error) throw error;
@@ -762,6 +764,29 @@ export function DataProvider({ children }) {
     </div>
   );
 
+  const addAcquisitionSource = async (name) => {
+    const { data: row, error } = await supabase.from('acquisition_sources').insert({ org_id: ORG_ID, name: name.trim() }).select().single();
+    if (error) throw error;
+    setAcquisitionSources(prev => [...prev, row]);
+    return row;
+  };
+  const deleteAcquisitionSource = async (id) => {
+    const { error } = await supabase.from('acquisition_sources').delete().eq('id', id);
+    if (error) throw error;
+    setAcquisitionSources(prev => prev.filter(s => s.id !== id));
+  };
+  const addLocation = async (name) => {
+    const { data: row, error } = await supabase.from('locations').insert({ org_id: ORG_ID, name: name.trim() }).select().single();
+    if (error) throw error;
+    setLocations(prev => [...prev, row]);
+    return row;
+  };
+  const deleteLocation = async (id) => {
+    const { error } = await supabase.from('locations').delete().eq('id', id);
+    if (error) throw error;
+    setLocations(prev => prev.filter(l => l.id !== id));
+  };
+
   return (
     <DataContext.Provider value={{
       data,
@@ -783,6 +808,9 @@ export function DataProvider({ children }) {
       fileArbitration, resolveArbitration,
       // Photos & badges
       updateStorePhoto, checkAndAwardBadges, computeBadges, BADGE_DEFS,
+      // Sources & locations
+      addAcquisitionSource, deleteAcquisitionSource,
+      addLocation, deleteLocation,
     }}>
       {children}
     </DataContext.Provider>
