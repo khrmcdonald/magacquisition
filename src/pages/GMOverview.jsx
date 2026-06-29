@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
-import { USERS } from '../context/AuthContext';
 import { StoreAvatar } from '../components/StoreAvatar';
 import { Navigate } from 'react-router-dom';
-
-const STORES = USERS.filter(u => u.role === 'bidder');
 
 export default function GMOverview() {
   const { user } = useAuth();
@@ -24,10 +21,16 @@ export default function GMOverview() {
   const totalCostBasis = awarded.reduce((sum, v) => sum + (parseFloat(v.totalCost) || 0), 0);
   const totalMargin = totalBidVolume - totalCostBasis;
 
+  const STORES = (data.locations || []).filter(l => l.is_buyer_store);
   const storeSummary = STORES.map(store => {
-    const wins = awarded.filter(v => v.winnerId === store.id);
+    const wins = awarded.filter(v => {
+      const vBids = data.bids.filter(b => b.vehicleId === v.id);
+      if (!vBids.length) return false;
+      const winner = vBids.reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null);
+      return winner?.locationId === store.id;
+    });
     const totalSpend = wins.reduce((s, v) => s + (v.winningBid || 0), 0);
-    const bids = data.bids.filter(b => b.storeId === store.id);
+    const bids = data.bids.filter(b => b.locationId === store.id);
     return { ...store, wins: wins.length, totalSpend, bids: bids.length, vehicles: wins };
   });
 
@@ -181,9 +184,7 @@ export default function GMOverview() {
           {storeSummary.map(store => (
             <div key={store.id} className="card">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#1a3d76', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f1bb25', fontWeight: 800, fontSize: 13 }}>
-                  {store.id}
-                </div>
+                <StoreAvatar locationId={store.id} size={36} />
                 <div>
                   <div style={{ fontWeight: 700, color: '#111827' }}>{store.name}</div>
                   <div style={{ fontSize: 12, color: '#6b7280' }}>Retail store</div>

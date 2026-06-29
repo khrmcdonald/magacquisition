@@ -1,14 +1,7 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
-import { USERS } from '../context/AuthContext';
 import { StoreAvatar } from '../components/StoreAvatar';
-
-const STORES = USERS.filter(u => u.role === 'bidder');
-
-const STORE_COLORS = {
-  SAG: '#1a3d76', KIA: '#065f46', CLR: '#92400e', MIL: '#7c3aed', MAR: '#b91c1c',
-};
 
 function BadgeShelf({ badges, badgeDefs, highlight }) {
   if (!badges || badges.length === 0) return (
@@ -51,11 +44,19 @@ export default function Leaderboard() {
   const { user } = useAuth();
   const [tab, setTab] = useState('board');
 
+  const STORES = (data.locations || []).filter(l => l.is_buyer_store);
+
   const storeStats = STORES.map(store => {
-    const wins = data.vehicles.filter(v => v.status === 'awarded' && v.winnerId === store.id);
-    const bids = data.bids.filter(b => b.storeId === store.id);
+    const wins = data.vehicles.filter(v => {
+      if (v.status !== 'awarded') return false;
+      const vBids = data.bids.filter(b => b.vehicleId === v.id);
+      if (!vBids.length) return false;
+      const winner = vBids.reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null);
+      return winner?.locationId === store.id;
+    });
+    const bids = data.bids.filter(b => b.locationId === store.id);
     const totalSpend = wins.reduce((s, v) => s + (v.winningBid || 0), 0);
-    const activeBids = bids.filter(b => data.vehicles.find(v => v.id === b.vehicleId && v.status === 'active'));
+    const activeBids = bids.filter(b => data.vehicles.find(v => v.id === b.vehicleId && v.status === 'in_auction'));
     const activeWinning = activeBids.filter(b => {
       const allBids = data.bids.filter(bb => bb.vehicleId === b.vehicleId);
       const high = Math.max(...allBids.map(bb => bb.amount));
@@ -68,7 +69,7 @@ export default function Leaderboard() {
     return { ...store, wins: wins.length, bids: bids.length, totalSpend, winRate, activeWinning: activeWinning.length, badges: allBadges };
   }).sort((a, b) => b.wins - a.wins || b.totalSpend - a.totalSpend);
 
-  const isMyStore = (storeId) => user.id === storeId;
+  const isMyStore = (locationId) => user.locationId === locationId;
 
   const medals = ['🥇', '🥈', '🥉'];
 
@@ -108,7 +109,7 @@ export default function Leaderboard() {
                   marginTop: i === 0 ? 0 : 20,
                 }}>
                   <div style={{ fontSize: 32, marginBottom: 8 }}>{medals[i]}</div>
-                  <div style={{ margin: '0 auto 10px', display: 'flex', justifyContent: 'center' }}><StoreAvatar storeId={store.id} size={48} /></div>
+                  <div style={{ margin: '0 auto 10px', display: 'flex', justifyContent: 'center' }}><StoreAvatar locationId={store.id} size={48} /></div>
                   <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{store.name}</div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: '#1a3d76', margin: '6px 0 2px' }}>{store.wins}</div>
                   <div style={{ fontSize: 11, color: '#9ca3af' }}>cars won</div>
@@ -135,7 +136,7 @@ export default function Leaderboard() {
                 </div>
 
                 {/* Store avatar */}
-                <StoreAvatar storeId={store.id} size={44} />
+                <StoreAvatar locationId={store.id} size={44} />
 
                 {/* Name */}
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -215,7 +216,7 @@ export default function Leaderboard() {
                   borderRadius: 12, padding: '16px 20px',
                   display: 'flex', gap: 16, alignItems: 'flex-start',
                 }}>
-                  <StoreAvatar storeId={store.id} size={44} />
+                  <StoreAvatar locationId={store.id} size={44} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', marginBottom: 8 }}>
                       {store.name}

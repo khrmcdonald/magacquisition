@@ -2,7 +2,6 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { useNavigate } from 'react-router-dom';
-import { USERS } from '../context/AuthContext';
 import { StoreAvatar } from '../components/StoreAvatar';
 import { getAgeFlag } from '../components/VehicleCard';
 
@@ -405,7 +404,7 @@ function TriStateDashboard({ data, navigate, role }) {
 
 // ── GM DASHBOARD ──
 function GMDashboard({ data, navigate, role }) {
-  const STORES = USERS.filter(u => u.role === 'bidder');
+  const STORES = (data.locations || []).filter(l => l.is_buyer_store);
   const awarded = data.vehicles.filter(v => v.status === 'awarded');
   const totalVolume = awarded.reduce((s, v) => s + (v.winningBid || 0), 0);
   const totalCost = awarded.reduce((s, v) => s + (parseFloat(v.totalCost) || 0), 0);
@@ -413,9 +412,14 @@ function GMDashboard({ data, navigate, role }) {
   const openArbitrations = data.vehicles.filter(v => v.arbitration?.status === 'open').length;
 
   const storeSummary = STORES.map(store => {
-    const wins = awarded.filter(v => v.winnerId === store.id);
+    const wins = awarded.filter(v => {
+      const vBids = data.bids.filter(b => b.vehicleId === v.id);
+      if (!vBids.length) return false;
+      const winner = vBids.reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null);
+      return winner?.locationId === store.id;
+    });
     const spend = wins.reduce((s, v) => s + (v.winningBid || 0), 0);
-    const bids = data.bids.filter(b => b.storeId === store.id).length;
+    const bids = data.bids.filter(b => b.locationId === store.id).length;
     return { ...store, wins: wins.length, spend, bids };
   }).sort((a, b) => b.spend - a.spend);
 
@@ -441,7 +445,7 @@ function GMDashboard({ data, navigate, role }) {
             <div style={{ width: 4, background: store.color || '#0d2550', flexShrink: 0 }} />
             <div style={{ padding: '16px 20px', flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                <StoreAvatar storeId={store.id} size={36} />
+                <StoreAvatar locationId={store.id} size={36} />
                 <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{store.name}</div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>

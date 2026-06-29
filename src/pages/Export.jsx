@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { USERS } from '../context/AuthContext';
 
 function fmt(val) { return val ? parseFloat(val) : 0; }
 function fmtDate(iso) {
@@ -164,11 +163,15 @@ export default function Export() {
       [],
       ['BY STORE', '', '', ''],
       ['Store', 'Cars Won', 'Total Spend', 'Avg Per Car'],
-      ...['SAG','KIA','CLR','MIL','MAR'].map(sid => {
-        const wins = awarded.filter(v => v.winnerId === sid);
+      ...(data.locations || []).filter(l => l.is_buyer_store).map(loc => {
+        const wins = awarded.filter(v => {
+          const vBids = data.bids.filter(b => b.vehicleId === v.id);
+          if (!vBids.length) return false;
+          const winner = vBids.reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null);
+          return winner?.locationId === loc.id;
+        });
         const spend = wins.reduce((s,v)=>s+(v.winningBid||0),0);
-        const store = USERS.find(u => u.id === sid);
-        return [store?.name || sid, wins.length, spend, wins.length > 0 ? Math.round(spend/wins.length) : 0];
+        return [loc.name, wins.length, spend, wins.length > 0 ? Math.round(spend/wins.length) : 0];
       }),
       [],
       ['AUCTION HISTORY', ''],

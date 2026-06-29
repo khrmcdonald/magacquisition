@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import { USERS } from '../context/AuthContext';
-
-const STORES = USERS.filter(u => u.role === 'bidder');
+import { StoreAvatar } from '../components/StoreAvatar';
 
 function fmt(val) { return val ? `$${parseFloat(val).toLocaleString()}` : '—'; }
 function fmtDate(iso) {
@@ -31,6 +29,8 @@ export default function History() {
   const isGM = user.role === 'gm' || user.role === 'admin';
   const isBidder = user.role === 'bidder';
 
+  const STORES = (data.locations || []).filter(l => l.is_buyer_store);
+
   const [storeFilter, setStoreFilter] = useState(isBidder ? user.id : 'all');
   const [tab, setTab] = useState('vehicles');
   const [search, setSearch] = useState('');
@@ -43,10 +43,20 @@ export default function History() {
   // All bids
   const allBids = data.bids;
 
+  const winnerLocationId = (vehicleId) => {
+    const vBids = data.bids.filter(b => b.vehicleId === vehicleId);
+    if (!vBids.length) return null;
+    return vBids.reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null)?.locationId;
+  };
+
   // Filter bids by store
   const filteredBids = allBids.filter(b => {
-    if (storeFilter !== 'all' && b.storeId !== storeFilter) return false;
-    if (search && !`${b.storeName}`.toLowerCase().includes(search.toLowerCase())) return false;
+    if (isBidder) return b.storeId === user.id;
+    if (storeFilter !== 'all' && b.locationId !== storeFilter) return false;
+    if (search) {
+      const locName = (data.locations || []).find(l => l.id === b.locationId)?.name || '';
+      if (!locName.toLowerCase().includes(search.toLowerCase())) return false;
+    }
     return true;
   });
 
@@ -54,7 +64,11 @@ export default function History() {
   const filteredVehicles = data.vehicles.filter(v => {
     const name = `${v.year} ${v.make} ${v.model} ${v.vin}`.toLowerCase();
     if (search && !name.includes(search.toLowerCase())) return false;
-    if (storeFilter !== 'all' && v.winnerId !== storeFilter && tab !== 'vehicles') return false;
+    if (isBidder && tab === 'vehicles') {
+      if (v.status !== 'awarded' || v.winnerId !== user.id) return false;
+    } else if (!isBidder && storeFilter !== 'all' && tab !== 'vehicles') {
+      if (winnerLocationId(v.id) !== storeFilter) return false;
+    }
     if (dateFrom && v.createdAt && new Date(v.createdAt) < new Date(dateFrom)) return false;
     if (dateTo && v.createdAt && new Date(v.createdAt) > new Date(dateTo)) return false;
     return true;
@@ -62,23 +76,22 @@ export default function History() {
 
   // Store summary stats
   const storeSummary = STORES.map(store => {
-    const won = data.vehicles.filter(v => v.winnerId === store.id && v.status === 'awarded');
-    const bids = data.bids.filter(b => b.storeId === store.id);
+    const won = data.vehicles.filter(v => v.status === 'awarded' && winnerLocationId(v.id) === store.id);
+    const bids = data.bids.filter(b => b.locationId === store.id);
     const lost = bids.filter(b => {
       const v = data.vehicles.find(vv => vv.id === b.vehicleId);
-      return v && v.status === 'awarded' && v.winnerId !== store.id;
+      return v && v.status === 'awarded' && winnerLocationId(v.id) !== store.id;
     });
-    const transport = data.transport.filter(t => t.storeId === store.id);
-    const delivered = transport.filter(t => ['arrived', 'titleReceived'].includes(t.status));
+    const delivered = 0;
     const totalSpend = won.reduce((s, v) => s + (v.winningBid || 0), 0);
-    return { ...store, won: won.length, bids: bids.length, lost: lost.length, delivered: delivered.length, totalSpend, wonVehicles: won };
+    return { ...store, won: won.length, bids: bids.length, lost: lost.length, delivered, totalSpend, wonVehicles: won };
   });
 
-  const myStore = isBidder ? storeSummary.find(s => s.id === user.id) : null;
+  const myStore = isBidder ? storeSummary.find(s => s.id === user.locationId) : null;
 
-  // Transport history
+  // Transport history — storeId on transport is auth user UUID, so filter only works for bidder self-view
   const filteredTransport = data.transport.filter(t => {
-    if (storeFilter !== 'all' && t.storeId !== storeFilter) return false;
+    if (isBidder && t.storeId !== user.id) return false;
     if (search) {
       const name = `${t.vehicleName} ${t.storeName}`.toLowerCase();
       if (!name.includes(search.toLowerCase())) return false;
@@ -165,6 +178,7 @@ export default function History() {
             <select value={storeFilter} onChange={e => setStoreFilter(e.target.value)}>
               <option value="all">All stores</option>
               {STORES.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+
             </select>
           </div>
         )}
@@ -177,7 +191,7 @@ export default function History() {
           <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
         </div>
         {(search || storeFilter !== 'all' || dateFrom || dateTo) && (
-          <button className="btn-secondary" onClick={() => { setSearch(''); setStoreFilter(isBidder ? user.id : 'all'); setDateFrom(''); setDateTo(''); }}>
+          <button className="btn-secondary" onClick={() => { setSearch(''); setStoreFilter(isBidder ? user.id : 'all'); setDateFrom(''); setDateTo(''); }} >
             Clear filters
           </button>
         )}
@@ -282,11 +296,11 @@ export default function History() {
                 <tbody>
                   {filteredBids.map(b => {
                     const vehicle = data.vehicles.find(v => v.id === b.vehicleId);
-                    const won = vehicle && vehicle.winnerId === b.storeId && vehicle.status === 'awarded';
+                    const won = vehicle && vehicle.status === 'awarded' && winnerLocationId(vehicle.id) === b.locationId;
                     const closed = vehicle && ['awarded', 'no_sale'].includes(vehicle.status);
                     return (
                       <tr key={b.id}>
-                        <td><span style={{ background: '#e8eef5', color: '#1a3d76', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>{b.storeName}</span></td>
+                        <td><span style={{ background: '#e8eef5', color: '#1a3d76', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>{(data.locations || []).find(l => l.id === b.locationId)?.name || '—'}</span></td>
                         <td>
                           {vehicle ? (
                             <div><div style={{ fontWeight: 600, fontSize: 13 }}>{vehicle.year} {vehicle.make} {vehicle.model}</div><div style={{ fontSize: 11, color: '#6b7280' }}>{vehicle.vin}</div></div>
@@ -372,9 +386,7 @@ export default function History() {
             {storeSummary.map(store => (
               <div key={store.id} className="card">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#1a3d76', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f1bb25', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
-                    {store.id}
-                  </div>
+                  <StoreAvatar locationId={store.id} size={40} />
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{store.name}</div>
                     <div style={{ fontSize: 12, color: '#6b7280' }}>Retail store</div>

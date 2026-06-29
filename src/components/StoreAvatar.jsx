@@ -1,17 +1,12 @@
 import React from 'react';
 import { useData } from '../context/DataContext';
 
-const STORE_COLORS = {
-  SAG: '#1a3d76', KIA: '#065f46', CLR: '#92400e',
-  MIL: '#7c3aed', MAR: '#b91c1c',
-  TRI: '#1a3d76', GM: '#374151', ADM: '#374151',
-};
-
-export function StoreAvatar({ storeId, size = 36, showName = false, name = '' }) {
+export function StoreAvatar({ locationId, size = 36, showName = false, name = '' }) {
   const { data } = useData();
-  const photo = data.storePhotos?.[storeId];
-  const color = STORE_COLORS[storeId] || '#1a3d76';
-  const initials = storeId?.substring(0, 2) || '?';
+  const location = (data.locations || []).find(l => l.id === locationId);
+  const photo = data.storePhotos?.[locationId];
+  const color = location?.color || '#1a3d76';
+  const initials = location?.short_code || '?';
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -24,7 +19,7 @@ export function StoreAvatar({ storeId, size = 36, showName = false, name = '' })
         boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
       }}>
         {photo
-          ? <img src={photo} alt={storeId} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
+          ? <img src={photo} alt={initials} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
           : <span style={{ color: '#f1bb25', fontWeight: 800, fontSize: size * 0.35 }}>{initials}</span>
         }
       </div>

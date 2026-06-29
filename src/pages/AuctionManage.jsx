@@ -3,7 +3,6 @@ import { useData } from '../context/DataContext';
 import { StoreAvatar } from '../components/StoreAvatar';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { USERS } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 
 export default function AuctionManage() {
@@ -21,6 +20,9 @@ export default function AuctionManage() {
 
   const activeVehicles = data.vehicles.filter(v => v.status === 'in_auction');
   const readyVehicles = data.vehicles.filter(v => v.status === 'ready');
+
+  const locationName = (locationId) =>
+    (data.locations || []).find(l => l.id === locationId)?.name || '—';
 
   const handleOpen = async (e) => {
     e.preventDefault();
@@ -43,12 +45,6 @@ export default function AuctionManage() {
     }
     setClosing(false);
   };
-
-  const storeColors = {};
-  USERS.filter(u => u.role === 'bidder').forEach((u, i) => {
-    const colors = ['#1a3d76', '#065f46', '#92400e', '#991b1b', '#1e40af'];
-    storeColors[u.id] = colors[i % colors.length];
-  });
 
   return (
     <div>
@@ -168,8 +164,8 @@ export default function AuctionManage() {
                         <td>
                           {highBid ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <StoreAvatar storeId={highBid.storeId} size={28} />
-                              <span style={{ fontWeight: 700, fontSize: 13 }}>{highBid.storeName}</span>
+                              <StoreAvatar locationId={highBid.locationId} size={28} />
+                              <span style={{ fontWeight: 700, fontSize: 13 }}>{locationName(highBid.locationId)}</span>
                             </div>
                           ) : '—'}
                         </td>
@@ -215,8 +211,8 @@ export default function AuctionManage() {
                                   alignItems: 'center',
                                 }}>
                                   {i === 0 && <span style={{ background: '#f1bb25', color: '#1a3d76', fontSize: 10, fontWeight: 800, padding: '2px 6px', borderRadius: 4 }}>WINNER</span>}
-                                  <StoreAvatar storeId={b.storeId} size={24} />
-                                  <span style={{ fontWeight: 700 }}>{b.storeName}</span>
+                                  <StoreAvatar locationId={b.locationId} size={24} />
+                                  <span style={{ fontWeight: 700 }}>{locationName(b.locationId)}</span>
                                   <span style={{ fontWeight: 600 }}>${b.amount.toLocaleString()}</span>
                                   <span style={{ fontSize: 11, opacity: .7 }}>{new Date(b.updatedAt).toLocaleTimeString()}</span>
                                 </div>

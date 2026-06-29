@@ -2,18 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import LoadingScreen from '../components/LoadingScreen';
 
-// Static store list — used by components that need to enumerate stores.
-// PINs removed; auth is now handled by Supabase.
-export const USERS = [
-  { id: 'SAG', name: 'GMC',       role: 'bidder',    color: '#1a3d76' },
-  { id: 'KIA', name: 'KIA',       role: 'bidder',    color: '#2a5298' },
-  { id: 'CLR', name: 'Clare',     role: 'bidder',    color: '#0f3460' },
-  { id: 'MIL', name: 'Millington',role: 'bidder',    color: '#16213e' },
-  { id: 'MAR', name: 'Marlette',  role: 'bidder',    color: '#0d2137' },
-  { id: 'TRI', name: 'Tri-State', role: 'wholesale', color: '#1a3d76' },
-  { id: 'GM',  name: 'Group GM',  role: 'gm',        color: '#1a3d76' },
-  { id: 'ADM', name: 'Admin',     role: 'admin',     color: '#1a3d76' },
-];
 
 const AuthContext = createContext(null);
 
@@ -53,6 +41,7 @@ async function fetchProfile(supabaseUser) {
     org_id: profile.org_id,
     color: profile.color,
     buyer_number: profile.buyer_number || null,
+    locationId: profile.location_id || null,
   };
 }
 

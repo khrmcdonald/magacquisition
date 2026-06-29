@@ -66,8 +66,8 @@ function mapBid(r) {
   return {
     id: r.id,
     vehicleId: r.vehicle_id,
-    storeId: r.store_id,
-    storeName: r.store_name,
+    storeId: r.user_id,
+    locationId: r.location_id,
     amount: r.amount,
     auctionId: r.auction_id,
     placedAt: r.placed_at,
@@ -175,6 +175,7 @@ export function DataProvider({ children }) {
   const [repairOrders, setRepairOrders] = useState([]);
   const [repairVendors, setRepairVendors] = useState([]);
   const [inspectors, setInspectors] = useState([]);
+  const [pickupAddresses, setPickupAddresses] = useState([]);
   const [badges, setBadges] = useState({});
   const [storePhotos, setStorePhotos] = useState({});
   const [fetchError, setFetchError] = useState(null);
@@ -182,10 +183,10 @@ export function DataProvider({ children }) {
   // ── Initial data fetch ───────────────────────────────────────────────────
   useEffect(() => {
     async function fetchAll() {
-      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes, repairOrdersRes, repairVendorsRes, buyersRes, inspectorsRes] = await Promise.all([
+      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes, repairOrdersRes, repairVendorsRes, buyersRes, inspectorsRes, pickupAddressesRes] = await Promise.all([
         supabase.from('vehicles').select('*').eq('org_id', ORG_ID),
         supabase.from('auctions').select('*').eq('org_id', ORG_ID),
-        supabase.from('bids').select('*').eq('org_id', ORG_ID),
+        supabase.from('bids').select('*'),
         supabase.from('locations').select('*').eq('org_id', ORG_ID),
         supabase.from('acquisition_sources').select('*').eq('org_id', ORG_ID),
         supabase.from('transport').select('*').eq('org_id', ORG_ID),
@@ -193,6 +194,7 @@ export function DataProvider({ children }) {
         supabase.from('repair_vendors').select('*').eq('org_id', ORG_ID).eq('active', true),
         supabase.from('profiles').select('id, name, buyer_number, role').eq('org_id', ORG_ID),
         supabase.from('inspectors').select('*').eq('org_id', ORG_ID).eq('active', true).order('name'),
+        supabase.from('pickup_addresses').select('*').eq('org_id', ORG_ID).eq('active', true).order('address'),
       ]);
       if (vehiclesRes.error) {
         setFetchError('Could not load vehicle data. Check your connection and refresh the page.');
@@ -205,8 +207,9 @@ export function DataProvider({ children }) {
       if (sourcesRes.error)       console.warn('sources fetch error:',       sourcesRes.error?.message);
       if (transportRes.error)     console.warn('transport fetch error:',     transportRes.error?.message);
       if (repairOrdersRes.error)  console.warn('repair_orders fetch error:', repairOrdersRes.error?.message);
-      if (repairVendorsRes.error) console.warn('repair_vendors fetch error:', repairVendorsRes.error?.message);
-      if (inspectorsRes.error)   console.warn('inspectors fetch error:',    inspectorsRes.error?.message);
+      if (repairVendorsRes.error)    console.warn('repair_vendors fetch error:',    repairVendorsRes.error?.message);
+      if (inspectorsRes.error)       console.warn('inspectors fetch error:',       inspectorsRes.error?.message);
+      if (pickupAddressesRes.error)  console.warn('pickup_addresses fetch error:', pickupAddressesRes.error?.message);
 
       if (vehiclesRes.data)      setVehicles(vehiclesRes.data.map(mapVehicle));
       if (buyersRes.data) {
@@ -220,7 +223,8 @@ export function DataProvider({ children }) {
       if (transportRes.data)     setTransport(transportRes.data.map(mapTransport));
       if (repairOrdersRes.data)  setRepairOrders(repairOrdersRes.data.map(mapRepairOrder));
       if (repairVendorsRes.data) setRepairVendors(repairVendorsRes.data.map(mapRepairVendor));
-      if (inspectorsRes.data)   setInspectors(inspectorsRes.data);
+      if (inspectorsRes.data)      setInspectors(inspectorsRes.data);
+      if (pickupAddressesRes.data) setPickupAddresses(pickupAddressesRes.data);
       setLoading(false);
     }
     fetchAll();
@@ -262,7 +266,6 @@ export function DataProvider({ children }) {
       .channel('bids-changes')
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'bids',
-        filter: `org_id=eq.${ORG_ID}`,
       }, ({ eventType, new: row, old }) => {
         setBids(prev => {
           if (eventType === 'INSERT') return [...prev, mapBid(row)];
@@ -324,6 +327,7 @@ export function DataProvider({ children }) {
     buyers,
     profiles,
     inspectors,
+    pickupAddresses,
   };
 
   // ── Auction mutations ─────────────────────────────────────────────────────
@@ -531,29 +535,28 @@ export function DataProvider({ children }) {
     const { data: row, error } = await supabase
       .from('bids')
       .upsert({
-        org_id: ORG_ID,
         vehicle_id: bid.vehicleId,
-        store_id: bid.storeId,
-        store_name: bid.storeName,
+        user_id: bid.userId,
+        location_id: bid.locationId,
         amount: bid.amount,
         auction_id: bid.auctionId,
         placed_at: bid.placedAt || new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'vehicle_id,store_id,auction_id' })
+      }, { onConflict: 'vehicle_id,user_id,auction_id' })
       .select()
       .single();
     if (error) throw error;
     const mapped = mapBid(row);
     setBids(prev => {
-      const idx = prev.findIndex(b => b.vehicleId === bid.vehicleId && b.storeId === bid.storeId && b.auctionId === bid.auctionId);
+      const idx = prev.findIndex(b => b.vehicleId === bid.vehicleId && b.storeId === bid.userId && b.auctionId === bid.auctionId);
       return idx >= 0 ? prev.map((b, i) => i === idx ? mapped : b) : [...prev, mapped];
     });
   };
 
   // Backward-compat wrapper used by existing components
-  const placeBid = async (vehicleId, storeId, storeName, amount) => {
-    await addBid({ vehicleId, storeId, storeName, amount, auctionId: currentAuction?.id });
-    checkAndAwardBadges(storeId, amount);
+  const placeBid = async (vehicleId, userId, locationId, amount) => {
+    await addBid({ vehicleId, userId, locationId, amount, auctionId: currentAuction?.id });
+    checkAndAwardBadges(locationId);
   };
 
   // ── Bid helpers ───────────────────────────────────────────────────────────
@@ -733,9 +736,15 @@ export function DataProvider({ children }) {
     { id: 'clean_sweep',    label: 'Clean Sweep',     icon: '🧹', desc: 'Won every car you bid on in an auction' },
   ];
 
-  const computeBadges = (storeId) => {
-    const myWins = vehicles.filter(v => v.status === 'awarded' && v.winnerId === storeId);
-    const myBids = bids.filter(b => b.storeId === storeId);
+  const winnerLocationId = (vehicleId) => {
+    const vBids = bids.filter(b => b.vehicleId === vehicleId);
+    if (!vBids.length) return null;
+    return vBids.reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null)?.locationId;
+  };
+
+  const computeBadges = (locationId) => {
+    const myBids = bids.filter(b => b.locationId === locationId);
+    const myWins = vehicles.filter(v => v.status === 'awarded' && winnerLocationId(v.id) === locationId);
     const earned = [];
 
     if (myBids.length > 0) earned.push('first_bid');
@@ -752,32 +761,32 @@ export function DataProvider({ children }) {
     });
     if (Object.values(winsByAuction).some(c => c >= 3)) earned.push('hat_trick');
 
-    const allWinsByStore = {};
-    ['SAG', 'KIA', 'CLR', 'MIL', 'MAR'].forEach(s => {
-      allWinsByStore[s] = vehicles.filter(v => v.status === 'awarded' && v.winnerId === s).length;
+    const winsByLocation = {};
+    locations.forEach(l => {
+      winsByLocation[l.id] = vehicles.filter(v => v.status === 'awarded' && winnerLocationId(v.id) === l.id).length;
     });
-    const maxWins = Math.max(...Object.values(allWinsByStore));
-    if (maxWins > 0 && allWinsByStore[storeId] === maxWins) earned.push('top_buyer');
+    const maxWins = Math.max(0, ...Object.values(winsByLocation));
+    if (maxWins > 0 && winsByLocation[locationId] === maxWins) earned.push('top_buyer');
 
     const auctionParticipation = new Set(myBids.map(b => b.auctionId || b.placedAt?.substring(0, 10)));
     if (auctionParticipation.size >= 3) earned.push('loyal_bidder');
 
     const myBidVehicleIds = new Set(myBids.map(b => b.vehicleId));
     const myBidVehicles = vehicles.filter(v => myBidVehicleIds.has(v.id) && ['awarded', 'no_sale'].includes(v.status));
-    if (myBidVehicles.length > 0 && myBidVehicles.every(v => v.winnerId === storeId)) earned.push('clean_sweep');
+    if (myBidVehicles.length > 0 && myBidVehicles.every(v => winnerLocationId(v.id) === locationId)) earned.push('clean_sweep');
 
     return earned;
   };
 
-  const checkAndAwardBadges = (storeId) => {
+  const checkAndAwardBadges = (locationId) => {
     if (currentAuction?.openDate) {
       const openTime = new Date(currentAuction.openDate);
       if ((new Date() - openTime) < 5 * 60 * 1000) {
-        setBadges(prev => ({ ...prev, [storeId]: [...new Set([...(prev[storeId] || []), 'quick_draw'])] }));
+        setBadges(prev => ({ ...prev, [locationId]: [...new Set([...(prev[locationId] || []), 'quick_draw'])] }));
       }
     }
-    if (bids.filter(b => b.storeId === storeId).length === 0) {
-      setBadges(prev => ({ ...prev, [storeId]: [...new Set([...(prev[storeId] || []), 'first_bid'])] }));
+    if (bids.filter(b => b.locationId === locationId).length === 0) {
+      setBadges(prev => ({ ...prev, [locationId]: [...new Set([...(prev[locationId] || []), 'first_bid'])] }));
     }
   };
 
@@ -791,6 +800,13 @@ export function DataProvider({ children }) {
       <button onClick={() => window.location.reload()} style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Retry</button>
     </div>
   );
+
+  const addPickupAddress = async (address) => {
+    const { data: row, error } = await supabase.from('pickup_addresses').insert({ org_id: ORG_ID, address: address.trim() }).select().single();
+    if (error) throw error;
+    setPickupAddresses(prev => [...prev, row].sort((a, b) => a.address.localeCompare(b.address)));
+    return row;
+  };
 
   const addInspector = async (name) => {
     const { data: row, error } = await supabase.from('inspectors').insert({ org_id: ORG_ID, name: name.trim() }).select().single();
@@ -853,6 +869,8 @@ export function DataProvider({ children }) {
       updateStorePhoto, checkAndAwardBadges, computeBadges, BADGE_DEFS,
       // Inspectors
       addInspector,
+      // Pickup addresses
+      addPickupAddress,
       // Sources & locations
       addAcquisitionSource, deleteAcquisitionSource,
       addLocation, deleteLocation,

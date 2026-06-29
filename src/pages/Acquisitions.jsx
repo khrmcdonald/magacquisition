@@ -6,6 +6,7 @@ import { supabase, uploadVehiclePhoto } from '../lib/supabase';
 import { VehicleCard } from '../components/VehicleCard';
 import RepairOrdersModal from '../components/RepairOrdersModal';
 import ArbitrationResolveModal from '../components/ArbitrationResolveModal';
+import VehicleDetailModal from '../components/VehicleDetailModal';
 import { useToast } from '../components/Toast';
 
 const CONDITIONS = ['Excellent', 'Good', 'Fair', 'Poor'];
@@ -440,7 +441,7 @@ function YesNoToggle({ value, onChange }) {
 
 
 // ── VehicleForm ───────────────────────────────────────────────────────────────
-function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], addLocation, pickupAddresses = [], buyers = [] }) {
+function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], addLocation, pickupAddresses = [], addPickupAddress, buyers = [], vehicles = [], editingId = null }) {
   const [form, setForm] = useState(initial ? {
     ...initial,
     photos: Array.isArray(initial.photos) ? initial.photos : [],
@@ -463,6 +464,10 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
     title_electronic: false, pickup_address: '',
     needsTransport: false,
   });
+  const [dupVehicle, setDupVehicle] = useState(null);
+  const [addingAddress, setAddingAddress] = useState(false);
+  const [newAddress, setNewAddress] = useState('');
+  const [savingAddress, setSavingAddress] = useState(false);
   const [addingLocation, setAddingLocation] = useState(false);
   const [newLocationName, setNewLocationName] = useState('');
   const [savingLocation, setSavingLocation] = useState(false);
@@ -477,6 +482,18 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
       setNewLocationName('');
     } catch (_) {}
     setSavingLocation(false);
+  };
+
+  const handleAddAddress = async () => {
+    if (!newAddress.trim() || !addPickupAddress) return;
+    setSavingAddress(true);
+    try {
+      const row = await addPickupAddress(newAddress.trim());
+      set('pickup_address', row.address);
+      setAddingAddress(false);
+      setNewAddress('');
+    } catch (_) {}
+    setSavingAddress(false);
   };
 
   const fileRef = useRef();
@@ -552,7 +569,26 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div className="form-group" style={{ gridColumn: '1/-1' }}>
           <label>VIN</label>
-          <VinInput value={form.vin} onChange={v => set('vin', v)} />
+          <VinInput
+            value={form.vin}
+            onChange={v => {
+              set('vin', v);
+              if (v.length === 17) {
+                const dup = vehicles.find(ex => ex.vin && ex.vin.toUpperCase() === v.toUpperCase() && ex.id !== editingId);
+                setDupVehicle(dup || null);
+              } else {
+                setDupVehicle(null);
+              }
+            }}
+          />
+          {dupVehicle && (
+            <div style={{ marginTop: 8, background: '#fee2e2', border: '1.5px solid #fca5a5', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#991b1b' }}>
+              <strong>Duplicate VIN</strong> — this VIN already exists in inventory:
+              <span style={{ fontWeight: 700, marginLeft: 5 }}>{dupVehicle.year} {dupVehicle.make} {dupVehicle.model}</span>
+              <span style={{ marginLeft: 6, fontSize: 12, opacity: 0.8 }}>({STATUS_LABELS[dupVehicle.status]?.label || dupVehicle.status})</span>
+              <div style={{ fontSize: 12, marginTop: 3 }}>Update the VIN or locate the existing record before saving.</div>
+            </div>
+          )}
         </div>
         <div className="form-group">
           <label>Year</label>
@@ -746,10 +782,38 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
       {form.needsTransport && (
         <div className="form-group">
           <label>Pickup address</label>
-          <input list="pickup-addresses-list" value={form.pickup_address} onChange={e => set('pickup_address', e.target.value)} placeholder="123 Main St, City, State" autoComplete="off" />
-          <datalist id="pickup-addresses-list">
-            {pickupAddresses.map((a, i) => <option key={i} value={a} />)}
-          </datalist>
+          {addingAddress ? (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                autoFocus
+                value={newAddress}
+                onChange={e => setNewAddress(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') { e.preventDefault(); handleAddAddress(); }
+                  if (e.key === 'Escape') { setAddingAddress(false); setNewAddress(''); }
+                }}
+                placeholder="Full pickup address…"
+                style={{ flex: 1, padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13 }}
+              />
+              <button type="button" onClick={handleAddAddress} disabled={!newAddress.trim() || savingAddress}
+                style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {savingAddress ? '…' : 'Save'}
+              </button>
+              <button type="button" onClick={() => { setAddingAddress(false); setNewAddress(''); }}
+                style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, cursor: 'pointer', color: '#6b7280' }}>
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <select value={form.pickup_address || ''} onChange={e => {
+              if (e.target.value === '__add_new__') { setAddingAddress(true); }
+              else set('pickup_address', e.target.value);
+            }}>
+              <option value="">Select address…</option>
+              {pickupAddresses.map(a => <option key={a.id} value={a.address}>{a.address}</option>)}
+              <option value="__add_new__">+ Add new address…</option>
+            </select>
+          )}
         </div>
       )}
 
@@ -787,7 +851,7 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
 
       <div className="modal-footer" style={{ padding: '16px 0 0', borderTop: 'none' }}>
         <button type="button" className="btn-secondary" onClick={onCancel}>Cancel</button>
-        <button type="submit" className="btn-navy">Save vehicle</button>
+        <button type="submit" className="btn-navy" disabled={!!dupVehicle} style={{ opacity: dupVehicle ? 0.4 : 1, cursor: dupVehicle ? 'not-allowed' : 'pointer' }}>Save vehicle</button>
       </div>
     </form>
   );
@@ -1019,204 +1083,9 @@ function InspectionModal({ vehicle, inspectors, addInspector, onSave, onClose })
   );
 }
 
-const DETAIL_TRANSPORT_STEPS = [
-  { key: 'awarded',       label: 'Awarded' },
-  { key: 'dispatched',    label: 'Dispatched' },
-  { key: 'inTransit',     label: 'In Transit' },
-  { key: 'arrived',       label: 'Arrived' },
-  { key: 'titleReceived', label: 'Title Received' },
-];
-
-const DETAIL_RATING_STYLE = {
-  good:       { label: 'Good',       color: '#065f46', bg: '#d1fae5' },
-  fair:       { label: 'Fair',       color: '#92400e', bg: '#fef3c7' },
-  needs_work: { label: 'Needs Work', color: '#991b1b', bg: '#fee2e2' },
-};
-
-function VehicleDetailModal({ vehicle, onClose }) {
-  const { data } = useData();
-
-  const transport = (data.transport || []).find(t => t.vehicleId === vehicle.id);
-  const openRepairs = (data.repairOrders || []).filter(r =>
-    r.vehicleId === vehicle.id && !['complete', 'cancelled'].includes(r.status)
-  );
-  const insp = vehicle.inspection;
-  const inspComplete = insp?.status === 'complete';
-
-  const transportStepIdx = transport
-    ? DETAIL_TRANSPORT_STEPS.findIndex(s => s.key === transport.status)
-    : -1;
-
-  const listPrice = vehicle.list_price ? '$' + Number(vehicle.list_price).toLocaleString() : null;
-  const acv       = vehicle.acv        ? '$' + Number(vehicle.acv).toLocaleString()        : null;
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 700, maxHeight: '92vh', overflowY: 'auto', padding: 0 }}>
-        {/* Header */}
-        <div style={{ background: '#0d2550', color: '#fff', padding: '20px 24px 16px', borderRadius: '12px 12px 0 0' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#93c5fd', letterSpacing: '.06em', marginBottom: 4 }}>{vehicle.vin || '—'}</div>
-              <div style={{ fontSize: 20, fontWeight: 800 }}>{vehicle.year} {vehicle.make} {vehicle.model}{vehicle.trim ? ' ' + vehicle.trim : ''}</div>
-              <div style={{ fontSize: 13, color: '#93c5fd', marginTop: 3 }}>
-                {[vehicle.color, vehicle.interior_color].filter(Boolean).join(' / ')}
-                {vehicle.mileage ? ` · ${Number(vehicle.mileage).toLocaleString()} mi` : ''}
-                {vehicle.condition ? ` · ${vehicle.condition}` : ''}
-              </div>
-            </div>
-            <button onClick={onClose} style={{ background: 'rgba(255,255,255,.15)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 18, width: 34, height: 34, cursor: 'pointer', lineHeight: '34px', textAlign: 'center' }}>×</button>
-          </div>
-          {/* Quick stats row */}
-          <div style={{ display: 'flex', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
-            {[
-              { label: 'Status', value: STATUS_LABELS[vehicle.status]?.label || vehicle.status },
-              acv        && { label: 'ACV',        value: acv },
-              listPrice  && { label: 'List Price',  value: listPrice },
-              vehicle.buyer_name && { label: 'Buyer', value: vehicle.buyer_name },
-              vehicle.acquisitionSource && { label: 'Source', value: vehicle.acquisitionSource },
-            ].filter(Boolean).map(({ label, value }) => (
-              <div key={label} style={{ background: 'rgba(255,255,255,.1)', borderRadius: 8, padding: '5px 12px', minWidth: 80 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, marginTop: 1 }}>{value}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ padding: '0 24px 24px' }}>
-
-          {/* Transport */}
-          {transport && (
-            <div style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: 18, marginBottom: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 18, marginBottom: 10 }}>Transport</div>
-              {transport.storeName && (
-                <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
-                  From: <span style={{ fontWeight: 600, color: '#374151' }}>{transport.storeName}</span>
-                </div>
-              )}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 0, flexWrap: 'wrap' }}>
-                {DETAIL_TRANSPORT_STEPS.map((step, i) => {
-                  const done   = i <= transportStepIdx;
-                  const active = i === transportStepIdx;
-                  return (
-                    <React.Fragment key={step.key}>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                        <div style={{
-                          width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: done ? '#0d2550' : '#f3f4f6',
-                          border: active ? '2.5px solid #3b82f6' : 'none',
-                          fontSize: 13, fontWeight: 700, color: done ? '#fff' : '#9ca3af',
-                        }}>
-                          {done ? '✓' : i + 1}
-                        </div>
-                        <span style={{ fontSize: 9, fontWeight: 600, color: done ? '#0d2550' : '#9ca3af', whiteSpace: 'nowrap' }}>{step.label}</span>
-                        {transport.steps?.[step.key] && (
-                          <span style={{ fontSize: 8, color: '#9ca3af' }}>
-                            {new Date(transport.steps[step.key]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </span>
-                        )}
-                      </div>
-                      {i < DETAIL_TRANSPORT_STEPS.length - 1 && (
-                        <div style={{ flex: 1, height: 2, background: i < transportStepIdx ? '#0d2550' : '#e5e7eb', minWidth: 12, marginBottom: 18 }} />
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* PSI Results */}
-          <div style={{ borderBottom: openRepairs.length ? '1px solid #f3f4f6' : 'none', paddingBottom: openRepairs.length ? 18 : 0, marginBottom: openRepairs.length ? 18 : 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, marginBottom: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em' }}>Post-Sale Inspection</div>
-              {inspComplete && (
-                <div style={{
-                  fontSize: 11, fontWeight: 700, borderRadius: 20, padding: '3px 10px',
-                  background: insp.result === 'pass' ? '#d1fae5' : '#fee2e2',
-                  color: insp.result === 'pass' ? '#065f46' : '#991b1b',
-                }}>
-                  {insp.result === 'pass' ? '✓ Pass' : '⚠ Recon Needed'}
-                </div>
-              )}
-            </div>
-
-            {!inspComplete ? (
-              <div style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>
-                {vehicle.status === 'inspection' ? 'Inspection pending — not yet completed.' : 'No inspection on record.'}
-              </div>
-            ) : (
-              <>
-                <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 10 }}>
-                  Inspector: <span style={{ fontWeight: 600, color: '#374151' }}>{insp.completed_by || '—'}</span>
-                  {insp.completed_at && (
-                    <span style={{ marginLeft: 10 }}>
-                      {new Date(insp.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
-                  )}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {INSPECTION_CATS.map(cat => {
-                    const item = insp.items?.[cat.key];
-                    if (!item) return null;
-                    const style = DETAIL_RATING_STYLE[item.rating] || {};
-                    return (
-                      <div key={cat.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '7px 12px', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{cat.label}</div>
-                          {item.notes && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{item.notes}</div>}
-                        </div>
-                        {style.label && (
-                          <div style={{ fontSize: 11, fontWeight: 700, borderRadius: 20, padding: '2px 9px', background: style.bg, color: style.color, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                            {style.label}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                {insp.overall_notes && (
-                  <div style={{ marginTop: 10, padding: '8px 12px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, fontSize: 12, color: '#92400e' }}>
-                    <span style={{ fontWeight: 700 }}>Notes: </span>{insp.overall_notes}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Open Repairs */}
-          {openRepairs.length > 0 && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 18, marginBottom: 10 }}>
-                Open Repairs ({openRepairs.length})
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {openRepairs.map(ro => {
-                  const total = (ro.lines || []).reduce((s, l) => s + (l.cost || 0), 0);
-                  return (
-                    <div key={ro.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{ro.vendorName || 'Unknown vendor'}</div>
-                        <div style={{ fontSize: 11, color: '#9ca3af' }}>{ro.lines?.length || 0} line{ro.lines?.length !== 1 ? 's' : ''} · {ro.status}</div>
-                      </div>
-                      {total > 0 && <div style={{ fontSize: 14, fontWeight: 700, color: '#374151' }}>${total.toLocaleString()}</div>}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function Acquisitions() {
   const { user } = useAuth();
-  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, addLocation, addInspector } = useData();
+  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, addLocation, addInspector, addRepairOrder, addPickupAddress } = useData();
   const buyers = (data.profiles || []).filter(p => p.buyer_number);
   const { showToast } = useToast();
   const [resolveModal, setResolveModal] = useState(null);
@@ -1258,9 +1127,7 @@ export default function Acquisitions() {
   // Map DB tables to option arrays
   const sourceOptions = (data.acquisition_sources || []).map(s => ({ value: s.id, label: s.name }));
   const locationOptions = (data.locations || []).map(l => ({ value: l.id, label: l.name }));
-  const pickupAddresses = [...new Set(
-    (data.transport || []).filter(t => t.storeName === 'Intake' && t.notes).map(t => t.notes)
-  )];
+  const pickupAddresses = data.pickupAddresses || [];
 
   const allVehicles = data.vehicles;
   const filtered = allVehicles
@@ -1405,6 +1272,14 @@ export default function Acquisitions() {
 
   const handleInspectionSave = async (vehicleId, inspectionData, nextStatus) => {
     await updateVehicle(vehicleId, { inspection: inspectionData, status: nextStatus });
+    if (inspectionData.result === 'recon_needed') {
+      const needsWorkLabels = Object.entries(inspectionData.items || {})
+        .filter(([, val]) => val.rating === 'needs_work')
+        .map(([key]) => INSPECTION_CATS.find(c => c.key === key)?.label || key);
+      const notes = `PSI recon needed: ${needsWorkLabels.join(', ')}`;
+      const vin6 = (data.vehicles.find(v => v.id === vehicleId)?.vin || '').slice(-6) || null;
+      try { await addRepairOrder(vehicleId, vin6, null, notes, 0); } catch (_) {}
+    }
     showToast('Inspection saved.', 'success');
   };
 
@@ -1587,7 +1462,7 @@ export default function Acquisitions() {
               <VehicleCard
                 key={v.id}
                 vehicle={v}
-                showAge
+                showAge={['wholesale', 'gm', 'admin'].includes(user.role)}
                 mileage={mileageMap[v.id] ?? null}
                 badge={
                   <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
@@ -1679,7 +1554,7 @@ export default function Acquisitions() {
               <VehicleCard
                 key={v.id}
                 variant="list"
-                showAge
+                showAge={['wholesale', 'gm', 'admin'].includes(user.role)}
                 vehicle={v}
                 mileage={mileageMap[v.id] ?? null}
                 badge={
@@ -1866,7 +1741,10 @@ export default function Acquisitions() {
                 locations={locationOptions}
                 addLocation={addLocation}
                 pickupAddresses={pickupAddresses}
+                addPickupAddress={addPickupAddress}
                 buyers={buyers}
+                vehicles={data.vehicles}
+                editingId={editing?.id || null}
               />
             </div>
           </div>

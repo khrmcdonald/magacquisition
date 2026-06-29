@@ -3,16 +3,17 @@ import { useAuth } from '../context/AuthContext';
 import { StoreAvatar } from '../components/StoreAvatar';
 import { useData } from '../context/DataContext';
 import { VehicleCard, AuctionCountdownPill } from '../components/VehicleCard';
+import VehicleDetailModal from '../components/VehicleDetailModal';
 
 // ── BidStrip — inline below each VehicleCard ─────────────────────────────────
-function BidStrip({ vehicleId, storeId, storeName, isOpen }) {
+function BidStrip({ vehicleId, userId, locationId, isOpen }) {
   const { placeBid, getMyBid, getHighBid } = useData();
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
   const highBid = getHighBid(vehicleId);
-  const myBid = getMyBid(vehicleId, storeId);
+  const myBid = getMyBid(vehicleId, userId);
   const isWinning = myBid && highBid && myBid.amount >= highBid;
 
   const handleBid = async (e) => {
@@ -24,7 +25,7 @@ function BidStrip({ vehicleId, storeId, storeName, isOpen }) {
       return;
     }
     try {
-      await placeBid(vehicleId, storeId, storeName, val);
+      await placeBid(vehicleId, userId, locationId, val);
       setSuccess(true);
       setAmount('');
       setError('');
@@ -62,7 +63,7 @@ function BidStrip({ vehicleId, storeId, storeName, isOpen }) {
                 ${myBid.amount.toLocaleString()}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                <StoreAvatar storeId={storeId} size={16} />
+                <StoreAvatar locationId={locationId} size={16} />
                 <span style={{ fontSize: 10, fontWeight: 700, color: isWinning ? '#065f46' : '#991b1b' }}>
                   {isWinning ? '✓ Winning' : '✗ Outbid'}
                 </span>
@@ -124,6 +125,7 @@ export default function AuctionFloor() {
   const [viewMode, setViewMode] = useState('grid');
   const [showMonitor, setShowMonitor] = useState(false);
 
+  const [detailModal, setDetailModal] = useState(null);
   const canBid = user.role === 'bidder';
 
   const activeVehicles = data.vehicles.filter(v => v.status === 'in_auction');
@@ -232,21 +234,28 @@ export default function AuctionFloor() {
                         }
                         pricePill={<AuctionCountdownPill closeDate={data.auction?.closeDate} />}
                       >
-                        {/* Bid count */}
-                        <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
-                          {bidCount === 0 ? '0 bids' : `${bidCount} bid${bidCount !== 1 ? 's' : ''}`}
+                        {/* Bid count + details button */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+                          <div style={{ fontSize: 11, color: '#9ca3af' }}>
+                            {bidCount === 0 ? '0 bids' : `${bidCount} bid${bidCount !== 1 ? 's' : ''}`}
+                          </div>
+                          <button
+                            onClick={e => { e.stopPropagation(); setDetailModal(v); }}
+                            title="View details"
+                            style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}
+                          >🔍</button>
                         </div>
                       </VehicleCard>
                     </div>
                     {canBid ? (
                       <BidStrip
                         vehicleId={v.id}
-                        storeId={user.id}
-                        storeName={user.name}
+                        userId={user.id}
+                        locationId={user.locationId}
                         isOpen={data.auction.isOpen}
                       />
                     ) : (
-                      <ReadOnlyBidStrip vehicleId={v.id} highBid={highBid} bidCount={bidCount} bids={data.bids} />
+                      <ReadOnlyBidStrip vehicleId={v.id} highBid={highBid} bidCount={bidCount} bids={data.bids} locations={data.locations} />
                     )}
                   </div>
                 );
@@ -279,6 +288,11 @@ export default function AuctionFloor() {
                     {/* Inline bid strip */}
                     <div style={{ padding: '10px 16px 14px', borderTop: '1px solid #f3f4f6', background: '#f8faff' }}>
                       <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <button
+                          onClick={e => { e.stopPropagation(); setDetailModal(v); }}
+                          title="View details"
+                          style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}
+                        >🔍</button>
                         <div>
                           <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>High bid</div>
                           <div style={{ fontSize: 16, fontWeight: 800, color: highBid ? '#0d2550' : '#9ca3af' }}>
@@ -297,12 +311,12 @@ export default function AuctionFloor() {
                           </div>
                         )}
                         {canBid
-                          ? <ListBidForm vehicleId={v.id} storeId={user.id} storeName={user.name} isOpen={data.auction.isOpen} highBid={highBid} myBid={myBid} />
+                          ? <ListBidForm vehicleId={v.id} userId={user.id} locationId={user.locationId} isOpen={data.auction.isOpen} highBid={highBid} myBid={myBid} />
                           : highBid && (
                             <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
                               <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Leader</div>
                               <div style={{ fontSize: 13, fontWeight: 700, color: '#0d2550' }}>
-                                {(data.bids || []).filter(b => b.vehicleId === v.id).reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null)?.storeName || '—'}
+                                {(() => { const top = (data.bids || []).filter(b => b.vehicleId === v.id).reduce((t, b) => (!t || b.amount > t.amount) ? b : t, null); return data.locations.find(l => l.id === top?.locationId)?.name || '—'; })()}
                               </div>
                             </div>
                           )
@@ -319,6 +333,7 @@ export default function AuctionFloor() {
             <BidMonitorPanel
               vehicles={activeVehicles}
               bids={data.bids}
+              locations={data.locations}
               onClose={() => setShowMonitor(false)}
             />
           )}
@@ -333,15 +348,20 @@ export default function AuctionFloor() {
           <span style={{ fontSize: 14, color: '#9ca3af' }}>TRI-STATE will open the next auction when ready.</span>
         </div>
       )}
+
+      {detailModal && (
+        <VehicleDetailModal vehicle={detailModal} onClose={() => setDetailModal(null)} />
+      )}
     </div>
   );
 }
 
 // ── Read-only bid strip for non-bidder grid cards ────────────────────────────
-function ReadOnlyBidStrip({ vehicleId, highBid, bidCount, bids }) {
+function ReadOnlyBidStrip({ vehicleId, highBid, bidCount, bids, locations }) {
   const leader = (bids || [])
     .filter(b => b.vehicleId === vehicleId)
     .reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null);
+  const leaderName = leader ? (locations || []).find(l => l.id === leader.locationId)?.name || '—' : null;
 
   return (
     <div style={{
@@ -361,8 +381,8 @@ function ReadOnlyBidStrip({ vehicleId, highBid, bidCount, bids }) {
           <div style={{ fontSize: 10, fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>
             {bidCount} bid{bidCount !== 1 ? 's' : ''}
           </div>
-          {leader && (
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{leader.storeName}</div>
+          {leaderName && (
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{leaderName}</div>
           )}
         </div>
       </div>
@@ -371,16 +391,17 @@ function ReadOnlyBidStrip({ vehicleId, highBid, bidCount, bids }) {
 }
 
 // ── Side panel bid monitor ────────────────────────────────────────────────────
-function BidMonitorPanel({ vehicles, bids, onClose }) {
+function BidMonitorPanel({ vehicles, bids, locations, onClose }) {
   const enriched = vehicles.map(v => {
     const vBids = (bids || []).filter(b => b.vehicleId === v.id);
     const highBid = vBids.reduce((max, b) => b.amount > max ? b.amount : max, 0);
     const leader = vBids.reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null);
+    const leaderName = leader ? (locations || []).find(l => l.id === leader.locationId)?.name || '—' : null;
     const latestAt = vBids.reduce((latest, b) => {
       const t = new Date(b.placedAt || 0).getTime();
       return t > latest ? t : latest;
     }, 0);
-    return { ...v, vBids, highBid: highBid || null, leader, latestAt };
+    return { ...v, vBids, highBid: highBid || null, leader, leaderName, latestAt };
   }).sort((a, b) => b.latestAt - a.latestAt);
 
   const totalBids = (bids || []).length;
@@ -421,7 +442,7 @@ function BidMonitorPanel({ vehicles, bids, onClose }) {
                 </div>
                 {v.leader ? (
                   <div style={{ fontSize: 11, color: '#93c5fd', marginTop: 2 }}>
-                    {v.vBids.length} bid{v.vBids.length !== 1 ? 's' : ''} · {v.leader.storeName}
+                    {v.vBids.length} bid{v.vBids.length !== 1 ? 's' : ''} · {v.leaderName}
                   </div>
                 ) : (
                   <div style={{ fontSize: 11, color: '#374b66', marginTop: 2 }}>No bids yet</div>
@@ -439,7 +460,7 @@ function BidMonitorPanel({ vehicles, bids, onClose }) {
 }
 
 // ── Compact bid form for list view ────────────────────────────────────────────
-function ListBidForm({ vehicleId, storeId, storeName, isOpen, highBid, myBid }) {
+function ListBidForm({ vehicleId, userId, locationId, isOpen, highBid, myBid }) {
   const { placeBid } = useData();
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
@@ -453,7 +474,7 @@ function ListBidForm({ vehicleId, storeId, storeName, isOpen, highBid, myBid }) 
     if (!val || val < 100) { setError('Min $100'); return; }
     if (highBid && val <= highBid) { setError(`Must exceed $${highBid.toLocaleString()}`); return; }
     try {
-      await placeBid(vehicleId, storeId, storeName, val);
+      await placeBid(vehicleId, userId, locationId, val);
       setSuccess(true); setAmount(''); setError('');
       setTimeout(() => setSuccess(false), 2000);
     } catch (err) {

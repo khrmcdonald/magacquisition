@@ -145,6 +145,9 @@ export default function Transport() {
           {filtered.map(t => {
             const st = STATUS_LABEL[t.status] || STATUS_LABEL.awarded;
             const canUpdate = isWholesale;
+            const tWinBid = data.bids.filter(b => b.vehicleId === t.vehicleId).reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null);
+            const tLocationId = tWinBid?.locationId || null;
+            const tStoreName = t.storeName || (data.locations || []).find(l => l.id === tLocationId)?.name || '—';
             const vehicle = data.vehicles.find(vv => vv.id === t.vehicleId) || {
               id: t.vehicleId, year: null, make: t.vehicleName || '', model: '', trim: '', color: null, vin: null, photos: [], list_price: null, status: 'active',
             };
@@ -196,8 +199,8 @@ export default function Transport() {
                       <div>
                         <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Going to</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <StoreAvatar storeId={t.storeId} size={22} />
-                          <span style={{ fontSize: 13, fontWeight: 700, color: '#0d2550' }}>{t.storeName}</span>
+                          <StoreAvatar locationId={tLocationId} size={22} />
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#0d2550' }}>{tStoreName}</span>
                         </div>
                       </div>
                       <div>
