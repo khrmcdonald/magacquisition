@@ -134,6 +134,7 @@ export function VehicleCard({
   showCostBasis = false,
   costBasis,
   showAge = false,
+  showDatePurchased = false,
   onDetails,
   actionButton,
   children,
@@ -341,6 +342,13 @@ export function VehicleCard({
         {showCostBasis && costBasis != null && (
           <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>
             Cost basis: <span style={{ fontWeight: 700, color: '#6b7280' }}>${parseFloat(costBasis).toLocaleString()}</span>
+          </div>
+        )}
+
+        {/* Date purchased */}
+        {showDatePurchased && vehicle.datePurchased && (
+          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+            Purchased: <span style={{ fontWeight: 700, color: '#6b7280' }}>{new Date(vehicle.datePurchased + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
           </div>
         )}
 
