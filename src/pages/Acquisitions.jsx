@@ -1085,7 +1085,7 @@ function InspectionModal({ vehicle, inspectors, addInspector, onSave, onClose })
 
 export default function Acquisitions() {
   const { user } = useAuth();
-  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, addLocation, addInspector, addRepairOrder, addPickupAddress } = useData();
+  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, addLocation, addInspector, addRepairOrder, addPickupAddress, logMileage } = useData();
   const buyers = (data.profiles || []).filter(p => p.buyer_number);
   const { showToast } = useToast();
   const [resolveModal, setResolveModal] = useState(null);
@@ -1159,13 +1159,8 @@ export default function Acquisitions() {
       try { await updateVehicle(editing.id, { ...saveFields, status: editing.status }); }
       catch (err) { showToast(`Update failed: ${fmtErr(err)}`, 'error'); setSaveError(`Update failed: ${fmtErr(err)}`); return; }
       if (vehicleData.mileage) {
-        const orgId = user?.org_id || 'bf236d2b-4693-4606-bf3d-ece1767690ab';
         try {
-          await supabase.from('mileage_log').insert({
-            vehicle_id: editing.id, org_id: orgId,
-            vin6: (vehicleData.vin || editing.vin || '').slice(-6),
-            reading: parseInt(vehicleData.mileage), reason: 'edit',
-          });
+          await logMileage(editing.id, vehicleData.mileage, (vehicleData.vin || editing.vin || '').slice(-6), 'edit');
         } catch (_) {}
       }
     } else {
@@ -1206,19 +1201,8 @@ export default function Acquisitions() {
 
         if (vehicleFields.mileage) {
           try {
-            const mileageRes = await supabase.from('mileage_log').insert({
-              vehicle_id: newVehicle.id,
-              org_id: orgId,
-              vin6: (vehicleFields.vin || '').slice(-6),
-              reading: parseInt(vehicleFields.mileage),
-              reason: 'intake',
-            });
-            if (mileageRes.error) {
-              console.log('Mileage log insert error:', JSON.stringify(mileageRes.error, null, 2));
-              errors.push(`Mileage log: ${fmtErr(mileageRes.error)}`);
-            }
+            await logMileage(newVehicle.id, vehicleFields.mileage, (vehicleFields.vin || '').slice(-6), 'intake');
           } catch (err) {
-            console.log('Mileage log insert threw:', JSON.stringify(err, null, 2));
             errors.push(`Mileage log: ${fmtErr(err)}`);
           }
         }
@@ -1258,10 +1242,23 @@ export default function Acquisitions() {
     else showToast(`Imported ${vehicles.length} vehicles.`, 'success');
   };
 
-  const handleList = async (v) => {
-    if (window.confirm(`List ${v.year} ${v.make} ${v.model} in the active auction?`)) {
-      try { await listVehicle(v.id); showToast('Vehicle listed in auction.', 'success'); }
-      catch (err) { showToast('Failed to list vehicle: ' + (err.message || JSON.stringify(err)), 'error'); }
+  const [listModal, setListModal] = useState(null); // vehicle to list
+  const [openingBidInput, setOpeningBidInput] = useState('');
+
+  const handleList = (v) => {
+    setOpeningBidInput(v.openingBid ? String(v.openingBid) : '');
+    setListModal(v);
+  };
+
+  const handleListConfirm = async () => {
+    const amt = parseFloat(openingBidInput);
+    if (!amt || amt < 100) return;
+    try {
+      await listVehicle(listModal.id, amt);
+      showToast('Vehicle listed in auction.', 'success');
+      setListModal(null);
+    } catch (err) {
+      showToast('Failed to list: ' + (err.message || JSON.stringify(err)), 'error');
     }
   };
 
@@ -1463,7 +1460,7 @@ export default function Acquisitions() {
                 key={v.id}
                 vehicle={v}
                 showAge={['wholesale', 'gm', 'admin'].includes(user.role)}
-                mileage={mileageMap[v.id] ?? null}
+                mileage={v.mileage ?? mileageMap[v.id] ?? null}
                 badge={
                   <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
                     {st.label}
@@ -1556,7 +1553,7 @@ export default function Acquisitions() {
                 variant="list"
                 showAge={['wholesale', 'gm', 'admin'].includes(user.role)}
                 vehicle={v}
-                mileage={mileageMap[v.id] ?? null}
+                mileage={v.mileage ?? mileageMap[v.id] ?? null}
                 badge={
                   <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
                     {st.label}
@@ -1770,6 +1767,59 @@ export default function Acquisitions() {
           onClose={() => setShowUpload(false)}
           onImport={(vehicles) => { handleBulkImport(vehicles); }}
         />
+      )}
+
+      {/* List for Auction modal */}
+      {listModal && (
+        <div className="modal-overlay" onClick={() => setListModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
+            <div className="modal-header" style={{ background: '#0d2550', borderRadius: '12px 12px 0 0' }}>
+              <div>
+                <h2 style={{ color: '#fff', fontSize: 17 }}>List for Auction</h2>
+                <p style={{ color: 'rgba(255,255,255,.65)', fontSize: 13, marginTop: 2 }}>
+                  {listModal.year} {listModal.make} {listModal.model}
+                </p>
+              </div>
+              <button onClick={() => setListModal(null)} style={{ background: 'rgba(255,255,255,.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 18, cursor: 'pointer' }}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Opening bid *</label>
+                <p style={{ fontSize: 12, color: '#6b7280', marginTop: -4, marginBottom: 8 }}>
+                  The minimum first bid. Bidders will see this — floor price stays hidden.
+                </p>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontWeight: 700, color: '#374151' }}>$</span>
+                  <input
+                    type="number"
+                    value={openingBidInput}
+                    onChange={e => setOpeningBidInput(e.target.value)}
+                    placeholder="e.g. 14000"
+                    min="100"
+                    autoFocus
+                    style={{ paddingLeft: 26, width: '100%', boxSizing: 'border-box' }}
+                    onKeyDown={e => e.key === 'Enter' && handleListConfirm()}
+                  />
+                </div>
+                {listModal.floorPrice && (
+                  <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>
+                    Floor price: ${parseFloat(listModal.floorPrice).toLocaleString()} (hidden from bidders)
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setListModal(null)}>Cancel</button>
+              <button
+                className="btn-navy"
+                onClick={handleListConfirm}
+                disabled={!openingBidInput || parseFloat(openingBidInput) < 100}
+              >
+                List Vehicle
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete confirm */}

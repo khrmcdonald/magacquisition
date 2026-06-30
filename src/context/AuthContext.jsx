@@ -60,11 +60,12 @@ export function AuthProvider({ children }) {
     });
 
     // Keep session in sync across tabs / token refresh
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // Only sign out on explicit SIGNED_OUT — never on null sessions during token refresh cycles
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         const profile = await fetchProfile(session.user);
         setUser(profile);
-      } else {
+      } else if (event === 'SIGNED_OUT') {
         setUser(null);
       }
     });

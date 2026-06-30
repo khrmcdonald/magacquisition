@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { VehicleCard } from '../components/VehicleCard';
+import VehicleDetailModal from '../components/VehicleDetailModal';
 
 const ARBITRATION_ISSUES = [
   'Undisclosed mechanical issue',
@@ -12,6 +14,14 @@ const ARBITRATION_ISSUES = [
   'Flood / water damage',
   'Other',
 ];
+
+const TRANSPORT_LABEL = {
+  awarded:       { label: 'Pending dispatch', color: '#92400e', bg: '#fef3c7', icon: '⏳' },
+  dispatched:    { label: 'Dispatched',       color: '#1e40af', bg: '#dbeafe', icon: '📦' },
+  inTransit:     { label: 'In transit',       color: '#0369a1', bg: '#e0f2fe', icon: '🚚' },
+  arrived:       { label: 'Arrived',          color: '#065f46', bg: '#d1fae5', icon: '✅' },
+  titleReceived: { label: 'Title received',   color: '#065f46', bg: '#d1fae5', icon: '📄' },
+};
 
 function ArbitrationModal({ vehicle, onClose, storeId, storeName }) {
   const { fileArbitration } = useData();
@@ -80,114 +90,175 @@ export default function MyWins() {
   const { user } = useAuth();
   const { data } = useData();
   const [arbitrationVehicle, setArbitrationVehicle] = useState(null);
+  const [detailModal, setDetailModal] = useState(null);
+  const [viewMode, setViewMode] = useState('grid');
 
-  const myWins = data.vehicles.filter(v => v.status === 'awarded' && v.winnerId === user.id);
-  const myBids = data.bids.filter(b => b.storeId === user.id);
+  // Wins: highest bid on awarded vehicle came from this location
+  const myWins = data.vehicles.filter(v => {
+    if (v.status !== 'awarded') return false;
+    if (v.winnerId === user.id) return true;
+    const highBid = data.bids
+      .filter(b => b.vehicleId === v.id)
+      .reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null);
+    return highBid?.locationId === user.locationId;
+  });
+
+  // Bids: deduplicated — one row per vehicle, highest bid from this location
+  const bidHistory = Object.values(
+    data.bids
+      .filter(b => b.locationId === user.locationId)
+      .reduce((acc, b) => {
+        if (!acc[b.vehicleId] || b.amount > acc[b.vehicleId].amount) acc[b.vehicleId] = b;
+        return acc;
+      }, {})
+  );
+
   const totalSpend = myWins.reduce((s, v) => s + (v.winningBid || 0), 0);
-
   const getTransport = (vehicleId) => data.transport.find(t => t.vehicleId === vehicleId);
 
-  const transportLabel = {
-    awarded: { label: 'Pending dispatch', color: '#92400e', icon: '⏳' },
-    dispatched: { label: 'Dispatched', color: '#1e40af', icon: '📦' },
-    inTransit: { label: 'In transit', color: '#0369a1', icon: '🚚' },
-    arrived: { label: 'Arrived at store', color: '#065f46', icon: '✅' },
-    titleReceived: { label: 'Title received', color: '#065f46', icon: '📄' },
-  };
-
   return (
-    <>
-      <div className="page-header">
-        <h1>My Wins</h1>
-        <p>Vehicles awarded to {user.name}</p>
+    <div style={{ background: '#f0f2f5', minHeight: '100vh', margin: '-20px -16px', padding: '24px 20px' }}>
+      {/* Header */}
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>My Wins</h1>
+        <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 2, marginBottom: 0 }}>Vehicles awarded to {user.name}</p>
       </div>
 
-      <div className="stat-grid" style={{ marginBottom: 24 }}>
-        <div className="stat-card">
-          <div className="stat-label">Cars won</div>
-          <div className="stat-value">{myWins.length}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Total spend</div>
-          <div className="stat-value" style={{ fontSize: 18 }}>${totalSpend.toLocaleString()}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Bids placed</div>
-          <div className="stat-value">{myBids.length}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Incoming</div>
-          <div className="stat-value" style={{ color: '#065f46' }}>
-            {myWins.filter(v => { const t = getTransport(v.id); return t && !['arrived','titleReceived'].includes(t.status); }).length}
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+        {[
+          { label: 'Cars won',    value: myWins.length,                                                               color: '#0d2550' },
+          { label: 'Total spend', value: `$${totalSpend.toLocaleString()}`,                                            color: '#0d2550', small: true },
+          { label: 'Bids placed', value: bidHistory.length,                                                            color: '#374151' },
+          { label: 'Incoming',    value: myWins.filter(v => { const t = getTransport(v.id); return t && !['arrived','titleReceived'].includes(t.status); }).length, color: '#065f46', sub: 'in transit' },
+        ].map(({ label, value, color, small, sub }) => (
+          <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: '3px solid #0d2550', borderRadius: 10, padding: '12px 16px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{label}</div>
+            <div style={{ fontSize: small ? 18 : 22, fontWeight: 800, color, lineHeight: 1 }}>{value}</div>
+            {sub && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{sub}</div>}
           </div>
-          <div className="stat-sub">in transit</div>
-        </div>
+        ))}
       </div>
 
       {myWins.length === 0 ? (
-        <div className="empty-state">
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🏆</div>
-          <p>No wins yet</p>
-          <span>Head to the Auction Floor and place your bids</span>
+        <div style={{ textAlign: 'center', padding: '80px 20px' }}>
+          <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }}>🏆</div>
+          <p style={{ fontSize: 18, fontWeight: 600, color: '#374151', marginBottom: 8 }}>No wins yet</p>
+          <span style={{ fontSize: 14, color: '#9ca3af' }}>Head to the Auction Floor and place your bids</span>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {myWins.map(v => {
-            const transport = getTransport(v.id);
-            const ts = transport ? (transportLabel[transport.status] || transportLabel.awarded) : null;
-            return (
-              <div key={v.id} className="card" style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-                {v.photos && v.photos[0] ? (
-                  <img src={v.photos[0]} alt="" style={{ width: 100, height: 72, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
-                ) : (
-                  <div style={{ width: 100, height: 72, background: '#f0f4f8', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>🚗</div>
-                )}
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4, flexWrap: 'wrap', gap: 8 }}>
-                    <div>
-                      <h3 style={{ fontSize: 16, fontWeight: 700, color: '#111827', margin: 0 }}>{v.year} {v.make} {v.model}</h3>
-                      <p style={{ fontSize: 13, color: '#6b7280', margin: '2px 0 0' }}>{v.trim} · {parseInt(v.mileage||0).toLocaleString()} mi · {v.color}</p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em' }}>You paid</div>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: '#1a3d76' }}>${v.winningBid?.toLocaleString()}</div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
-                    {ts && (
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f5f6f8', borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, color: ts.color }}>
-                        <span>{ts.icon}</span>{ts.label}
-                      </div>
-                    )}
-                    {/* Arbitration status or button */}
-                    {v.arbitration?.status === 'open' ? (
-                      <span style={{ background: '#fee2e2', color: '#991b1b', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>⚠ Arbitration pending</span>
-                    ) : v.arbitration?.status === 'resolved' ? (
-                      <span style={{ background: '#d1fae5', color: '#065f46', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>✓ Arbitration resolved</span>
-                    ) : (
-                      <button
-                        onClick={() => setArbitrationVehicle(v)}
-                        style={{ background: 'none', border: '1px solid #fca5a5', color: '#991b1b', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+        <>
+          {/* View toggle */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+            <div style={{ display: 'flex', border: '1.5px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+              {[['grid', '⊞'], ['list', '☰']].map(([mode, icon]) => (
+                <button key={mode} onClick={() => setViewMode(mode)} style={{
+                  padding: '7px 12px', border: 'none', cursor: 'pointer', fontSize: 14,
+                  background: viewMode === mode ? '#0d2550' : '#fff',
+                  color: viewMode === mode ? '#fff' : '#6b7280',
+                  borderRight: mode === 'grid' ? '1px solid #e5e7eb' : 'none',
+                }}>{icon}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Grid view */}
+          {viewMode === 'grid' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: 16, marginBottom: 32 }}>
+              {myWins.map(v => {
+                const transport = getTransport(v.id);
+                const ts = transport ? (TRANSPORT_LABEL[transport.status] || TRANSPORT_LABEL.awarded) : null;
+                return (
+                  <div key={v.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ borderRadius: '12px 12px 0 0', overflow: 'hidden', border: '1.5px solid #0d2550', borderBottom: 'none' }}>
+                      <VehicleCard
+                        vehicle={v}
+                        mileage={v.mileage ?? null}
+                        badge={<span style={{ background: '#0d2550', color: '#e8b84b', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>WON</span>}
+                        pricePill={null}
                       >
-                        File arbitration
-                      </button>
-                    )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+                          <div style={{ fontSize: 11, color: '#9ca3af' }}>{data.bids.filter(b => b.vehicleId === v.id).length} bids total</div>
+                          <button
+                            onClick={() => setDetailModal(v)}
+                            title="View details"
+                            style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}
+                          >🔍</button>
+                        </div>
+                      </VehicleCard>
+                    </div>
+                    {/* Bottom strip */}
+                    <div style={{ background: '#f8faff', border: '1.5px solid #0d2550', borderTop: 'none', borderRadius: '0 0 12px 12px', padding: '10px 14px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>You paid</div>
+                          <div style={{ fontSize: 20, fontWeight: 800, color: '#0d2550' }}>${v.winningBid?.toLocaleString()}</div>
+                        </div>
+                        {v.arbitration?.status === 'open' ? (
+                          <span style={{ background: '#fee2e2', color: '#991b1b', padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>⚠ Dispute</span>
+                        ) : v.arbitration?.status !== 'resolved' && (
+                          <button onClick={() => setArbitrationVehicle(v)} style={{ background: 'none', border: '1px solid #fca5a5', color: '#991b1b', padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                            Arbitration
+                          </button>
+                        )}
+                      </div>
+                      {ts && (
+                        <div style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 5, background: ts.bg, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: ts.color }}>
+                          {ts.icon} {ts.label}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  {v.notes && (
-                    <p style={{ fontSize: 12, color: '#6b7280', marginTop: 8, background: '#f9fafb', padding: '6px 10px', borderRadius: 6, borderLeft: '3px solid #e5e7eb' }}>
-                      {v.notes}
-                    </p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* List view */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 32 }}>
+              {myWins.map(v => {
+                const transport = getTransport(v.id);
+                const ts = transport ? (TRANSPORT_LABEL[transport.status] || TRANSPORT_LABEL.awarded) : null;
+                return (
+                  <VehicleCard
+                    key={v.id}
+                    variant="list"
+                    vehicle={v}
+                    mileage={v.mileage ?? null}
+                    badge={<span style={{ background: '#0d2550', color: '#e8b84b', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>WON</span>}
+                    pricePill={null}
+                    actionButton={
+                      <button onClick={() => setDetailModal(v)} title="View details" style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14 }}>🔍</button>
+                    }
+                  >
+                    <div style={{ padding: '10px 16px 12px', borderTop: '1px solid #f3f4f6', background: '#f8faff', display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 1 }}>You paid</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: '#0d2550' }}>${v.winningBid?.toLocaleString()}</div>
+                      </div>
+                      {ts && (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: ts.bg, borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 700, color: ts.color }}>
+                          {ts.icon} {ts.label}
+                        </div>
+                      )}
+                      {v.arbitration?.status === 'open' ? (
+                        <span style={{ background: '#fee2e2', color: '#991b1b', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>⚠ Arbitration pending</span>
+                      ) : v.arbitration?.status !== 'resolved' && (
+                        <button onClick={() => setArbitrationVehicle(v)} style={{ background: 'none', border: '1px solid #fca5a5', color: '#991b1b', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                          File arbitration
+                        </button>
+                      )}
+                    </div>
+                  </VehicleCard>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
 
-      {/* Lost bids */}
-      {data.bids.filter(b => b.storeId === user.id).length > 0 && (
-        <div style={{ marginTop: 32 }}>
+      {/* Bid history — one row per vehicle, highest bid only */}
+      {bidHistory.length > 0 && (
+        <div style={{ marginTop: 8 }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, color: '#374151', marginBottom: 12 }}>Bid history</h2>
           <div className="card" style={{ padding: 0 }}>
             <div className="table-wrap">
@@ -200,13 +271,16 @@ export default function MyWins() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.bids.filter(b => b.storeId === user.id).map(b => {
+                  {bidHistory.map(b => {
                     const vehicle = data.vehicles.find(v => v.id === b.vehicleId);
                     if (!vehicle) return null;
-                    const won = vehicle.winnerId === user.id;
-                    const closed = ['awarded','no_sale'].includes(vehicle.status);
+                    const closed = ['awarded', 'no_sale'].includes(vehicle.status);
+                    const won = closed && (() => {
+                      const highBid = data.bids.filter(bid => bid.vehicleId === b.vehicleId).reduce((top, bid) => (!top || bid.amount > top.amount) ? bid : top, null);
+                      return highBid?.locationId === user.locationId;
+                    })();
                     return (
-                      <tr key={b.id}>
+                      <tr key={b.vehicleId}>
                         <td>
                           <div style={{ fontWeight: 600 }}>{vehicle.year} {vehicle.make} {vehicle.model}</div>
                           <div style={{ fontSize: 12, color: '#6b7280' }}>{vehicle.trim}</div>
@@ -231,14 +305,15 @@ export default function MyWins() {
         </div>
       )}
 
-    {arbitrationVehicle && (
-      <ArbitrationModal
-        vehicle={arbitrationVehicle}
-        storeId={user.id}
-        storeName={user.name}
-        onClose={() => setArbitrationVehicle(null)}
-      />
-    )}
-    </>
+      {detailModal && <VehicleDetailModal vehicle={detailModal} onClose={() => setDetailModal(null)} />}
+      {arbitrationVehicle && (
+        <ArbitrationModal
+          vehicle={arbitrationVehicle}
+          storeId={user.id}
+          storeName={user.name}
+          onClose={() => setArbitrationVehicle(null)}
+        />
+      )}
+    </div>
   );
 }

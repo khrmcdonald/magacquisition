@@ -18,7 +18,7 @@ export default function Login() {
     setLoading(true);
     const user = await login(email.trim(), password);
     if (user) {
-      if (user.role === 'wholesale') navigate('/acquisitions');
+      if (user.role === 'wholesale') navigate('/dashboard');
       else if (user.role === 'gm') navigate('/overview');
       else if (user.role === 'admin') navigate('/admin');
       else navigate('/auction');

@@ -6,8 +6,9 @@ import { VehicleCard, AuctionCountdownPill } from '../components/VehicleCard';
 import VehicleDetailModal from '../components/VehicleDetailModal';
 
 // ── BidStrip — inline below each VehicleCard ─────────────────────────────────
-function BidStrip({ vehicleId, userId, locationId, isOpen }) {
-  const { placeBid, getMyBid, getHighBid } = useData();
+function BidStrip({ vehicleId, userId, locationId, isOpen, openingBid }) {
+  const { placeBid, getMyBid, getHighBid, data } = useData();
+  const vehicleBids = (data.bids || []).filter(b => b.vehicleId === vehicleId).sort((a, b) => b.amount - a.amount);
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -15,11 +16,16 @@ function BidStrip({ vehicleId, userId, locationId, isOpen }) {
   const highBid = getHighBid(vehicleId);
   const myBid = getMyBid(vehicleId, userId);
   const isWinning = myBid && highBid && myBid.amount >= highBid;
+  const minimum = highBid ? highBid + 1 : (openingBid || 100);
 
   const handleBid = async (e) => {
     e.preventDefault();
     const val = parseInt(amount, 10);
     if (!val || val < 100) { setError('Enter a valid amount (min $100).'); return; }
+    if (openingBid && !highBid && val < openingBid) {
+      setError(`Opening bid is $${openingBid.toLocaleString()}.`);
+      return;
+    }
     if (highBid && val <= highBid) {
       setError(`Must exceed current high bid of $${highBid.toLocaleString()}.`);
       return;
@@ -43,14 +49,8 @@ function BidStrip({ vehicleId, userId, locationId, isOpen }) {
       borderTop: 'none',
       padding: '12px 14px 14px',
     }}>
-      {/* High bid + My bid */}
+      {/* My bid + High bid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>High bid</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: highBid ? '#0d2550' : '#9ca3af' }}>
-            {highBid ? `$${highBid.toLocaleString()}` : 'No bids'}
-          </div>
-        </div>
         <div style={{
           background: myBid ? (isWinning ? '#f0fdf4' : '#fef2f2') : '#fff',
           border: `1px solid ${myBid ? (isWinning ? '#86efac' : '#fca5a5') : '#e5e7eb'}`,
@@ -73,6 +73,14 @@ function BidStrip({ vehicleId, userId, locationId, isOpen }) {
             <div style={{ fontSize: 18, fontWeight: 800, color: '#9ca3af' }}>—</div>
           )}
         </div>
+        <div style={{ background: '#0d2550', border: '1px solid #0d2550', borderRadius: 8, padding: '10px 12px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>
+            {highBid ? 'High bid' : 'Opening bid'}
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: (highBid || openingBid) ? '#e8b84b' : '#4b6587' }}>
+            {highBid ? `$${highBid.toLocaleString()}` : openingBid ? `$${openingBid.toLocaleString()}` : '—'}
+          </div>
+        </div>
       </div>
 
       {/* Bid form */}
@@ -85,7 +93,7 @@ function BidStrip({ vehicleId, userId, locationId, isOpen }) {
                 type="number"
                 value={amount}
                 onChange={e => { setAmount(e.target.value); setError(''); }}
-                placeholder={highBid ? `>${highBid.toLocaleString()}` : 'Enter bid'}
+                placeholder={`min $${minimum.toLocaleString()}`}
                 style={{
                   paddingLeft: 24, fontSize: 14, fontWeight: 600, height: 40,
                   width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 8,
@@ -111,6 +119,29 @@ function BidStrip({ vehicleId, userId, locationId, isOpen }) {
       ) : (
         <div style={{ textAlign: 'center', padding: '8px', background: '#f9fafb', borderRadius: 8, color: '#9ca3af', fontSize: 12 }}>
           Auction closed
+        </div>
+      )}
+
+      {/* Live bid rankings */}
+      {vehicleBids.length > 0 && (
+        <div style={{ marginTop: 10, borderTop: '1px solid #e5e7eb', paddingTop: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Live bids</div>
+          {vehicleBids.map((bid, i) => {
+            const loc = (data.locations || []).find(l => l.id === bid.locationId);
+            const isMe = bid.locationId === locationId;
+            return (
+              <div key={bid.id || i} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '4px 6px', marginBottom: 2, borderRadius: 6, background: isMe ? '#e8eef5' : 'transparent' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', minWidth: 14, textAlign: 'center' }}>{i + 1}</div>
+                <StoreAvatar locationId={bid.locationId} size={20} />
+                <div style={{ flex: 1, fontSize: 12, fontWeight: isMe ? 700 : 500, color: isMe ? '#0d2550' : '#374151' }}>
+                  {loc?.name || '—'}{isMe ? <span style={{ fontSize: 10, color: '#6b7280', marginLeft: 4 }}>· you</span> : ''}
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: i === 0 ? '#0d2550' : '#9ca3af' }}>
+                  ${bid.amount.toLocaleString()}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -223,6 +254,7 @@ export default function AuctionFloor() {
                     }}>
                       <VehicleCard
                         vehicle={v}
+                        mileage={v.mileage ?? null}
                         auctionCloseDate={data.auction?.closeDate}
                         highlighted={isWinning}
                         badge={
@@ -253,9 +285,10 @@ export default function AuctionFloor() {
                         userId={user.id}
                         locationId={user.locationId}
                         isOpen={data.auction.isOpen}
+                        openingBid={v.openingBid ?? null}
                       />
                     ) : (
-                      <ReadOnlyBidStrip vehicleId={v.id} highBid={highBid} bidCount={bidCount} bids={data.bids} locations={data.locations} />
+                      <ReadOnlyBidStrip vehicleId={v.id} vehicle={v} bids={data.bids} locations={data.locations} />
                     )}
                   </div>
                 );
@@ -275,6 +308,7 @@ export default function AuctionFloor() {
                     key={v.id}
                     variant="list"
                     vehicle={v}
+                    mileage={v.mileage ?? null}
                     highlighted={isWinning}
                     badge={
                       isWinning
@@ -285,43 +319,58 @@ export default function AuctionFloor() {
                     }
                     pricePill={null}
                   >
-                    {/* Inline bid strip */}
-                    <div style={{ padding: '10px 16px 14px', borderTop: '1px solid #f3f4f6', background: '#f8faff' }}>
-                      <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <button
-                          onClick={e => { e.stopPropagation(); setDetailModal(v); }}
-                          title="View details"
-                          style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}
-                        >🔍</button>
-                        <div>
-                          <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>High bid</div>
-                          <div style={{ fontSize: 16, fontWeight: 800, color: highBid ? '#0d2550' : '#9ca3af' }}>
-                            {highBid ? `$${highBid.toLocaleString()}` : 'No bids'}
+                    {/* Inline bid strip — single row spanning full width */}
+                    <div style={{ padding: '10px 16px 12px', borderTop: '1px solid #f3f4f6', background: '#f8faff', display: 'flex', alignItems: 'center', gap: 12 }}>
+                      {/* Details button */}
+                      <button
+                        onClick={e => { e.stopPropagation(); setDetailModal(v); }}
+                        title="View details"
+                        style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}
+                      >🔍</button>
+
+                      {/* High bid */}
+                      <div style={{ flexShrink: 0, minWidth: 70 }}>
+                        <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 1 }}>High bid</div>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: highBid ? '#0d2550' : '#9ca3af' }}>
+                          {highBid ? `$${highBid.toLocaleString()}` : '—'}
+                        </div>
+                        <div style={{ fontSize: 10, color: '#9ca3af' }}>
+                          {bidCount === 0 ? '0 bids' : `${bidCount} bid${bidCount !== 1 ? 's' : ''}`}
+                        </div>
+                      </div>
+
+                      {/* My bid (bidders only) */}
+                      {canBid && myBid && (
+                        <div style={{ flexShrink: 0, minWidth: 70 }}>
+                          <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 1 }}>My bid</div>
+                          <div style={{ fontSize: 16, fontWeight: 800, color: isWinning ? '#065f46' : '#991b1b' }}>
+                            ${myBid.amount.toLocaleString()}
                           </div>
-                          <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>
-                            {bidCount === 0 ? '0 bids' : `${bidCount} bid${bidCount !== 1 ? 's' : ''}`}
+                          <div style={{ fontSize: 10, fontWeight: 600, color: isWinning ? '#065f46' : '#991b1b' }}>
+                            {isWinning ? '✓ Winning' : '✗ Outbid'}
                           </div>
                         </div>
-                        {myBid && (
-                          <div>
-                            <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>My bid</div>
-                            <div style={{ fontSize: 16, fontWeight: 800, color: isWinning ? '#065f46' : '#991b1b' }}>
-                              ${myBid.amount.toLocaleString()}
+                      )}
+
+                      {/* Bid pills — fills middle space */}
+                      <div style={{ flex: 1, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+                        {(data.bids || []).filter(b => b.vehicleId === v.id).sort((a, b) => b.amount - a.amount).map((bid, i) => {
+                          const loc = (data.locations || []).find(l => l.id === bid.locationId);
+                          const isMe = canBid && bid.locationId === user.locationId;
+                          return (
+                            <div key={bid.id || i} style={{ display: 'flex', alignItems: 'center', gap: 4, background: isMe ? '#e8eef5' : '#fff', border: `1px solid ${i === 0 ? '#1a3d76' : '#e5e7eb'}`, borderRadius: 20, padding: '3px 9px 3px 4px' }}>
+                              <StoreAvatar locationId={bid.locationId} size={16} />
+                              <span style={{ fontSize: 11, fontWeight: 700, color: i === 0 ? '#0d2550' : '#6b7280' }}>
+                                ${bid.amount.toLocaleString()}
+                              </span>
+                              {isMe && <span style={{ fontSize: 9, color: '#6b7280' }}>· you</span>}
                             </div>
-                          </div>
-                        )}
-                        {canBid
-                          ? <ListBidForm vehicleId={v.id} userId={user.id} locationId={user.locationId} isOpen={data.auction.isOpen} highBid={highBid} myBid={myBid} />
-                          : highBid && (
-                            <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                              <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Leader</div>
-                              <div style={{ fontSize: 13, fontWeight: 700, color: '#0d2550' }}>
-                                {(() => { const top = (data.bids || []).filter(b => b.vehicleId === v.id).reduce((t, b) => (!t || b.amount > t.amount) ? b : t, null); return data.locations.find(l => l.id === top?.locationId)?.name || '—'; })()}
-                              </div>
-                            </div>
-                          )
-                        }
+                          );
+                        })}
                       </div>
+
+                      {/* Bid form (bidders only) */}
+                      {canBid && <ListBidForm vehicleId={v.id} userId={user.id} locationId={user.locationId} isOpen={data.auction.isOpen} highBid={highBid} myBid={myBid} openingBid={v.openingBid ?? null} />}
                     </div>
                   </VehicleCard>
                 );
@@ -357,35 +406,93 @@ export default function AuctionFloor() {
 }
 
 // ── Read-only bid strip for non-bidder grid cards ────────────────────────────
-function ReadOnlyBidStrip({ vehicleId, highBid, bidCount, bids, locations }) {
-  const leader = (bids || [])
-    .filter(b => b.vehicleId === vehicleId)
-    .reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null);
-  const leaderName = leader ? (locations || []).find(l => l.id === leader.locationId)?.name || '—' : null;
+function ReadOnlyBidStrip({ vehicleId, vehicle, bids, locations }) {
+  const sorted = (bids || []).filter(b => b.vehicleId === vehicleId).sort((a, b) => b.amount - a.amount);
+  const highBid = sorted[0]?.amount || null;
+  const totalCost = vehicle?.totalCost || null;
+  const floorPrice = vehicle?.floorPrice || null;
+  const margin = highBid && totalCost ? highBid - totalCost : null;
+  const marginPositive = margin !== null && margin >= 0;
 
   return (
     <div style={{
-      background: '#0d2550', borderRadius: '0 0 12px 12px',
-      padding: '10px 14px',
+      background: '#f8faff',
+      border: '1.5px solid #e8eaed',
+      borderRadius: '0 0 12px 12px',
+      borderTop: 'none',
+      padding: '12px 14px 14px',
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>
-            High bid
-          </div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: highBid ? '#e8b84b' : '#4b6587' }}>
+      {/* High bid + margin row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+        <div style={{ background: '#0d2550', border: '1px solid #0d2550', borderRadius: 8, padding: '10px 12px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>High bid</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: highBid ? '#e8b84b' : '#4b6587' }}>
             {highBid ? `$${highBid.toLocaleString()}` : 'No bids'}
           </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>
-            {bidCount} bid{bidCount !== 1 ? 's' : ''}
+        <div style={{ background: margin !== null ? (marginPositive ? '#f0fdf4' : '#fef2f2') : '#f9fafb', border: `1px solid ${margin !== null ? (marginPositive ? '#86efac' : '#fca5a5') : '#e5e7eb'}`, borderRadius: 8, padding: '10px 12px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>
+            {margin !== null ? 'Margin' : totalCost ? 'In it for' : 'Floor'}
           </div>
-          {leaderName && (
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{leaderName}</div>
-          )}
+          <div style={{ fontSize: 18, fontWeight: 800, color: margin !== null ? (marginPositive ? '#065f46' : '#991b1b') : '#374151' }}>
+            {margin !== null
+              ? `${marginPositive ? '+' : ''}$${margin.toLocaleString()}`
+              : totalCost
+                ? `$${totalCost.toLocaleString()}`
+                : floorPrice
+                  ? `$${parseFloat(floorPrice).toLocaleString()}`
+                  : '—'}
+          </div>
         </div>
       </div>
+
+      {/* Cost breakdown row */}
+      {(totalCost || floorPrice) && (
+        <div style={{ display: 'flex', gap: 12, marginBottom: 10, padding: '6px 10px', background: '#f1f5f9', borderRadius: 7 }}>
+          {totalCost && (
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em' }}>Total cost</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#374151' }}>${totalCost.toLocaleString()}</div>
+            </div>
+          )}
+          {floorPrice && (
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em' }}>Floor</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#374151' }}>${parseFloat(floorPrice).toLocaleString()}</div>
+            </div>
+          )}
+          {highBid && totalCost && (
+            <div style={{ marginLeft: 'auto' }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em' }}>vs cost</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: marginPositive ? '#065f46' : '#991b1b' }}>
+                {marginPositive ? '▲' : '▼'} {totalCost ? `${Math.abs(Math.round((margin / totalCost) * 100))}%` : ''}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Live bids list */}
+      {sorted.length > 0 && (
+        <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Live bids</div>
+          {sorted.map((bid, i) => {
+            const loc = (locations || []).find(l => l.id === bid.locationId);
+            return (
+              <div key={bid.id || i} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '4px 6px', marginBottom: 2, borderRadius: 6 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', minWidth: 14, textAlign: 'center' }}>{i + 1}</div>
+                <StoreAvatar locationId={bid.locationId} size={20} />
+                <div style={{ flex: 1, fontSize: 12, fontWeight: 600, color: i === 0 ? '#0d2550' : '#374151' }}>
+                  {loc?.name || '—'}
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: i === 0 ? '#0d2550' : '#9ca3af' }}>
+                  ${bid.amount.toLocaleString()}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -460,11 +567,12 @@ function BidMonitorPanel({ vehicles, bids, locations, onClose }) {
 }
 
 // ── Compact bid form for list view ────────────────────────────────────────────
-function ListBidForm({ vehicleId, userId, locationId, isOpen, highBid, myBid }) {
+function ListBidForm({ vehicleId, userId, locationId, isOpen, highBid, myBid, openingBid }) {
   const { placeBid } = useData();
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const minimum = highBid ? highBid + 1 : (openingBid || 100);
 
   if (!isOpen) return <div style={{ fontSize: 12, color: '#9ca3af' }}>Auction closed</div>;
 
@@ -472,6 +580,7 @@ function ListBidForm({ vehicleId, userId, locationId, isOpen, highBid, myBid }) 
     e.preventDefault();
     const val = parseInt(amount, 10);
     if (!val || val < 100) { setError('Min $100'); return; }
+    if (openingBid && !highBid && val < openingBid) { setError(`Min $${openingBid.toLocaleString()}`); return; }
     if (highBid && val <= highBid) { setError(`Must exceed $${highBid.toLocaleString()}`); return; }
     try {
       await placeBid(vehicleId, userId, locationId, val);
@@ -483,14 +592,14 @@ function ListBidForm({ vehicleId, userId, locationId, isOpen, highBid, myBid }) 
   };
 
   return (
-    <form onSubmit={handleBid} style={{ display: 'flex', gap: 6, alignItems: 'center', marginLeft: 'auto' }}>
+    <form onSubmit={handleBid} style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
       <div style={{ position: 'relative' }}>
         <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: '#374151', fontWeight: 700, fontSize: 13 }}>$</span>
         <input
           type="number"
           value={amount}
           onChange={e => { setAmount(e.target.value); setError(''); }}
-          placeholder={highBid ? `>${highBid.toLocaleString()}` : 'Bid'}
+          placeholder={`min $${minimum.toLocaleString()}`}
           style={{ paddingLeft: 20, fontSize: 13, fontWeight: 600, height: 36, width: 130, border: '1.5px solid #e5e7eb', borderRadius: 8, boxSizing: 'border-box', outline: 'none' }}
           min={1}
         />

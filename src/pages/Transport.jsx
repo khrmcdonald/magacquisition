@@ -76,21 +76,35 @@ function StepTracker({ steps, currentStatus, onUpdate, canUpdate }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Transport() {
   const { user } = useAuth();
-  const { data, updateTransport } = useData();
+  const { data, updateTransport, deleteTransport } = useData();
   const [filter, setFilter] = useState('all');
+  const [typeTab, setTypeTab] = useState('deliveries'); // wholesale only: 'deliveries' | 'intake' | 'all'
   const [notesModal, setNotesModal] = useState(null);
   const [notes, setNotes] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null); // transport id
 
   const isWholesale = user.role === 'wholesale' || user.role === 'admin';
   const isGM = user.role === 'gm';
 
-  const myTransport = isWholesale || isGM
+  const allTransport = isWholesale || isGM
     ? data.transport
     : data.transport.filter(t => t.locationId === user.locationId);
+
+  const isIntake = (t) => t.storeName === 'Intake';
+
+  // For wholesale: split by type tab
+  const myTransport = isWholesale
+    ? typeTab === 'deliveries' ? allTransport.filter(t => !isIntake(t))
+      : typeTab === 'intake'     ? allTransport.filter(t =>  isIntake(t))
+      : allTransport
+    : allTransport;
 
   const filtered = filter === 'all' ? myTransport
     : filter === 'complete' ? myTransport.filter(t => t.status === 'titleReceived')
     : myTransport.filter(t => t.status !== 'titleReceived');
+
+  const deliveries = allTransport.filter(t => !isIntake(t));
+  const intakes    = allTransport.filter(t =>  isIntake(t));
 
   return (
     <div style={{ background: '#f0f2f5', minHeight: '100vh', margin: '-20px -16px', padding: '24px 20px' }}>
@@ -98,17 +112,17 @@ export default function Transport() {
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>Transport & Title</h1>
         <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 2, marginBottom: 0 }}>
-          {isWholesale ? 'Track all vehicle movements across the group' : `Incoming vehicles for ${user.name}`}
+          {isWholesale ? 'Manage all vehicle movements — intake pickups and auction deliveries' : `Incoming vehicles for ${user.name}`}
         </p>
       </div>
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
         {[
-          { label: 'Total vehicles', value: myTransport.length,                                                              accent: '#0d2550', color: '#0d2550' },
-          { label: 'In transit',     value: myTransport.filter(t => ['dispatched','inTransit'].includes(t.status)).length,   accent: '#3b82f6', color: '#1e40af' },
-          { label: 'Arrived',        value: myTransport.filter(t => t.status === 'arrived').length,                          accent: '#10b981', color: '#065f46' },
-          { label: 'Title received', value: myTransport.filter(t => t.status === 'titleReceived').length,                    accent: '#e8b84b', color: '#92400e' },
+          { label: isWholesale ? 'Auction deliveries' : 'Total vehicles', value: isWholesale ? deliveries.length : allTransport.length, accent: '#0d2550', color: '#0d2550' },
+          { label: isWholesale ? 'Intake pickups'    : 'In transit',      value: isWholesale ? intakes.length : allTransport.filter(t => ['dispatched','inTransit'].includes(t.status)).length, accent: '#e8b84b', color: '#92400e' },
+          { label: 'In transit',     value: allTransport.filter(t => ['dispatched','inTransit'].includes(t.status)).length, accent: '#3b82f6', color: '#1e40af' },
+          { label: 'Title received', value: allTransport.filter(t => t.status === 'titleReceived').length,                  accent: '#10b981', color: '#065f46' },
         ].map(({ label, value, accent, color }) => (
           <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 10, padding: '12px 16px' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{label}</div>
@@ -117,8 +131,21 @@ export default function Transport() {
         ))}
       </div>
 
-      {/* Filter pills */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+      {/* Type tabs (wholesale only) + status filter pills */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+        {isWholesale && (
+          <div style={{ display: 'flex', background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: 10, overflow: 'hidden', marginRight: 8 }}>
+            {[['deliveries','🚚 Auction Deliveries'], ['intake','📦 Intake Pickups'], ['all','All']].map(([key, label]) => (
+              <button key={key} onClick={() => setTypeTab(key)} style={{
+                padding: '8px 16px', border: 'none', borderRight: key !== 'all' ? '1px solid #e5e7eb' : 'none',
+                cursor: 'pointer', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+                background: typeTab === key ? '#0d2550' : 'transparent',
+                color: typeTab === key ? '#fff' : '#374151',
+                transition: 'all 0.12s',
+              }}>{label}</button>
+            ))}
+          </div>
+        )}
         {[['all','All'], ['active','In progress'], ['complete','Complete']].map(([key, label]) => (
           <button key={key} onClick={() => setFilter(key)} style={{
             padding: '7px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
@@ -127,18 +154,20 @@ export default function Transport() {
             background: filter === key ? '#0d2550' : '#fff',
             color: filter === key ? '#fff' : '#374151',
             transition: 'all 0.12s',
-          }}>
-            {label}
-          </button>
+          }}>{label}</button>
         ))}
       </div>
 
       {/* Transport list */}
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9ca3af' }}>
-          <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }}>🚚</div>
+          <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }}>{typeTab === 'intake' ? '📦' : '🚚'}</div>
           <div style={{ fontSize: 16, fontWeight: 600, color: '#374151', marginBottom: 6 }}>No vehicles to track</div>
-          <div style={{ fontSize: 13 }}>Vehicles appear here after auction winners are awarded</div>
+          <div style={{ fontSize: 13 }}>
+            {typeTab === 'intake' ? 'Intake pickups are created when adding vehicles in Acquisitions with "Needs transport" checked'
+              : typeTab === 'deliveries' ? 'Delivery records are created automatically when an auction closes'
+              : 'Vehicles appear here after being added or after an auction closes'}
+          </div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -170,13 +199,20 @@ export default function Transport() {
                 pricePill={null}
                 actionButton={
                   canUpdate ? (
-                    <button
-                      className="btn-secondary"
-                      style={{ padding: '4px 10px', fontSize: 11, whiteSpace: 'nowrap' }}
-                      onClick={() => { setNotesModal(t); setNotes(t.notes || ''); }}
-                    >
-                      Notes
-                    </button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        className="btn-secondary"
+                        style={{ padding: '4px 10px', fontSize: 11, whiteSpace: 'nowrap' }}
+                        onClick={() => { setNotesModal(t); setNotes(t.notes || ''); }}
+                      >
+                        Notes
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(t.id)}
+                        title="Delete record"
+                        style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', borderRadius: 8, padding: '4px 8px', fontSize: 13, cursor: 'pointer' }}
+                      >🗑</button>
+                    </div>
                   ) : null
                 }
               >
@@ -246,6 +282,30 @@ export default function Transport() {
               </VehicleCard>
             );
           })}
+        </div>
+      )}
+
+      {/* Delete confirm */}
+      {confirmDelete && (
+        <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 360 }}>
+            <div className="modal-header" style={{ background: '#991b1b', borderRadius: '12px 12px 0 0' }}>
+              <h2 style={{ color: '#fff', fontSize: 16 }}>Delete transport record?</h2>
+              <button onClick={() => setConfirmDelete(null)} style={{ background: 'rgba(255,255,255,.15)', border: 'none', color: '#fff', width: 30, height: 30, borderRadius: '50%', fontSize: 18, cursor: 'pointer' }}>×</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontSize: 14, color: '#374151', margin: 0 }}>This will permanently remove the transport record. The vehicle status is not affected.</p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setConfirmDelete(null)}>Cancel</button>
+              <button
+                style={{ background: '#991b1b', color: '#fff', border: 'none', padding: '9px 20px', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                onClick={async () => { await deleteTransport(confirmDelete); setConfirmDelete(null); }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

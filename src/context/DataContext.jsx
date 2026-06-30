@@ -18,13 +18,13 @@ const STRIP_FIELDS = new Set([
   'reconItems', 'recon_items', 'reconNotes', 'recon_notes',
   'vendorNotes', 'vendor_notes',
   'titleNotes', 'title_notes',
-  'mileage',                // lives in mileage_log table
+  'mileage',                // no column in vehicles table — lives in mileage_log
   'source',                 // lives in deal_records table
   'storeId', 'store_id',
   // Repair total updated by repair order mutations, not the vehicle edit form
   'totalRepairCosts', 'total_repair_costs',
-  // Arbitration column does not exist in vehicles table
-  'arbitration', 'arbitrationStatus', 'arbitration_status', 'arbitrationNotes', 'arbitration_notes',
+  // Derived camel aliases — strip to avoid duplicate writes
+  'arbitrationStatus', 'arbitration_status', 'arbitrationNotes', 'arbitration_notes',
 ]);
 
 // ── Column mappers: Supabase snake_case → app camelCase ───────────────────
@@ -41,6 +41,7 @@ function mapVehicle(r) {
     totalRepairCosts: parseFloat(r.total_repair_costs) || 0,
     totalCost: (parseFloat(r.purchase_price) || 0) + (parseFloat(r.overhead_costs) || 0) + (parseFloat(r.total_repair_costs) || 0) || null,
     floorPrice: r.floor_price,
+    openingBid: r.opening_bid ? parseFloat(r.opening_bid) : null,
     listPrice: r.list_price,
     notes: r.disclosure_notes,
     photos: Array.isArray(r.photos) ? r.photos : [],
@@ -138,7 +139,7 @@ const VEHICLE_FIELD_MAP = {
   status: 'status', year: 'year', make: 'make', model: 'model', trim: 'trim',
   color: 'color', vin: 'vin', condition: 'condition',
   purchasePrice: 'purchase_price', overheadCosts: 'overhead_costs',
-  floorPrice: 'floor_price', listPrice: 'list_price',
+  floorPrice: 'floor_price', openingBid: 'opening_bid', listPrice: 'list_price',
   notes: 'disclosure_notes',     // app uses 'notes', DB column is 'disclosure_notes'
   photos: 'photos',
   currentLocation: 'current_location_id',
@@ -151,6 +152,7 @@ const VEHICLE_FIELD_MAP = {
   interior_color: 'interior_color',
   buyer_id: 'buyer_id',
   buyer_name: 'buyer_name',
+  arbitration: 'arbitration',
 };
 
 function toSnakeCase(fields) {
@@ -184,7 +186,7 @@ export function DataProvider({ children }) {
   // ── Initial data fetch ───────────────────────────────────────────────────
   useEffect(() => {
     async function fetchAll() {
-      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes, repairOrdersRes, repairVendorsRes, buyersRes, inspectorsRes, pickupAddressesRes] = await Promise.all([
+      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes, repairOrdersRes, repairVendorsRes, buyersRes, inspectorsRes, pickupAddressesRes, mileageRes] = await Promise.all([
         supabase.from('vehicles').select('*').eq('org_id', ORG_ID),
         supabase.from('auctions').select('*').eq('org_id', ORG_ID),
         supabase.from('bids').select('*'),
@@ -196,6 +198,7 @@ export function DataProvider({ children }) {
         supabase.from('profiles').select('id, name, buyer_number, role').eq('org_id', ORG_ID),
         supabase.from('inspectors').select('*').eq('org_id', ORG_ID).eq('active', true).order('name'),
         supabase.from('pickup_addresses').select('*').eq('org_id', ORG_ID).eq('active', true).order('address'),
+        supabase.from('mileage_log').select('vehicle_id, reading, logged_at').eq('org_id', ORG_ID).order('logged_at', { ascending: false }),
       ]);
       if (vehiclesRes.error) {
         setFetchError('Could not load vehicle data. Check your connection and refresh the page.');
@@ -212,7 +215,11 @@ export function DataProvider({ children }) {
       if (inspectorsRes.error)       console.warn('inspectors fetch error:',       inspectorsRes.error?.message);
       if (pickupAddressesRes.error)  console.warn('pickup_addresses fetch error:', pickupAddressesRes.error?.message);
 
-      if (vehiclesRes.data)      setVehicles(vehiclesRes.data.map(mapVehicle));
+      if (vehiclesRes.data) {
+        const mileageMap = {};
+        mileageRes.data?.forEach(r => { if (!mileageMap[r.vehicle_id]) mileageMap[r.vehicle_id] = r.reading; });
+        setVehicles(vehiclesRes.data.map(r => ({ ...mapVehicle(r), mileage: mileageMap[r.id] ?? null })));
+      }
       if (buyersRes.data) {
         setBuyers(buyersRes.data.filter(p => p.role === 'wholesale'));
         setProfiles(buyersRes.data);
@@ -241,7 +248,11 @@ export function DataProvider({ children }) {
       }, ({ eventType, new: row, old }) => {
         setVehicles(prev => {
           if (eventType === 'INSERT') return [...prev, mapVehicle(row)];
-          if (eventType === 'UPDATE') return prev.map(v => v.id === row.id ? mapVehicle(row) : v);
+          if (eventType === 'UPDATE') return prev.map(v => {
+            if (v.id !== row.id) return v;
+            // Preserve mileage — it lives in mileage_log, not vehicles table
+            return { ...mapVehicle(row), mileage: v.mileage ?? null };
+          });
           if (eventType === 'DELETE') return prev.filter(v => v.id !== old.id);
           return prev;
         });
@@ -405,9 +416,8 @@ export function DataProvider({ children }) {
               awarded_at: now,
             }).eq('id', v.id)
           );
-          if (!transport.find(t => t.vehicleId === v.id)) {
+          if (!transport.find(t => t.vehicleId === v.id && t.storeName !== 'Intake')) {
             newTransport.push({
-              id: 'tr_' + v.id,
               vehicleId: v.id,
               vehicleName: `${v.year} ${v.make} ${v.model}`,
               storeId: winner.storeId,
@@ -438,19 +448,23 @@ export function DataProvider({ children }) {
     }));
 
     if (newTransport.length) {
-      await supabase.from('transport').insert(newTransport.map(t => ({
-        id: t.id,
-        org_id: ORG_ID,
-        vehicle_id: t.vehicleId,
-        vehicle_name: t.vehicleName,
-        store_id: t.storeId,
-        location_id: t.locationId,
-        store_name: t.storeName,
-        winning_bid: t.winningBid,
-        status: t.status,
-        steps: t.steps,
-      })));
-      setTransport(prev => [...prev, ...newTransport]);
+      const { data: insertedTransport, error: transportErr } = await supabase
+        .from('transport')
+        .insert(newTransport.map(t => ({
+          id: crypto.randomUUID(),
+          org_id: ORG_ID,
+          vehicle_id: t.vehicleId,
+          vehicle_name: t.vehicleName,
+          store_id: t.storeId,
+          location_id: t.locationId,
+          store_name: t.storeName,
+          winning_bid: t.winningBid,
+          status: t.status,
+          steps: t.steps,
+        })))
+        .select();
+      if (transportErr) console.error('Transport insert error:', transportErr);
+      if (insertedTransport) setTransport(prev => [...prev, ...insertedTransport.map(mapTransport)]);
     }
   };
 
@@ -513,8 +527,8 @@ export function DataProvider({ children }) {
     setVehicles(prev => prev.filter(v => v.id !== id));
   };
 
-  const listVehicle = async (id) => {
-    await updateVehicle(id, { status: 'in_auction' });
+  const listVehicle = async (id, openingBid) => {
+    await updateVehicle(id, { status: 'in_auction', openingBid: parseFloat(openingBid) || null });
   };
 
   const unlistVehicle = async (id) => {
@@ -535,28 +549,37 @@ export function DataProvider({ children }) {
     return data?.reading ?? null;
   };
 
+  const logMileage = async (vehicleId, reading, vin6 = null, reason = 'edit') => {
+    const val = parseInt(reading);
+    if (!val) return;
+    const { error } = await supabase.from('mileage_log').insert({
+      vehicle_id: vehicleId,
+      org_id: ORG_ID,
+      reading: val,
+      vin6: vin6 || null,
+      reason,
+    });
+    if (error) throw error;
+    setVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, mileage: val } : v));
+  };
+
   // ── Bid mutations ─────────────────────────────────────────────────────────
-  // Primary: one bid per store per vehicle per auction (upserts)
   const addBid = async (bid) => {
     const { data: row, error } = await supabase
       .from('bids')
-      .upsert({
+      .insert({
         vehicle_id: bid.vehicleId,
         user_id: bid.userId,
         location_id: bid.locationId,
         amount: bid.amount,
         auction_id: bid.auctionId,
-        placed_at: bid.placedAt || new Date().toISOString(),
+        placed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'vehicle_id,user_id,auction_id' })
+      })
       .select()
       .single();
     if (error) throw error;
-    const mapped = mapBid(row);
-    setBids(prev => {
-      const idx = prev.findIndex(b => b.vehicleId === bid.vehicleId && b.storeId === bid.userId && b.auctionId === bid.auctionId);
-      return idx >= 0 ? prev.map((b, i) => i === idx ? mapped : b) : [...prev, mapped];
-    });
+    setBids(prev => [...prev, mapBid(row)]);
   };
 
   // Backward-compat wrapper used by existing components
@@ -572,8 +595,11 @@ export function DataProvider({ children }) {
     return Math.max(...vBids.map(b => b.amount));
   };
 
-  const getMyBid = (vehicleId, storeId) =>
-    bids.find(b => b.vehicleId === vehicleId && b.storeId === storeId) || null;
+  const getMyBid = (vehicleId, storeId) => {
+    const mine = bids.filter(b => b.vehicleId === vehicleId && b.storeId === storeId);
+    if (!mine.length) return null;
+    return mine.reduce((top, b) => b.amount > top.amount ? b : top);
+  };
 
   const getAllBidsForVehicle = (vehicleId) =>
     [...bids.filter(b => b.vehicleId === vehicleId)].sort((a, b) => b.amount - a.amount);
@@ -593,6 +619,12 @@ export function DataProvider({ children }) {
       .update({ status: stepKey, notes: updatedNotes, steps: updatedSteps })
       .eq('id', t.id);
     if (error) console.error('updateTransport error:', error);
+  };
+
+  const deleteTransport = async (id) => {
+    const { error } = await supabase.from('transport').delete().eq('id', id);
+    if (error) throw error;
+    setTransport(prev => prev.filter(t => t.id !== id));
   };
 
   // ── Repair orders ─────────────────────────────────────────────────────────
@@ -859,12 +891,12 @@ export function DataProvider({ children }) {
       setAuction, openAuction, closeAuction,
       addAuction, updateAuction,
       // Vehicles
-      addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, getMileage,
+      addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, getMileage, logMileage,
       // Bids
       placeBid, addBid,
       getHighBid, getMyBid, getAllBidsForVehicle,
       // Transport
-      updateTransport,
+      updateTransport, deleteTransport,
       // Repair orders
       repairOrders, repairVendors,
       addRepairOrder, updateRepairOrder, deleteRepairOrder,

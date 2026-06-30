@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -39,6 +39,7 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
   const { data } = useData();
   const { user } = useAuth();
   const isBidder = user?.role === 'bidder';
+  const [photoIdx, setPhotoIdx] = useState(0);
 
   const transport = (data.transport || []).find(t => t.vehicleId === vehicle.id);
   const openRepairs = (data.repairOrders || []).filter(r =>
@@ -51,6 +52,20 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
     : -1;
 
   const photos = Array.isArray(vehicle.photos) ? vehicle.photos : [];
+
+  const prev = useCallback(() => setPhotoIdx(i => (i - 1 + photos.length) % photos.length), [photos.length]);
+  const next = useCallback(() => setPhotoIdx(i => (i + 1) % photos.length), [photos.length]);
+
+  useEffect(() => {
+    if (photos.length < 2) return;
+    const handler = (e) => {
+      if (e.key === 'ArrowLeft') prev();
+      else if (e.key === 'ArrowRight') next();
+      else if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [prev, next, onClose, photos.length]);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -85,15 +100,40 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
 
         <div style={{ padding: '0 24px 24px' }}>
 
-          {/* Photos */}
+          {/* Photos — carousel */}
           {photos.length > 0 && (
-            <div style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: 18, marginBottom: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 18, marginBottom: 10 }}>Photos</div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {photos.map((p, i) => (
-                  <img key={i} src={p} alt="" style={{ width: 130, height: 97, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e7eb' }} />
-                ))}
+            <div style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: 16, marginBottom: 0, marginLeft: -24, marginRight: -24 }}>
+              {/* Main image */}
+              <div style={{ position: 'relative', background: '#111', lineHeight: 0 }}>
+                <img
+                  src={photos[photoIdx]}
+                  alt=""
+                  style={{ width: '100%', maxHeight: 380, objectFit: 'contain', display: 'block' }}
+                />
+                {photos.length > 1 && (
+                  <>
+                    <button onClick={prev} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,.5)', border: 'none', borderRadius: '50%', width: 36, height: 36, color: '#fff', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>‹</button>
+                    <button onClick={next} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,.5)', border: 'none', borderRadius: '50%', width: 36, height: 36, color: '#fff', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>›</button>
+                    <div style={{ position: 'absolute', bottom: 10, right: 12, background: 'rgba(0,0,0,.55)', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: '#fff' }}>
+                      {photoIdx + 1} / {photos.length}
+                    </div>
+                  </>
+                )}
               </div>
+              {/* Thumbnail strip */}
+              {photos.length > 1 && (
+                <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '10px 16px 0', scrollbarWidth: 'thin' }}>
+                  {photos.map((p, i) => (
+                    <img
+                      key={i}
+                      src={p}
+                      alt=""
+                      onClick={() => setPhotoIdx(i)}
+                      style={{ width: 72, height: 54, objectFit: 'cover', borderRadius: 6, border: `2px solid ${i === photoIdx ? '#e8b84b' : 'transparent'}`, cursor: 'pointer', flexShrink: 0, opacity: i === photoIdx ? 1 : 0.6, transition: 'opacity .15s, border-color .15s' }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
