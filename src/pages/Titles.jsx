@@ -51,7 +51,7 @@ export default function Titles() {
     if (!next) return;
     setSaving(v.id);
     const { error } = await supabase.from('vehicles').update({ title_status: next }).eq('id', v.id);
-    if (error) { showToast('Failed to update title status', 'error'); }
+    if (error) { showToast(`Failed: ${error.message}`, 'error'); }
     else {
       setVehicles(prev => prev.map(vv => vv.id === v.id ? { ...vv, titleStatus: next } : vv));
       showToast(`Title marked ${STATUS[next].label.toLowerCase()}`, 'success');
