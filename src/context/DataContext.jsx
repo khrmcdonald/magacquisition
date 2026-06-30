@@ -61,6 +61,7 @@ function mapVehicle(r) {
     buyer_id: r.buyer_id || null,
     buyer_name: r.buyer_name || null,
     datePurchased: r.date_purchased || null,
+    sourceId: r.source_id || null,
   };
 }
 

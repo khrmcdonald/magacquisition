@@ -138,6 +138,7 @@ export function VehicleCard({
   costBasis,
   showAge = false,
   showDatePurchased = false,
+  sourceName,
   onDetails,
   actionButton,
   children,
@@ -348,12 +349,21 @@ export function VehicleCard({
           </div>
         )}
 
-        {/* Date purchased */}
-        {showDatePurchased && vehicle.datePurchased && (
-          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
-            Purchased: <span style={{ fontWeight: 700, color: '#6b7280' }}>{new Date(vehicle.datePurchased + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+        {/* Date purchased + source */}
+        {(showDatePurchased && vehicle.datePurchased) || sourceName ? (
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 3 }}>
+            {showDatePurchased && vehicle.datePurchased && (
+              <div style={{ fontSize: 11, color: '#9ca3af' }}>
+                Purchased: <span style={{ fontWeight: 700, color: '#6b7280' }}>{new Date(vehicle.datePurchased + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              </div>
+            )}
+            {sourceName && (
+              <div style={{ fontSize: 11, color: '#9ca3af' }}>
+                Source: <span style={{ fontWeight: 700, color: '#6b7280' }}>{sourceName}</span>
+              </div>
+            )}
           </div>
-        )}
+        ) : null}
 
         {/* Age flag — wholesale/gm/admin only */}
         {showAge && <AgePill vehicle={vehicle} />}

@@ -1110,10 +1110,10 @@ export default function Acquisitions() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [myBuysOnly, setMyBuysOnly] = useState(false);
   const [buyerFilter, setBuyerFilter] = useState('');
-  const [sourceFilter, setSourceFilter] = useState('');
   const [dateRange, setDateRange] = useState('all'); // 'all' | 'week' | 'month' | 'custom'
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [ageFilter, setAgeFilter] = useState('all'); // 'all' | '<30' | '30-60' | '60-90' | '90+'
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -1151,7 +1151,6 @@ export default function Acquisitions() {
     .filter(v => statusFilter === 'all' || v.status === statusFilter)
     .filter(v => !myBuysOnly || v.buyer_id === user?.id)
     .filter(v => !buyerFilter || v.buyer_id === buyerFilter)
-    // sourceFilter wired once source_id is mapped on vehicle objects
     .filter(v => {
       if (dateRange === 'all') return true;
       if (!v.datePurchased) return false;
@@ -1165,6 +1164,16 @@ export default function Acquisitions() {
         return true;
       }
       return true;
+    })
+    .filter(v => {
+      if (ageFilter === 'all') return true;
+      const ref = v.datePurchased ? new Date(v.datePurchased + 'T12:00:00') : v.createdAt ? new Date(v.createdAt) : null;
+      const days = ref ? Math.floor((Date.now() - ref) / 86400000) : 0;
+      if (ageFilter === '<30')   return days < 30;
+      if (ageFilter === '30-60') return days >= 30 && days < 60;
+      if (ageFilter === '60-90') return days >= 60 && days < 90;
+      if (ageFilter === '90+')   return days >= 90;
+      return true;
     });
 
   const fmtErr = (e) => e?.message ?? e?.details ?? JSON.stringify(e);
@@ -1175,7 +1184,7 @@ export default function Acquisitions() {
     const {
       seller_name, buyer_id: formBuyerId, purchase_amount, lienholder, payoff_amount,
       cashiers_check, title_electronic, pickup_address,
-      source_id, needsTransport, transportScheduledAt, vendorNotes,
+      needsTransport, transportScheduledAt, vendorNotes,
       ...vehicleFields
     } = vehicleData;
 
@@ -1447,42 +1456,71 @@ export default function Acquisitions() {
         </div>
       </div>
 
-      {/* Filter bar */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        {/* Date range */}
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Date purchased</div>
-          <div style={{ display: 'flex', gap: 0, border: '1.5px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
-            {[['all','All'],['week','Last 7 days'],['month','Last 30 days'],['custom','Custom']].map(([val, label]) => (
-              <button key={val} onClick={() => setDateRange(val)} style={{ padding: '6px 12px', border: 'none', borderRight: val !== 'custom' ? '1px solid #e5e7eb' : 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', background: dateRange === val ? '#0d2550' : '#fff', color: dateRange === val ? '#fff' : '#6b7280', whiteSpace: 'nowrap' }}>
-                {label}
+      {/* Filter panel */}
+      <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
+        {/* Row 1: Age */}
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>Age in inventory</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {[
+              ['all',   'All',              null,      '#f3f4f6', '#374151'],
+              ['<30',   '< 30 days',        null,      '#eff6ff', '#1e40af'],
+              ['30-60', 'Aging · 30–60d',   '⚠',      '#fef9c3', '#78350f'],
+              ['60-90', 'At Risk · 60–90d', '⚠',      '#fef3c7', '#b45309'],
+              ['90+',   'Liquidate · 90d+', '⚠',      '#fee2e2', '#991b1b'],
+            ].map(([val, label, icon, bg, color]) => (
+              <button key={val} onClick={() => setAgeFilter(val)} style={{
+                padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${ageFilter === val ? color : '#e5e7eb'}`,
+                background: ageFilter === val ? bg : '#fff', color: ageFilter === val ? color : '#6b7280',
+                fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                boxShadow: ageFilter === val ? `0 0 0 1px ${color}33` : 'none',
+              }}>
+                {icon && ageFilter === val ? `${icon} ` : ''}{label}
               </button>
             ))}
           </div>
-          {dateRange === 'custom' && (
-            <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
-              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ padding: '5px 8px', border: '1.5px solid #e5e7eb', borderRadius: 6, fontSize: 12 }} />
-              <span style={{ fontSize: 12, color: '#9ca3af' }}>to</span>
-              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ padding: '5px 8px', border: '1.5px solid #e5e7eb', borderRadius: 6, fontSize: 12 }} />
+        </div>
+
+        {/* Row 2: Date purchased + Buyer + clear */}
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 5 }}>Date purchased</div>
+            <div style={{ display: 'flex', border: '1.5px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+              {[['all','All'],['week','Last 7d'],['month','Last 30d'],['custom','Custom']].map(([val, label], i, arr) => (
+                <button key={val} onClick={() => setDateRange(val)} style={{
+                  padding: '6px 11px', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+                  borderRight: i < arr.length - 1 ? '1px solid #e5e7eb' : 'none',
+                  background: dateRange === val ? '#0d2550' : '#fff',
+                  color: dateRange === val ? '#fff' : '#6b7280',
+                }}>
+                  {label}
+                </button>
+              ))}
             </div>
+            {dateRange === 'custom' && (
+              <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
+                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ padding: '5px 8px', border: '1.5px solid #e5e7eb', borderRadius: 6, fontSize: 12, background: '#fff' }} />
+                <span style={{ fontSize: 12, color: '#9ca3af' }}>to</span>
+                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ padding: '5px 8px', border: '1.5px solid #e5e7eb', borderRadius: 6, fontSize: 12, background: '#fff' }} />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 5 }}>Buyer</div>
+            <select value={buyerFilter} onChange={e => setBuyerFilter(e.target.value)} style={{ padding: '7px 10px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#374151', background: '#fff', cursor: 'pointer' }}>
+              <option value="">All buyers</option>
+              {buyers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          </div>
+
+          {(buyerFilter || dateRange !== 'all' || ageFilter !== 'all') && (
+            <button onClick={() => { setBuyerFilter(''); setDateRange('all'); setDateFrom(''); setDateTo(''); setAgeFilter('all'); }}
+              style={{ padding: '7px 14px', border: '1px solid #fecaca', borderRadius: 8, background: '#fef2f2', color: '#991b1b', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              ✕ Clear all filters
+            </button>
           )}
         </div>
-
-        {/* Buyer */}
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Buyer</div>
-          <select value={buyerFilter} onChange={e => setBuyerFilter(e.target.value)} style={{ padding: '7px 10px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#374151', background: '#fff', cursor: 'pointer' }}>
-            <option value="">All buyers</option>
-            {buyers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-        </div>
-
-        {/* Clear all */}
-        {(buyerFilter || dateRange !== 'all') && (
-          <button onClick={() => { setBuyerFilter(''); setDateRange('all'); setDateFrom(''); setDateTo(''); }} style={{ padding: '7px 14px', border: '1px solid #fecaca', borderRadius: 8, background: '#fef2f2', color: '#991b1b', fontSize: 12, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-end', marginBottom: 0 }}>
-            ✕ Clear filters
-          </button>
-        )}
       </div>
 
       {/* Status KPI tiles — click to filter */}
@@ -1540,6 +1578,7 @@ export default function Acquisitions() {
                 vehicle={v}
                 showAge={['wholesale', 'gm', 'admin'].includes(user.role)}
                 showDatePurchased={true}
+                sourceName={sourceOptions.find(s => s.value === v.sourceId)?.label || null}
                 mileage={v.mileage ?? mileageMap[v.id] ?? null}
                 badge={
                   <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
@@ -1633,6 +1672,7 @@ export default function Acquisitions() {
                 variant="list"
                 showAge={['wholesale', 'gm', 'admin'].includes(user.role)}
                 showDatePurchased={true}
+                sourceName={sourceOptions.find(s => s.value === v.sourceId)?.label || null}
                 vehicle={v}
                 mileage={v.mileage ?? mileageMap[v.id] ?? null}
                 badge={
