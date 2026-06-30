@@ -896,9 +896,6 @@ export function DataProvider({ children }) {
     return row;
   };
   const deleteLocation = async (id) => {
-    // Clear FK references before deleting to avoid constraint violations
-    await supabase.from('bids').update({ location_id: null }).eq('location_id', id);
-    await supabase.from('transport').update({ location_id: null }).eq('location_id', id);
     const { error } = await supabase.from('locations').delete().eq('id', id);
     if (error) throw error;
     setLocations(prev => prev.filter(l => l.id !== id));
