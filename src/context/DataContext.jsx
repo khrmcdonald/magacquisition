@@ -92,6 +92,7 @@ function mapTransport(r) {
     vehicleId: r.vehicle_id,
     vehicleName: r.vehicle_name,
     storeId: r.store_id,
+    locationId: r.location_id,
     storeName: r.store_name,
     winningBid: r.winning_bid,
     status: r.status,
@@ -391,13 +392,15 @@ export function DataProvider({ children }) {
             supabase.from('vehicles').update({ status: 'no_sale' }).eq('id', v.id)
           );
         } else {
+          const winnerLoc = locations.find(l => l.id === winner.locationId);
+          const winnerLocName = winnerLoc?.name || '—';
           awardedCount++;
           totalVolume += winner.amount;
           vehicleUpdates.push(
             supabase.from('vehicles').update({
               status: 'awarded',
               winner_id: winner.storeId,
-              winner_name: winner.storeName,
+              winner_name: winnerLocName,
               winning_bid: winner.amount,
               awarded_at: now,
             }).eq('id', v.id)
@@ -408,7 +411,8 @@ export function DataProvider({ children }) {
               vehicleId: v.id,
               vehicleName: `${v.year} ${v.make} ${v.model}`,
               storeId: winner.storeId,
-              storeName: winner.storeName,
+              locationId: winner.locationId,
+              storeName: winnerLocName,
               winningBid: winner.amount,
               status: 'awarded',
               steps: { awarded: now, dispatched: null, inTransit: null, arrived: null, titleReceived: null },
@@ -429,7 +433,8 @@ export function DataProvider({ children }) {
       if (!vehicleBids.length) return { ...v, status: 'no_sale' };
       const winner = [...vehicleBids].sort((a, b) => b.amount - a.amount)[0];
       if (v.floorPrice && winner.amount < parseFloat(v.floorPrice)) return { ...v, status: 'no_sale' };
-      return { ...v, status: 'awarded', winnerId: winner.storeId, winnerName: winner.storeName, winningBid: winner.amount, awardedAt: now };
+      const winnerLoc = locations.find(l => l.id === winner.locationId);
+      return { ...v, status: 'awarded', winnerId: winner.storeId, winnerName: winnerLoc?.name || '—', winningBid: winner.amount, awardedAt: now };
     }));
 
     if (newTransport.length) {
@@ -439,6 +444,7 @@ export function DataProvider({ children }) {
         vehicle_id: t.vehicleId,
         vehicle_name: t.vehicleName,
         store_id: t.storeId,
+        location_id: t.locationId,
         store_name: t.storeName,
         winning_bid: t.winningBid,
         status: t.status,

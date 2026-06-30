@@ -86,7 +86,7 @@ export default function Transport() {
 
   const myTransport = isWholesale || isGM
     ? data.transport
-    : data.transport.filter(t => t.storeId === user.id);
+    : data.transport.filter(t => t.locationId === user.locationId);
 
   const filtered = filter === 'all' ? myTransport
     : filter === 'complete' ? myTransport.filter(t => t.status === 'titleReceived')
