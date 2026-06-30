@@ -225,6 +225,14 @@ export default function Transport() {
                         <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Pickup from</div>
                         <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>{t.notes || 'Address not set'}</span>
                       </div>
+                      {t.scheduledDate && (
+                        <div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Scheduled</div>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>
+                            {new Date(t.scheduledDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      )}
                       <div>
                         <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Leg type</div>
                         <span style={{ background: '#fef3c7', color: '#92400e', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Intake Pickup</span>
@@ -243,6 +251,14 @@ export default function Transport() {
                         <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Winning bid</div>
                         <div style={{ fontSize: 14, fontWeight: 800, color: '#0d2550' }}>${t.winningBid?.toLocaleString() ?? '—'}</div>
                       </div>
+                      {t.scheduledDate && (
+                        <div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Scheduled</div>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>
+                            {new Date(t.scheduledDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      )}
                       <div>
                         <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Leg type</div>
                         <span style={{ background: '#eff6ff', color: '#1e40af', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Auction Delivery</span>

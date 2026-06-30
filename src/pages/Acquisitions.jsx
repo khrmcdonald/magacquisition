@@ -451,18 +451,20 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
     seller_name: '', buyer_id: initial.buyer_id || '', purchase_amount: '',
     lienholder: '', payoff_amount: '', cashiers_check: false,
     title_electronic: false, pickup_address: '',
-    needsTransport: false,
+    needsTransport: false, transportScheduledAt: '',
+    datePurchased: initial.datePurchased || '',
   } : {
     vin: '', year: '', make: '', model: '', trim: '', mileage: '', color: '',
     interior_color: '',
     source_id: '', purchasePrice: '', condition: 'Good', notes: '',
     overheadCosts: '', floorPrice: '', photos: [],
     titleStatus: 'pending', currentLocation: '',
+    datePurchased: '',
     // deal record fields
     seller_name: '', buyer_id: '', purchase_amount: '',
     lienholder: '', payoff_amount: '', cashiers_check: false,
     title_electronic: false, pickup_address: '',
-    needsTransport: false,
+    needsTransport: false, transportScheduledAt: '',
   });
   const [dupVehicle, setDupVehicle] = useState(null);
   const [addingAddress, setAddingAddress] = useState(false);
@@ -645,6 +647,10 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
             <input type="number" value={form.overheadCosts} onChange={e => set('overheadCosts', e.target.value)} placeholder="0" style={{ paddingLeft: 24 }} />
           </div>
         </div>
+        <div className="form-group">
+          <label>Date purchased</label>
+          <input type="date" value={form.datePurchased || ''} onChange={e => set('datePurchased', e.target.value)} />
+        </div>
       </div>
 
       <div className="form-group">
@@ -780,6 +786,11 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
         <YesNoToggle value={form.needsTransport} onChange={v => set('needsTransport', v)} />
       </div>
       {form.needsTransport && (
+        <>
+        <div className="form-group">
+          <label>Scheduled pickup date &amp; time</label>
+          <input type="datetime-local" value={form.transportScheduledAt || ''} onChange={e => set('transportScheduledAt', e.target.value)} />
+        </div>
         <div className="form-group">
           <label>Pickup address</label>
           {addingAddress ? (
@@ -815,6 +826,7 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
             </select>
           )}
         </div>
+        </>
       )}
 
       {/* ── Photos ────────────────────────────────────────────────────────── */}
@@ -1142,7 +1154,7 @@ export default function Acquisitions() {
     const {
       seller_name, buyer_id: formBuyerId, purchase_amount, lienholder, payoff_amount,
       cashiers_check, title_electronic, pickup_address,
-      source_id, needsTransport, vendorNotes,
+      source_id, needsTransport, transportScheduledAt, vendorNotes,
       ...vehicleFields
     } = vehicleData;
 
@@ -1219,6 +1231,7 @@ export default function Acquisitions() {
               winning_bid: null,
               status: 'awarded',
               notes: pickup_address || null,
+              scheduled_date: transportScheduledAt ? new Date(transportScheduledAt).toISOString() : null,
               steps: { awarded: new Date().toISOString() },
             });
             if (tErr) showToast(`Vehicle saved. Transport request failed: ${tErr.message}`, 'info');
@@ -1414,6 +1427,13 @@ export default function Acquisitions() {
       </div>
 
       {/* Status KPI tiles — click to filter */}
+      {statusFilter !== 'all' && (
+        <div style={{ marginBottom: 10 }}>
+          <button onClick={() => setStatusFilter('all')} style={{ background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 20, padding: '4px 14px', fontSize: 12, fontWeight: 700, color: '#374151', cursor: 'pointer' }}>
+            ✕ Clear filter — view all
+          </button>
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, marginBottom: 20 }}>
         {Object.entries(STATUS_LABELS).filter(([key]) => key !== 'no_sale').map(([key, { label, color, accent }]) => {
           const active = statusFilter === key;

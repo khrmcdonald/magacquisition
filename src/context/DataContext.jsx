@@ -60,6 +60,7 @@ function mapVehicle(r) {
     arbitration: r.arbitration,
     buyer_id: r.buyer_id || null,
     buyer_name: r.buyer_name || null,
+    datePurchased: r.date_purchased || null,
   };
 }
 
@@ -99,6 +100,7 @@ function mapTransport(r) {
     status: r.status,
     notes: r.notes,
     steps: r.steps || {},
+    scheduledDate: r.scheduled_date || null,
     createdAt: r.created_at,
   };
 }
@@ -140,6 +142,7 @@ const VEHICLE_FIELD_MAP = {
   color: 'color', vin: 'vin', condition: 'condition',
   purchasePrice: 'purchase_price', overheadCosts: 'overhead_costs',
   floorPrice: 'floor_price', openingBid: 'opening_bid', listPrice: 'list_price',
+  datePurchased: 'date_purchased',
   notes: 'disclosure_notes',     // app uses 'notes', DB column is 'disclosure_notes'
   photos: 'photos',
   currentLocation: 'current_location_id',
