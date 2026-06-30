@@ -1194,10 +1194,8 @@ export default function Acquisitions() {
     const selectedBuyer = buyers.find(b => b.id === formBuyerId);
 
     const saveFields = { ...vehicleFields };
-    if (formBuyerId) {
-      saveFields.buyer_id = formBuyerId;
-      saveFields.buyer_name = selectedBuyer?.name || null;
-    }
+    saveFields.buyer_id = formBuyerId || null;
+    saveFields.buyer_name = formBuyerId ? (selectedBuyer?.name || null) : null;
 
     if (editing) {
       try { await updateVehicle(editing.id, { ...saveFields, status: editing.status }); }
