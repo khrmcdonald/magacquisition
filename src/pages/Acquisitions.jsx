@@ -1114,6 +1114,7 @@ export default function Acquisitions() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [ageFilter, setAgeFilter] = useState('all'); // 'all' | '<30' | '30-60' | '60-90' | '90+'
+  const [sourceFilter, setSourceFilter] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -1151,6 +1152,7 @@ export default function Acquisitions() {
     .filter(v => statusFilter === 'all' || v.status === statusFilter)
     .filter(v => !myBuysOnly || v.buyer_id === user?.id)
     .filter(v => !buyerFilter || v.buyer_id === buyerFilter)
+    .filter(v => !sourceFilter || v.sourceId === sourceFilter)
     .filter(v => {
       if (dateRange === 'all') return true;
       if (!v.datePurchased) return false;
@@ -1514,8 +1516,16 @@ export default function Acquisitions() {
             </select>
           </div>
 
-          {(buyerFilter || dateRange !== 'all' || ageFilter !== 'all') && (
-            <button onClick={() => { setBuyerFilter(''); setDateRange('all'); setDateFrom(''); setDateTo(''); setAgeFilter('all'); }}
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 5 }}>Source</div>
+            <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} style={{ padding: '7px 10px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#374151', background: '#fff', cursor: 'pointer' }}>
+              <option value="">All sources</option>
+              {sourceOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
+
+          {(buyerFilter || sourceFilter || dateRange !== 'all' || ageFilter !== 'all') && (
+            <button onClick={() => { setBuyerFilter(''); setSourceFilter(''); setDateRange('all'); setDateFrom(''); setDateTo(''); setAgeFilter('all'); }}
               style={{ padding: '7px 14px', border: '1px solid #fecaca', borderRadius: 8, background: '#fef2f2', color: '#991b1b', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
               ✕ Clear all filters
             </button>
