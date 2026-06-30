@@ -13,105 +13,168 @@ const ROLE_OPTIONS = [
   { value: 'admin',     label: 'Admin' },
 ];
 
-function InviteUserCard() {
-  const [email, setEmail]   = useState('');
-  const [name, setName]     = useState('');
-  const [role, setRole]     = useState('bidder');
-  const [buyerNumber, setBuyerNumber] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [result, setResult]   = useState(null);
+const ORG_ID = 'bf236d2b-4693-4606-bf3d-ece1767690ab';
 
-  const handleInvite = async (e) => {
+function InviteUserCard() {
+  const { user } = useAuth();
+  const { data } = useData();
+  const [role, setRole] = useState('bidder');
+  const [locationId, setLocationId] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [activeInvites, setActiveInvites] = useState([]);
+
+  // Load active (unused, unexpired) invites
+  const loadInvites = async () => {
+    const { data: rows } = await supabase
+      .from('invite_tokens')
+      .select('*, locations(name)')
+      .eq('org_id', ORG_ID)
+      .is('used_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false });
+    setActiveInvites(rows || []);
+  };
+
+  React.useEffect(() => { loadInvites(); }, []);
+
+  const handleGenerate = async (e) => {
     e.preventDefault();
+    if (role === 'bidder' && !locationId) return;
     setLoading(true);
-    setResult(null);
+    setGeneratedLink('');
     try {
-      const { error } = await supabase.functions.invoke('invite-user', {
-        body: { email: email.trim(), name: name.trim(), role },
-      });
+      const { data: row, error } = await supabase
+        .from('invite_tokens')
+        .insert({
+          org_id: ORG_ID,
+          role,
+          location_id: role === 'bidder' ? locationId : null,
+          created_by: user.id,
+        })
+        .select()
+        .single();
       if (error) throw error;
-      // Set buyer_number on profile if wholesale (profile created by edge function)
-      if (role === 'wholesale' && buyerNumber.trim()) {
-        await supabase.from('profiles').update({ buyer_number: buyerNumber.trim() }).eq('email', email.trim());
-      }
-      setResult({ ok: true, msg: `Invite sent to ${email}` });
-      setEmail(''); setName(''); setRole('bidder'); setBuyerNumber('');
+      const link = `${window.location.origin}/register?token=${row.id}`;
+      setGeneratedLink(link);
+      loadInvites();
     } catch (err) {
-      setResult({ ok: false, msg: err.message || 'Failed to send invite' });
+      alert('Failed to generate invite: ' + err.message);
     }
     setLoading(false);
   };
+
+  const handleCopy = (link) => {
+    navigator.clipboard.writeText(link || generatedLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleRevoke = async (id) => {
+    await supabase.from('invite_tokens').update({ used_at: new Date().toISOString() }).eq('id', id);
+    loadInvites();
+    if (generatedLink.includes(id)) setGeneratedLink('');
+  };
+
+  const ROLE_LABELS = { bidder: 'Retail Store', wholesale: 'Wholesale', gm: 'Group GM', admin: 'Admin' };
 
   return (
     <div className="card" style={{ padding: 0, marginBottom: 24 }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>Invite User</h2>
-        <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>Send an invite email — they set their own password on first login</p>
+        <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>
+          Generate a single-use invite link. The recipient registers with their own name, email, and password.
+        </p>
       </div>
-      <form onSubmit={handleInvite} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>Full Name</div>
-            <input
-              required
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Jane Smith"
-              style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
-            />
-          </div>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>Email</div>
-            <input
-              required
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="jane@dealership.com"
-              style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
-            />
-          </div>
+      <form onSubmit={handleGenerate} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>Role</div>
             <select
               value={role}
-              onChange={e => { setRole(e.target.value); if (e.target.value !== 'wholesale') setBuyerNumber(''); }}
-              style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', background: '#fff', boxSizing: 'border-box' }}
+              onChange={e => { setRole(e.target.value); setLocationId(''); }}
+              style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, background: '#fff', boxSizing: 'border-box' }}
             >
               {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
-          {role === 'wholesale' && (
+          {role === 'bidder' && (
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>Buyer Number <span style={{ color: '#9ca3af', fontWeight: 400 }}>(auction access #)</span></div>
-              <input
-                type="text"
-                value={buyerNumber}
-                onChange={e => setBuyerNumber(e.target.value)}
-                placeholder="e.g. 12345"
-                style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
-              />
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>Store *</div>
+              <select
+                value={locationId}
+                onChange={e => setLocationId(e.target.value)}
+                required
+                style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, background: '#fff', boxSizing: 'border-box' }}
+              >
+                <option value="">Select store…</option>
+                {(data.locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
             </div>
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn-navy"
-            style={{ padding: '10px 24px', fontSize: 14, opacity: loading ? 0.7 : 1 }}
-          >
-            {loading ? 'Sending…' : 'Send Invite'}
+        <div>
+          <button type="submit" disabled={loading || (role === 'bidder' && !locationId)} className="btn-navy" style={{ padding: '9px 22px', fontSize: 13, opacity: loading ? .7 : 1 }}>
+            {loading ? 'Generating…' : 'Generate invite link'}
           </button>
-          {result && (
-            <span style={{ fontSize: 13, fontWeight: 600, color: result.ok ? '#065f46' : '#991b1b' }}>
-              {result.ok ? '✓ ' : '⚠ '}{result.msg}
-            </span>
-          )}
         </div>
+
+        {generatedLink && (
+          <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, padding: '14px 16px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#065f46', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>✓ Invite link ready — expires in 7 days</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                readOnly
+                value={generatedLink}
+                style={{ flex: 1, padding: '8px 12px', border: '1px solid #86efac', borderRadius: 8, fontSize: 12, background: '#fff', color: '#374151', fontFamily: 'monospace' }}
+                onFocus={e => e.target.select()}
+              />
+              <button
+                type="button"
+                onClick={() => handleCopy(generatedLink)}
+                style={{ background: '#065f46', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                {copied ? '✓ Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        )}
       </form>
+
+      {/* Active pending invites */}
+      {activeInvites.length > 0 && (
+        <div style={{ borderTop: '1px solid #e5e7eb', padding: '14px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>Pending invites</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {activeInvites.map(inv => (
+              <div key={inv.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+                <span style={{ background: '#eff6ff', color: '#1e40af', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>
+                  {ROLE_LABELS[inv.role] || inv.role}
+                </span>
+                {inv.locations?.name && <span style={{ fontSize: 12, color: '#6b7280' }}>{inv.locations.name}</span>}
+                <span style={{ fontSize: 11, color: '#9ca3af', flex: 1 }}>
+                  Expires {new Date(inv.expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(`${window.location.origin}/register?token=${inv.id}`)}
+                  style={{ background: '#eff6ff', color: '#1e40af', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Copy link
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRevoke(inv.id)}
+                  style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 13 }}
+                  title="Revoke"
+                >✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { ToastProvider } from './components/Toast';
 import './index.css';
 
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Layout from './components/Layout';
 import AuctionFloor from './pages/AuctionFloor';
 import Acquisitions from './pages/Acquisitions';
@@ -42,6 +43,7 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>
               <Route index element={<HomeRedirect />} />
               <Route path="auction" element={<AuctionFloor />} />

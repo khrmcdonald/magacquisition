@@ -18,9 +18,8 @@ export default function Login() {
     setLoading(true);
     const user = await login(email.trim(), password);
     if (user) {
-      if (user.role === 'wholesale') navigate('/dashboard');
+      if (user.role === 'wholesale' || user.role === 'admin') navigate('/dashboard');
       else if (user.role === 'gm') navigate('/overview');
-      else if (user.role === 'admin') navigate('/admin');
       else navigate('/auction');
     } else {
       setError('Invalid email or password. Please try again.');
@@ -164,7 +163,7 @@ export default function Login() {
                   color: 'rgba(255,255,255,0.4)',
                 }}
               >
-                Powered by MAG Acquisition
+                Powered by McDonald Auto Group
               </div>
             </div>
           </div>
