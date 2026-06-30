@@ -1151,7 +1151,7 @@ export default function Acquisitions() {
     .filter(v => statusFilter === 'all' || v.status === statusFilter)
     .filter(v => !myBuysOnly || v.buyer_id === user?.id)
     .filter(v => !buyerFilter || v.buyer_id === buyerFilter)
-    .filter(v => !sourceFilter || v.source_id === sourceFilter)
+    // sourceFilter wired once source_id is mapped on vehicle objects
     .filter(v => {
       if (dateRange === 'all') return true;
       if (!v.datePurchased) return false;
@@ -1477,18 +1477,9 @@ export default function Acquisitions() {
           </select>
         </div>
 
-        {/* Source */}
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Source</div>
-          <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} style={{ padding: '7px 10px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#374151', background: '#fff', cursor: 'pointer' }}>
-            <option value="">All sources</option>
-            {sources.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
-        </div>
-
         {/* Clear all */}
-        {(buyerFilter || sourceFilter || dateRange !== 'all') && (
-          <button onClick={() => { setBuyerFilter(''); setSourceFilter(''); setDateRange('all'); setDateFrom(''); setDateTo(''); }} style={{ padding: '7px 14px', border: '1px solid #fecaca', borderRadius: 8, background: '#fef2f2', color: '#991b1b', fontSize: 12, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-end', marginBottom: 0 }}>
+        {(buyerFilter || dateRange !== 'all') && (
+          <button onClick={() => { setBuyerFilter(''); setDateRange('all'); setDateFrom(''); setDateTo(''); }} style={{ padding: '7px 14px', border: '1px solid #fecaca', borderRadius: 8, background: '#fef2f2', color: '#991b1b', fontSize: 12, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-end', marginBottom: 0 }}>
             ✕ Clear filters
           </button>
         )}
