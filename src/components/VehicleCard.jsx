@@ -42,12 +42,15 @@ const AGE_STATUSES = new Set(['intake', 'recon', 'ready', 'in_auction']);
 
 export function getAgeFlag(vehicle) {
   if (!AGE_STATUSES.has(vehicle.status)) return null;
-  if (!vehicle.createdAt) return null;
-  const days = Math.floor((Date.now() - new Date(vehicle.createdAt)) / 86400000);
-  if (days >= 60) return { days, label: 'Liquidate', color: '#991b1b', bg: '#fee2e2' };
-  if (days >= 45) return { days, label: 'At Risk',   color: '#92400e', bg: '#fef3c7' };
+  const ref = vehicle.datePurchased
+    ? new Date(vehicle.datePurchased + 'T12:00:00')
+    : vehicle.createdAt ? new Date(vehicle.createdAt) : null;
+  if (!ref) return null;
+  const days = Math.floor((Date.now() - ref) / 86400000);
+  if (days >= 90) return { days, label: 'Liquidate', color: '#991b1b', bg: '#fee2e2' };
+  if (days >= 60) return { days, label: 'At Risk',   color: '#b45309', bg: '#fef3c7' };
   if (days >= 30) return { days, label: 'Aging',     color: '#78350f', bg: '#fef9c3' };
-  return null;
+  return { days, label: null, color: '#6b7280', bg: '#f3f4f6' };
 }
 
 export function AgePill({ vehicle, style }) {
@@ -56,13 +59,13 @@ export function AgePill({ vehicle, style }) {
   return (
     <span style={{
       background: flag.bg, color: flag.color,
-      border: `1px solid ${flag.color}44`,
+      border: `1px solid ${flag.color}33`,
       padding: '2px 9px', borderRadius: 20,
       fontSize: 11, fontWeight: 700,
       display: 'inline-flex', alignItems: 'center', gap: 4,
       ...style,
     }}>
-      ⚠ {flag.label} · {flag.days}d
+      {flag.label ? `⚠ ${flag.label} · ` : ''}{flag.days}d
     </span>
   );
 }
