@@ -494,8 +494,8 @@ export default function Dashboard() {
       <TodaysTasks data={data} navigate={navigate} />
 
       {user.role === 'bidder' && <BidderDashboard user={user} data={data} navigate={navigate} role={user.role} />}
-      {user.role === 'wholesale' && <TriStateDashboard data={data} navigate={navigate} role={user.role} />}
-      {(user.role === 'gm' || user.role === 'admin') && <GMDashboard data={data} navigate={navigate} role={user.role} />}
+      {(user.role === 'wholesale' || user.role === 'admin') && <TriStateDashboard data={data} navigate={navigate} role={user.role} />}
+      {user.role === 'gm' && <GMDashboard data={data} navigate={navigate} role={user.role} />}
     </div>
   );
 }
