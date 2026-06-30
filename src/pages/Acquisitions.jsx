@@ -445,7 +445,7 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
   const [form, setForm] = useState(initial ? {
     ...initial,
     photos: Array.isArray(initial.photos) ? initial.photos : [],
-    source_id: sources.find(s => s.label === initial.source)?.value || '',
+    source_id: initial.sourceId || sources.find(s => s.label === initial.source)?.value || '',
     interior_color: initial.interior_color || '',
     // deal fields default empty on edit
     seller_name: '', buyer_id: initial.buyer_id || '', purchase_amount: '',

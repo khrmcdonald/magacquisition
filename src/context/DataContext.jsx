@@ -144,6 +144,8 @@ const VEHICLE_FIELD_MAP = {
   purchasePrice: 'purchase_price', overheadCosts: 'overhead_costs',
   floorPrice: 'floor_price', openingBid: 'opening_bid', listPrice: 'list_price',
   datePurchased: 'date_purchased',
+  sourceId: 'source_id',
+  source_id: 'source_id',
   notes: 'disclosure_notes',     // app uses 'notes', DB column is 'disclosure_notes'
   photos: 'photos',
   currentLocation: 'current_location_id',
