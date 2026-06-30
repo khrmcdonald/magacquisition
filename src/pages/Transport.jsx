@@ -78,7 +78,7 @@ export default function Transport() {
   const { user } = useAuth();
   const { data, updateTransport, deleteTransport } = useData();
   const [filter, setFilter] = useState('all');
-  const [typeTab, setTypeTab] = useState('deliveries'); // wholesale only: 'deliveries' | 'intake' | 'all'
+  const [typeTab, setTypeTab] = useState('all'); // wholesale only: 'deliveries' | 'intake' | 'all'
   const [notesModal, setNotesModal] = useState(null);
   const [notes, setNotes] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null); // transport id
@@ -135,7 +135,7 @@ export default function Transport() {
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center', flexWrap: 'wrap' }}>
         {isWholesale && (
           <div style={{ display: 'flex', background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: 10, overflow: 'hidden', marginRight: 8 }}>
-            {[['deliveries','🚚 Auction Deliveries'], ['intake','📦 Intake Pickups'], ['all','All']].map(([key, label]) => (
+            {[['all','All'], ['deliveries','Auction'], ['intake','Private']].map(([key, label]) => (
               <button key={key} onClick={() => setTypeTab(key)} style={{
                 padding: '8px 16px', border: 'none', borderRight: key !== 'all' ? '1px solid #e5e7eb' : 'none',
                 cursor: 'pointer', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
