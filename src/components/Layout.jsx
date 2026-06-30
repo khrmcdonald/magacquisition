@@ -77,6 +77,9 @@ export default function Layout() {
   const [orgLogo, setOrgLogo] = useState(() => {
     try { return localStorage.getItem('org_logo') || null; } catch { return null; }
   });
+  const [orgSettings, setOrgSettings] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('org_settings') || '{}'); } catch { return {}; }
+  });
 
   const userMenuRef = useRef(null);
   const notifRef = useRef(null);
@@ -91,9 +94,12 @@ export default function Layout() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Sync logo
+  // Sync logo + org settings from localStorage
   useEffect(() => {
-    const onStorage = () => setOrgLogo(localStorage.getItem('org_logo') || null);
+    const onStorage = () => {
+      setOrgLogo(localStorage.getItem('org_logo') || null);
+      try { setOrgSettings(JSON.parse(localStorage.getItem('org_settings') || '{}')); } catch {}
+    };
     window.addEventListener('storage', onStorage);
     onStorage();
     return () => window.removeEventListener('storage', onStorage);
@@ -326,6 +332,25 @@ export default function Layout() {
             transition: 'width 200ms ease, min-width 200ms ease',
           }}
         >
+
+          {/* Logo / brand area */}
+          <div style={{ padding: '12px 10px', borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, minHeight: 60, overflow: 'hidden' }}>
+            {orgLogo ? (
+              <img src={orgLogo} alt="Dealer logo" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+            ) : (
+              <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 18, opacity: 0.6 }}>🏢</span>
+              </div>
+            )}
+            {showText && (
+              <div style={{ overflow: 'hidden' }}>
+                <div style={{ color: '#fff', fontWeight: 800, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {orgSettings.dealerName || 'The Stockyard'}
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>Dealer Portal</div>
+              </div>
+            )}
+          </div>
 
           {/* Nav sections */}
           <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '8px 0' }}>
