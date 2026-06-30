@@ -125,6 +125,13 @@ function AutoBadge({ vehicle, auctionCloseDate }) {
 //   children:       ReactNode  — extra content below standard fields (grid)
 //                               or operational strip (list)
 //
+const TITLE_STATUS_STYLE = {
+  pending:  { label: 'Title: Pending',  color: '#92400e', bg: '#fef3c7', border: '#fde68a' },
+  received: { label: 'Title: Received', color: '#1e40af', bg: '#dbeafe', border: '#93c5fd' },
+  clear:    { label: 'Title: Clear',    color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' },
+  issue:    { label: '⚠ Title Issue',   color: '#991b1b', bg: '#fee2e2', border: '#fca5a5' },
+};
+
 export function VehicleCard({
   variant = 'grid',
   vehicle,
@@ -138,6 +145,7 @@ export function VehicleCard({
   costBasis,
   showAge = false,
   showDatePurchased = false,
+  showTitleStatus = false,
   sourceName,
   onDetails,
   actionButton,
@@ -228,11 +236,19 @@ export function VehicleCard({
             </div>
           </div>
 
-          {/* Right: price + badge + age + action */}
+          {/* Right: price + badge + age + title status + action */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
             {vehicle.list_price && <div style={{ fontSize: 17, fontWeight: 800, color: '#0d2550' }}>{listPrice}</div>}
             {badgeContent}
             {showAge && <AgePill vehicle={vehicle} />}
+            {showTitleStatus && vehicle.titleStatus && (() => {
+              const ts = TITLE_STATUS_STYLE[vehicle.titleStatus];
+              return ts ? (
+                <span style={{ background: ts.bg, color: ts.color, border: `1px solid ${ts.border}`, borderRadius: 20, padding: '2px 9px', fontSize: 10, fontWeight: 700 }}>
+                  {ts.label}
+                </span>
+              ) : null;
+            })()}
             {actionButton && (
               <div onClick={e => e.stopPropagation()}>{actionButton}</div>
             )}
@@ -367,6 +383,16 @@ export function VehicleCard({
 
         {/* Age flag — wholesale/gm/admin only */}
         {showAge && <AgePill vehicle={vehicle} />}
+
+        {/* Title status */}
+        {showTitleStatus && vehicle.titleStatus && (() => {
+          const ts = TITLE_STATUS_STYLE[vehicle.titleStatus];
+          return ts ? (
+            <span style={{ background: ts.bg, color: ts.color, border: `1px solid ${ts.border}`, borderRadius: 20, padding: '2px 9px', fontSize: 10, fontWeight: 700, display: 'inline-block', marginTop: 2 }}>
+              {ts.label}
+            </span>
+          ) : null;
+        })()}
 
         {/* Disclosure callout */}
         {vehicle.disclosure_notes && (

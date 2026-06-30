@@ -1586,6 +1586,7 @@ export default function Acquisitions() {
                 vehicle={v}
                 showAge={['wholesale', 'gm', 'admin'].includes(user.role)}
                 showDatePurchased={true}
+                showTitleStatus={true}
                 sourceName={sourceOptions.find(s => s.value === v.sourceId)?.label || null}
                 mileage={v.mileage ?? mileageMap[v.id] ?? null}
                 badge={
@@ -1680,6 +1681,7 @@ export default function Acquisitions() {
                 variant="list"
                 showAge={['wholesale', 'gm', 'admin'].includes(user.role)}
                 showDatePurchased={true}
+                showTitleStatus={true}
                 sourceName={sourceOptions.find(s => s.value === v.sourceId)?.label || null}
                 vehicle={v}
                 mileage={v.mileage ?? mileageMap[v.id] ?? null}

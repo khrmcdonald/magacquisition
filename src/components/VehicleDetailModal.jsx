@@ -83,12 +83,13 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
                 {vehicle.condition ? ` · ${vehicle.condition}` : ''}
               </div>
             </div>
-            <button onClick={onClose} style={{ background: 'rgba(255,255,255,.15)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 18, width: 34, height: 34, cursor: 'pointer', lineHeight: '34px', textAlign: 'center' }}>×</button>
+            <button onClick={onClose} style={{ background: 'rgba(255,255,255,.2)', border: '1px solid rgba(255,255,255,.35)', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 700, padding: '6px 14px', cursor: 'pointer', whiteSpace: 'nowrap' }}>✕ Close</button>
           </div>
           <div style={{ display: 'flex', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
             {[
               { label: 'Status', value: STATUS_LABELS[vehicle.status] || vehicle.status },
               !isBidder && vehicle.buyer_name ? { label: 'Buyer', value: vehicle.buyer_name } : null,
+              vehicle.titleStatus ? { label: 'Title', value: vehicle.titleStatus === 'issue' ? '⚠ Issue' : vehicle.titleStatus.charAt(0).toUpperCase() + vehicle.titleStatus.slice(1) } : null,
             ].filter(Boolean).map(({ label, value }) => (
               <div key={label} style={{ background: 'rgba(255,255,255,.1)', borderRadius: 8, padding: '5px 12px', minWidth: 80 }}>
                 <div style={{ fontSize: 9, fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</div>

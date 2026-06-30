@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/Toast';
+import VehicleDetailModal from '../components/VehicleDetailModal';
 
 const STATUS = {
   pending:  { label: 'Pending',  color: '#92400e', bg: '#fef3c7', border: '#fde68a' },
@@ -32,6 +33,7 @@ export default function Titles() {
   const [issueModal, setIssueModal] = useState(null); // vehicle
   const [issueNote, setIssueNote] = useState('');
   const [saving, setSaving] = useState(null);
+  const [detailVehicle, setDetailVehicle] = useState(null);
 
   // Which vehicles to show
   const vehicles = (data.vehicles || []).filter(v => {
@@ -51,10 +53,12 @@ export default function Titles() {
     if (!next) return;
     setSaving(v.id);
     const { error } = await supabase.from('vehicles').update({ title_status: next }).eq('id', v.id);
-    if (error) { showToast(`Failed: ${error.message}`, 'error'); }
-    else {
+    if (error) {
+      showToast(`Failed: ${error.message}`, 'error');
+    } else {
       setVehicles(prev => prev.map(vv => vv.id === v.id ? { ...vv, titleStatus: next } : vv));
       showToast(`Title marked ${STATUS[next].label.toLowerCase()}`, 'success');
+      if (next === 'clear') setStatusFilter('clear');
     }
     setSaving(null);
   };
@@ -65,8 +69,9 @@ export default function Titles() {
     const { error } = await supabase.from('vehicles')
       .update({ title_status: 'issue', title_notes: issueNote.trim() })
       .eq('id', issueModal.id);
-    if (error) { showToast('Failed to flag issue', 'error'); }
-    else {
+    if (error) {
+      showToast(`Failed: ${error.message}`, 'error');
+    } else {
       setVehicles(prev => prev.map(vv => vv.id === issueModal.id ? { ...vv, titleStatus: 'issue', titleNotes: issueNote.trim() } : vv));
       showToast('Issue flagged', 'success');
       setIssueModal(null);
@@ -80,8 +85,9 @@ export default function Titles() {
     const { error } = await supabase.from('vehicles')
       .update({ title_status: 'received', title_notes: null })
       .eq('id', v.id);
-    if (error) { showToast('Failed to resolve issue', 'error'); }
-    else {
+    if (error) {
+      showToast(`Failed: ${error.message}`, 'error');
+    } else {
       setVehicles(prev => prev.map(vv => vv.id === v.id ? { ...vv, titleStatus: 'received', titleNotes: null } : vv));
       showToast('Issue resolved — title marked Received', 'success');
     }
@@ -175,7 +181,12 @@ export default function Titles() {
                 {/* Vehicle info */}
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>
+                    <span
+                      onClick={() => setDetailVehicle(v)}
+                      style={{ fontSize: 15, fontWeight: 700, color: '#0d2550', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'transparent' }}
+                      onMouseEnter={e => e.currentTarget.style.textDecorationColor = '#0d2550'}
+                      onMouseLeave={e => e.currentTarget.style.textDecorationColor = 'transparent'}
+                    >
                       {v.year} {v.make} {v.model}{v.trim ? ` ${v.trim}` : ''}
                     </span>
                     <span style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}`, borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>
@@ -255,6 +266,11 @@ export default function Titles() {
             );
           })}
         </div>
+      )}
+
+      {/* Vehicle detail modal */}
+      {detailVehicle && (
+        <VehicleDetailModal vehicle={detailVehicle} onClose={() => setDetailVehicle(null)} />
       )}
 
       {/* Issue modal */}
