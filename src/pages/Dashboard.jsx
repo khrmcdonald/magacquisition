@@ -225,74 +225,65 @@ const TRANSPORT_STATUS_LABEL = {
   dispatched: { label: 'Dispatched',       color: '#1e40af', bg: '#dbeafe' },
   inTransit:  { label: 'In Transit',       color: '#0369a1', bg: '#e0f2fe' },
 };
-const TITLE_TRACKER_LABEL = {
-  pending:         'Pending',
-  awaiting_pickup: 'Awaiting Pickup',
-  in_hand:         'In Hand',
-  sent:            'Sent to Store',
-  delivered:       'Delivered',
+const TITLE_STATUS_LABEL = {
+  pending:  { label: 'Pending',  color: '#92400e', bg: '#fef3c7' },
+  received: { label: 'Received', color: '#1e40af', bg: '#dbeafe' },
+  issue:    { label: 'Issue',    color: '#991b1b', bg: '#fee2e2' },
 };
 
-// ── TODAY'S WORK ──
+// ── NEEDS ATTENTION ──
 function TodaysTasks({ data, navigate }) {
   const ros = data.repairOrders || [];
   const transport = data.transport || [];
   const vehicles = data.vehicles || [];
 
-  const STATUS_BADGE = {
-    draft:            { label: 'Pending',     color: '#92400e', bg: '#fef3c7' },
-    pending:          { label: 'Pending',     color: '#92400e', bg: '#fef3c7' },
-    pending_approval: { label: 'Approval',    color: '#1e40af', bg: '#dbeafe' },
-    in_progress:      { label: 'In Progress', color: '#065f46', bg: '#d1fae5' },
-  };
-
   const repairItems = ros
     .filter(r => ['draft','pending','pending_approval','in_progress'].includes(r.status))
     .map(r => {
       const v = vehicles.find(vv => vv.id === r.vehicleId);
-      const desc = r.lines?.[0]?.description || r.notes || null;
-      return { primary: v ? `${v.year} ${v.make} ${v.model}` : 'Unknown vehicle', secondary: desc, badge: STATUS_BADGE[r.status] || null };
+      const badge = { draft: 'Pending', pending: 'Pending', pending_approval: 'Approval', in_progress: 'In Progress' }[r.status];
+      const badgeColor = r.status === 'pending_approval' ? { color: '#1e40af', bg: '#dbeafe' } : r.status === 'in_progress' ? { color: '#065f46', bg: '#d1fae5' } : { color: '#92400e', bg: '#fef3c7' };
+      return { id: r.id, primary: v ? `${v.year} ${v.make} ${v.model}` : 'Unknown', secondary: r.lines?.[0]?.description || null, badge, badgeColor, route: '/repairs' };
     });
 
   const transportItems = transport
-    .filter(t => !['arrived','titleReceived'].includes(t.status))
+    .filter(t => !['arrived','titleReceived'].includes(t.status) && t.storeName !== 'Intake')
     .map(t => {
-      const st = TRANSPORT_STATUS_LABEL[t.status];
-      return { primary: t.vehicleName || 'Unknown vehicle', secondary: t.storeName ? `→ ${t.storeName}` : null, badge: st || null };
+      const st = TRANSPORT_STATUS_LABEL[t.status] || { label: 'Pending', color: '#92400e', bg: '#fef3c7' };
+      return { id: t.id, primary: t.vehicleName || 'Unknown', secondary: t.storeName ? `→ ${t.storeName}` : null, badge: st.label, badgeColor: st, route: '/transport' };
     });
 
+  const intakeItems = transport
+    .filter(t => t.storeName === 'Intake' && !['arrived','titleReceived'].includes(t.status))
+    .map(t => ({ id: t.id, primary: t.vehicleName || 'Unknown', secondary: t.notes || 'Pickup pending', badge: 'Intake pickup', badgeColor: { color: '#92400e', bg: '#fef3c7' }, route: '/transport' }));
+
   const titleItems = vehicles
-    .filter(v => {
-      const ts = v.title_tracker?.status;
-      return ['pending','awaiting_pickup','in_hand'].includes(ts)
-        || (!ts && ['pending','lien','missing','in_transit'].includes(v.titleStatus));
+    .filter(v => ['pending','received','issue'].includes(v.titleStatus))
+    .sort((a, b) => {
+      const da = a.datePurchased ? new Date(a.datePurchased + 'T12:00:00') : new Date(a.createdAt);
+      const db = b.datePurchased ? new Date(b.datePurchased + 'T12:00:00') : new Date(b.createdAt);
+      return da - db;
     })
     .map(v => {
-      const ts = v.title_tracker?.status;
-      const statusLabel = ts ? TITLE_TRACKER_LABEL[ts] : v.titleStatus;
-      return {
-        primary: `${v.year} ${v.make} ${v.model}`,
-        secondary: null,
-        badge: ts ? { label: statusLabel, color: '#6d28d9', bg: '#ede9fe' } : { label: statusLabel || 'Unknown', color: '#92400e', bg: '#fef3c7' },
-      };
+      const st = TITLE_STATUS_LABEL[v.titleStatus] || TITLE_STATUS_LABEL.pending;
+      const days = v.datePurchased ? Math.floor((Date.now() - new Date(v.datePurchased + 'T12:00:00')) / 86400000) : null;
+      const dest = v.status === 'awarded' ? `→ ${v.winnerName}` : null;
+      return { id: v.id, primary: `${v.year} ${v.make} ${v.model}`, secondary: dest || (days !== null ? `${days}d waiting` : null), badge: v.titleStatus === 'issue' ? '⚠ Issue' : st.label, badgeColor: st, route: '/titles' };
     });
 
   const inspectionItems = vehicles
     .filter(v => v.status === 'inspection' && v.inspection?.status !== 'complete')
-    .map(v => ({
-      primary: `${v.year} ${v.make} ${v.model}`,
-      secondary: v.acquisitionSource || null,
-      badge: { label: 'Pending', color: '#92400e', bg: '#fef3c7' },
-    }));
+    .map(v => ({ id: v.id, primary: `${v.year} ${v.make} ${v.model}`, secondary: null, badge: 'Pending', badgeColor: { color: '#92400e', bg: '#fef3c7' }, route: '/acquisitions' }));
 
-  const sections = [
-    { key: 'inspection', title: 'Inspection', accent: '#f59e0b', items: inspectionItems, route: '/acquisitions' },
-    { key: 'repairs',    title: 'Repairs',    accent: '#3b82f6', items: repairItems,     route: '/repairs' },
-    { key: 'transport',  title: 'Transport',  accent: '#e8b84b', items: transportItems,  route: '/transport' },
-    { key: 'titles',     title: 'Titles',     accent: '#8b5cf6', items: titleItems,      route: '/acquisitions' },
-  ].filter(s => s.items.length > 0);
+  const CARDS = [
+    { key: 'titles',     label: 'Titles',          accent: '#8b5cf6', emoji: '📄', items: titleItems,      route: '/titles' },
+    { key: 'transport',  label: 'Deliveries',       accent: '#e8b84b', emoji: '🚚', items: transportItems,  route: '/transport' },
+    { key: 'intake',     label: 'Intake pickups',   accent: '#f59e0b', emoji: '📦', items: intakeItems,     route: '/transport' },
+    { key: 'repairs',    label: 'Repairs',          accent: '#3b82f6', emoji: '🔧', items: repairItems,     route: '/repairs' },
+    { key: 'inspection', label: 'Inspection',       accent: '#10b981', emoji: '🔍', items: inspectionItems, route: '/acquisitions' },
+  ].filter(c => c.items.length > 0);
 
-  if (!sections.length) return (
+  if (!CARDS.length) return (
     <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '14px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
       <span style={{ fontSize: 16 }}>✓</span>
       <span style={{ fontSize: 13, fontWeight: 600, color: '#065f46' }}>All caught up — nothing needs attention right now.</span>
@@ -300,43 +291,47 @@ function TodaysTasks({ data, navigate }) {
   );
 
   return (
-    <div style={{ marginBottom: 24 }}>
-      <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 12 }}>Needs Attention</div>
-      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
-        {sections.map((section, si) => (
-          <div key={section.key} style={{ borderTop: si > 0 ? '1px solid #e5e7eb' : 'none' }}>
-            {/* Section heading */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
+    <div style={{ marginBottom: 28 }}>
+      <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 14 }}>Needs Attention</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+        {CARDS.map(card => (
+          <div key={card.key} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            {/* Card header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #f3f4f6' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 3, height: 13, borderRadius: 2, background: section.accent, flexShrink: 0 }} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{section.title}</span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: section.accent, background: section.accent + '18', borderRadius: 10, padding: '1px 7px' }}>{section.items.length}</span>
+                <div style={{ width: 3, height: 14, borderRadius: 2, background: card.accent, flexShrink: 0 }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{card.label}</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: card.accent, background: card.accent + '18', borderRadius: 10, padding: '1px 8px', minWidth: 18, textAlign: 'center' }}>
+                  {card.items.length}
+                </span>
               </div>
-              <button onClick={() => navigate(section.route)} style={{ background: 'none', border: 'none', fontSize: 12, color: '#9ca3af', cursor: 'pointer', fontWeight: 600, padding: 0 }}>
+              <button onClick={() => navigate(card.route)} style={{ background: 'none', border: 'none', fontSize: 12, color: '#9ca3af', cursor: 'pointer', fontWeight: 600, padding: 0, whiteSpace: 'nowrap' }}>
                 View all →
               </button>
             </div>
-            {/* Items */}
-            {section.items.map((item, i) => (
-              <div key={i} onClick={() => navigate(section.route)} style={{
-                padding: '10px 16px',
-                borderTop: i > 0 ? '1px solid #f3f4f6' : 'none',
-                cursor: 'pointer', transition: 'background 0.1s',
-              }}
-                onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
-                onMouseLeave={e => e.currentTarget.style.background = ''}
-              >
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{item.primary}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                  {item.badge && (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: item.badge.color, background: item.badge.bg, padding: '2px 8px', borderRadius: 20 }}>
-                      {item.badge.label}
+            {/* Top 4 items */}
+            <div style={{ flex: 1 }}>
+              {card.items.slice(0, 4).map((item, i) => (
+                <div key={item.id || i} onClick={() => navigate(card.route)}
+                  style={{ padding: '10px 16px', borderTop: i > 0 ? '1px solid #f9fafb' : 'none', cursor: 'pointer', transition: 'background .1s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
+                  onMouseLeave={e => e.currentTarget.style.background = ''}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', marginBottom: 3 }}>{item.primary}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: item.badgeColor.color, background: item.badgeColor.bg, padding: '2px 8px', borderRadius: 20 }}>
+                      {item.badge}
                     </span>
-                  )}
-                  {item.secondary && <span style={{ fontSize: 11, color: '#9ca3af' }}>{item.secondary}</span>}
+                    {item.secondary && <span style={{ fontSize: 11, color: '#9ca3af' }}>{item.secondary}</span>}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+              {card.items.length > 4 && (
+                <div onClick={() => navigate(card.route)} style={{ padding: '8px 16px', fontSize: 12, color: '#9ca3af', fontWeight: 600, cursor: 'pointer', borderTop: '1px solid #f3f4f6', textAlign: 'center' }}>
+                  +{card.items.length - 4} more
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -352,7 +347,7 @@ function TriStateDashboard({ data, navigate, role }) {
   const live = data.vehicles.filter(v => v.status === 'in_auction').length;
   const awarded = data.vehicles.filter(v => v.status === 'awarded').length;
   const openArbitrations = data.vehicles.filter(v => v.arbitration?.status === 'open');
-  const pendingTitles = data.vehicles.filter(v => ['pending','in_transit','lien','missing'].includes(v.titleStatus));
+  const pendingTitles = data.vehicles.filter(v => ['pending','received','issue'].includes(v.titleStatus));
   const totalVolume = data.vehicles.filter(v => v.status === 'awarded').reduce((s, v) => s + (v.winningBid || 0), 0);
   const recentVehicles = [...data.vehicles].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
 

@@ -17,7 +17,6 @@ const STRIP_FIELDS = new Set([
   'reconCosts', 'recon_costs',
   'reconItems', 'recon_items', 'reconNotes', 'recon_notes',
   'vendorNotes', 'vendor_notes',
-  'titleNotes', 'title_notes',
   'mileage',                // no column in vehicles table — lives in mileage_log
   'source',                 // lives in deal_records table
   'storeId', 'store_id',
@@ -46,7 +45,8 @@ function mapVehicle(r) {
     notes: r.disclosure_notes,
     photos: Array.isArray(r.photos) ? r.photos : [],
     currentLocation: r.current_location_id,
-    titleStatus: r.title_status,
+    titleStatus: r.title_status || 'pending',
+    titleNotes: r.title_notes || null,
     titleElectronic: r.title_electronic,
     title_tracker: r.title_tracker || null,
     inspection: r.inspection || null,
@@ -150,7 +150,7 @@ const VEHICLE_FIELD_MAP = {
   photos: 'photos',
   currentLocation: 'current_location_id',
   titleStatus: 'title_status', titleElectronic: 'title_electronic',
-  title_tracker: 'title_tracker',
+  titleNotes: 'title_notes',
   inspection: 'inspection',
   canListBeforeTitle: 'can_list_before_title',
   winnerId: 'winner_id', winnerName: 'winner_name', winningBid: 'winning_bid',
@@ -897,7 +897,7 @@ export function DataProvider({ children }) {
       setAuction, openAuction, closeAuction,
       addAuction, updateAuction,
       // Vehicles
-      addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, getMileage, logMileage,
+      addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, getMileage, logMileage, setVehicles,
       // Bids
       placeBid, addBid,
       getHighBid, getMyBid, getAllBidsForVehicle,

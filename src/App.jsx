@@ -22,6 +22,7 @@ import Leaderboard from './pages/Leaderboard';
 import Export from './pages/Export';
 import Inventory from './pages/Inventory';
 import Help from './pages/Help';
+import Titles from './pages/Titles';
 
 function RequireAuth({ children }) {
   const { user } = useAuth();
@@ -50,6 +51,7 @@ export default function App() {
               <Route path="acquisitions" element={<Acquisitions />} />
               <Route path="manage" element={<AuctionManage />} />
               <Route path="transport" element={<Transport />} />
+              <Route path="titles" element={<Titles />} />
               <Route path="repairs" element={<Repairs />} />
               <Route path="overview" element={<GMOverview />} />
               <Route path="wins" element={<MyWins />} />
