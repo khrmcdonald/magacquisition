@@ -74,12 +74,8 @@ export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [orgLogo, setOrgLogo] = useState(() => {
-    try { return localStorage.getItem('org_logo') || null; } catch { return null; }
-  });
-  const [orgSettings, setOrgSettings] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('org_settings') || '{}'); } catch { return {}; }
-  });
+  const orgLogo = data.orgSettings?.logoUrl || null;
+  const orgSettings = data.orgSettings || {};
 
   const userMenuRef = useRef(null);
   const notifRef = useRef(null);
@@ -94,16 +90,6 @@ export default function Layout() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Sync logo + org settings from localStorage
-  useEffect(() => {
-    const onStorage = () => {
-      setOrgLogo(localStorage.getItem('org_logo') || null);
-      try { setOrgSettings(JSON.parse(localStorage.getItem('org_settings') || '{}')); } catch {}
-    };
-    window.addEventListener('storage', onStorage);
-    onStorage();
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
 
   // Close sidebar on route change
   useEffect(() => {

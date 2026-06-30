@@ -179,10 +179,6 @@ function InviteUserCard() {
   );
 }
 
-// ── Org Settings helpers ──────────────────────────────────────────────────────
-function readOrgSettings() {
-  try { return JSON.parse(localStorage.getItem('org_settings') || '{}'); } catch { return {}; }
-}
 
 function TeamMembersCard({ profiles, onUpdateBuyerNumber, roleLabel, roleBadge }) {
   const { showToast } = useToast();
@@ -252,7 +248,7 @@ function TeamMembersCard({ profiles, onUpdateBuyerNumber, roleLabel, roleBadge }
 
 export default function Admin() {
   const { user } = useAuth();
-  const { data, updateStorePhoto, addAcquisitionSource, deleteAcquisitionSource, addLocation, deleteLocation, updateBuyerNumber } = useData();
+  const { data, updateStorePhoto, addAcquisitionSource, deleteAcquisitionSource, addLocation, deleteLocation, updateBuyerNumber, saveOrgSettings } = useData();
   const { showToast } = useToast();
   const fileRefs = useRef({});
   const logoRef = useRef(null);
@@ -301,14 +297,19 @@ export default function Admin() {
     catch (err) { showToast('Failed to remove: ' + err.message, 'error'); }
   };
 
-  // Org settings state
+  // Org settings state — sourced from Supabase via DataContext
   const [activeTab, setActiveTab] = useState('org');
-  const [orgSettings, setOrgSettings] = useState(() => readOrgSettings());
-  const [orgLogo, setOrgLogo] = useState(() => {
-    try { return localStorage.getItem('org_logo') || null; } catch { return null; }
-  });
+  const [orgSettings, setOrgSettings] = useState(data.orgSettings || {});
   const [orgSaved, setOrgSaved] = useState(false);
 
+  // Sync if DataContext loads after mount
+  React.useEffect(() => {
+    if (data.orgSettings && Object.keys(data.orgSettings).length > 0) {
+      setOrgSettings(data.orgSettings);
+    }
+  }, [data.orgSettings]);
+
+  const orgLogo = orgSettings.logoUrl || null;
   const setOrgField = (field, val) => setOrgSettings(prev => ({ ...prev, [field]: val }));
 
   const handleLogoUpload = (file) => {
@@ -325,10 +326,8 @@ export default function Admin() {
           size, size, 0, 0, 200, 200
         );
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        setOrgLogo(dataUrl);
-        localStorage.setItem('org_logo', dataUrl);
-        // Trigger storage event for Layout.jsx to pick up
-        window.dispatchEvent(new Event('storage'));
+        setOrgSettings(prev => ({ ...prev, logoUrl: dataUrl }));
+        saveOrgSettings({ ...orgSettings, logoUrl: dataUrl }).catch(e => showToast('Logo save failed: ' + e.message, 'error'));
       };
       img.src = ev.target.result;
     };
@@ -336,15 +335,19 @@ export default function Admin() {
   };
 
   const handleRemoveLogo = () => {
-    setOrgLogo(null);
-    localStorage.removeItem('org_logo');
-    window.dispatchEvent(new Event('storage'));
+    const updated = { ...orgSettings, logoUrl: null };
+    setOrgSettings(updated);
+    saveOrgSettings(updated).catch(e => showToast('Failed: ' + e.message, 'error'));
   };
 
-  const handleSaveOrgSettings = () => {
-    localStorage.setItem('org_settings', JSON.stringify(orgSettings));
-    setOrgSaved(true);
-    setTimeout(() => setOrgSaved(false), 2500);
+  const handleSaveOrgSettings = async () => {
+    try {
+      await saveOrgSettings(orgSettings);
+      setOrgSaved(true);
+      setTimeout(() => setOrgSaved(false), 2500);
+    } catch (e) {
+      showToast('Failed to save: ' + e.message, 'error');
+    }
   };
 
   if (user.role !== 'admin') return <Navigate to="/" replace />;

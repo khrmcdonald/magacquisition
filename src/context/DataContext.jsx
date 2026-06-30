@@ -187,12 +187,13 @@ export function DataProvider({ children }) {
   const [pickupAddresses, setPickupAddresses] = useState([]);
   const [badges, setBadges] = useState({});
   const [storePhotos, setStorePhotos] = useState({});
+  const [orgSettings, setOrgSettings] = useState({});
   const [fetchError, setFetchError] = useState(null);
 
   // ── Initial data fetch ───────────────────────────────────────────────────
   useEffect(() => {
     async function fetchAll() {
-      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes, repairOrdersRes, repairVendorsRes, buyersRes, inspectorsRes, pickupAddressesRes, mileageRes] = await Promise.all([
+      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes, repairOrdersRes, repairVendorsRes, buyersRes, inspectorsRes, pickupAddressesRes, mileageRes, orgSettingsRes] = await Promise.all([
         supabase.from('vehicles').select('*').eq('org_id', ORG_ID),
         supabase.from('auctions').select('*').eq('org_id', ORG_ID),
         supabase.from('bids').select('*'),
@@ -205,6 +206,7 @@ export function DataProvider({ children }) {
         supabase.from('inspectors').select('*').eq('org_id', ORG_ID).eq('active', true).order('name'),
         supabase.from('pickup_addresses').select('*').eq('org_id', ORG_ID).eq('active', true).order('address'),
         supabase.from('mileage_log').select('vehicle_id, reading, logged_at').eq('org_id', ORG_ID).order('logged_at', { ascending: false }),
+        supabase.from('org_settings').select('data').eq('org_id', ORG_ID).maybeSingle(),
       ]);
       if (vehiclesRes.error) {
         setFetchError('Could not load vehicle data. Check your connection and refresh the page.');
@@ -239,6 +241,7 @@ export function DataProvider({ children }) {
       if (repairVendorsRes.data) setRepairVendors(repairVendorsRes.data.map(mapRepairVendor));
       if (inspectorsRes.data)      setInspectors(inspectorsRes.data);
       if (pickupAddressesRes.data) setPickupAddresses(pickupAddressesRes.data);
+      if (orgSettingsRes.data?.data) setOrgSettings(orgSettingsRes.data.data);
       setLoading(false);
     }
     fetchAll();
@@ -346,6 +349,7 @@ export function DataProvider({ children }) {
     profiles,
     inspectors,
     pickupAddresses,
+    orgSettings,
   };
 
   // ── Auction mutations ─────────────────────────────────────────────────────
@@ -878,6 +882,13 @@ export function DataProvider({ children }) {
     setProfiles(prev => prev.map(updated));
   };
 
+  const saveOrgSettings = async (settings) => {
+    const { error } = await supabase.from('org_settings')
+      .upsert({ org_id: ORG_ID, data: settings, updated_at: new Date().toISOString() }, { onConflict: 'org_id' });
+    if (error) throw error;
+    setOrgSettings(settings);
+  };
+
   const addLocation = async (name) => {
     const { data: row, error } = await supabase.from('locations').insert({ org_id: ORG_ID, name: name.trim() }).select().single();
     if (error) throw error;
@@ -922,6 +933,7 @@ export function DataProvider({ children }) {
       addAcquisitionSource, deleteAcquisitionSource,
       addLocation, deleteLocation,
       updateBuyerNumber,
+      saveOrgSettings,
     }}>
       {children}
     </DataContext.Provider>
