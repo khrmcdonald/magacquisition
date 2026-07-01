@@ -1208,7 +1208,7 @@ export default function Acquisitions() {
     } else {
       let newVehicle;
       try {
-        newVehicle = await addVehicle({ ...saveFields, status: 'intake' });
+        newVehicle = await addVehicle({ ...saveFields, source_id, status: 'intake' });
       } catch (err) {
         showToast(`Vehicle insert failed: ${fmtErr(err)}`, 'error');
         setSaveError(`Vehicle insert failed: ${fmtErr(err)}`);

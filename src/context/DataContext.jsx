@@ -502,6 +502,8 @@ export function DataProvider({ children }) {
       floor_price:         vehicle.floorPrice       ? parseFloat(vehicle.floorPrice)     : null,
       list_price:          vehicle.listPrice        ? parseFloat(vehicle.listPrice)      : null,
       title_status:        vehicle.titleStatus      || null,
+      date_purchased:      vehicle.datePurchased    || null,
+      source_id:           vehicle.sourceId || vehicle.source_id || null,
       buyer_id:            vehicle.buyer_id         || null,
       buyer_name:          vehicle.buyer_name       || null,
       disclosure_notes:    vehicle.notes            || null,
