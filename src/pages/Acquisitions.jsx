@@ -1617,10 +1617,12 @@ export default function Acquisitions() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       {/* Stage advancement */}
                       {(v.status === 'intake' || v.status === 'no_sale') && (
-                        <div style={{ display: 'flex', gap: 5 }}>
-                          <button onClick={() => handleStatusChange(v, 'inspection')} style={{ flex: 1, background: '#fef3c7', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>→ Inspect</button>
-                          <button onClick={() => handleStatusChange(v, 'recon')} style={{ flex: 1, background: '#fffbeb', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>→ Recon</button>
-                          <button onClick={() => handleStatusChange(v, 'ready')} style={{ flex: 1, background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>→ Ready</button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <button onClick={() => handleStatusChange(v, 'inspection')} style={{ width: '100%', background: '#fef3c7', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '8px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>→ Inspect</button>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <button onClick={() => handleStatusChange(v, 'recon')} style={{ flex: 1, background: '#f9fafb', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 7, padding: '5px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Skip → Recon</button>
+                            <button onClick={() => handleStatusChange(v, 'ready')} style={{ flex: 1, background: '#f9fafb', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 7, padding: '5px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Skip → Ready</button>
+                          </div>
                         </div>
                       )}
                       {v.status === 'inspection' && (
@@ -1630,36 +1632,38 @@ export default function Acquisitions() {
                         </div>
                       )}
                       {v.status === 'recon' && (
-                        <button onClick={() => handleStatusChange(v, 'ready')} style={{ width: '100%', background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✓ Mark Ready</button>
+                        <button onClick={() => handleStatusChange(v, 'ready')} style={{ width: '100%', background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '8px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>✓ Mark Ready</button>
                       )}
                       {/* Other actions row */}
-                      <div style={{ display: 'flex', gap: 6 }}>
+                      <div style={{ display: 'flex', gap: 5 }}>
                         {v.status === 'ready' && data.auction.isOpen && (
                           <button onClick={() => handleList(v)} style={{ flex: 1, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>List now</button>
                         )}
                         {v.status === 'in_auction' && (
                           <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { showToast('Failed to remove: ' + err.message, 'error'); } }} style={{ flex: 1, background: '#fef3c7', color: '#92400e', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
                         )}
-                        <button onClick={() => setDetailModal(v)} style={{ ...iconBtn, background: '#eff6ff', border: '1px solid #bfdbfe' }} data-tooltip="Details">🔍</button>
-                        <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} style={iconBtn} data-tooltip="Edit">✏️</button>
+                        <button onClick={() => setDetailModal(v)} style={{ ...iconBtn }} title="Details">🔍</button>
+                        <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} style={{ ...iconBtn }} title="Edit">✏️</button>
                         {['intake', 'inspection', 'recon', 'ready', 'no_sale'].includes(v.status) && (
-                          <button onClick={() => setRepairModal(v)} style={iconBtn} data-tooltip="Repairs">🔧</button>
+                          <button onClick={() => setRepairModal(v)} style={{ ...iconBtn }} title="Repairs">🔧</button>
                         )}
-                        <button onClick={() => handlePrintBuySheet(v)} style={iconBtn} data-tooltip="Buy sheet">🧾</button>
-                        <button onClick={() => setConfirmDelete(v)} style={{ ...iconBtn, background: '#FEF2F2', border: '1px solid #FECACA' }} data-tooltip="Delete">🗑️</button>
+                        <button onClick={() => handlePrintBuySheet(v)} style={{ ...iconBtn }} title="Buy sheet">🧾</button>
+                        <button onClick={() => setConfirmDelete(v)} style={{ ...iconBtn, background: '#FEF2F2', border: '1px solid #FECACA' }} title="Delete">🗑️</button>
                       </div>
                     </div>
                   ) : null
                 }
               >
-                {/* Financials — accounting ledger */}
+                {/* Financials — 2×2 grid */}
                 {(v.purchasePrice || v.floorPrice || v.totalCost) && (
-                  <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 8, marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    {v.purchasePrice && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Purchase</span><span style={{ fontSize: 12, fontWeight: 700 }}>${parseFloat(v.purchasePrice).toLocaleString()}</span></div>}
-                    {v.totalRepairCosts > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Recon</span><span style={{ fontSize: 12, fontWeight: 700, color: '#92400e' }}>${parseFloat(v.totalRepairCosts).toLocaleString()}</span></div>}
-                    {v.totalCost && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Total cost</span><span style={{ fontSize: 12, fontWeight: 700, color: '#0d2550' }}>${parseFloat(v.totalCost).toLocaleString()}</span></div>}
-                    {v.floorPrice && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Floor</span><span style={{ fontSize: 12, fontWeight: 700 }}>${parseFloat(v.floorPrice).toLocaleString()}</span></div>}
-                    {margin !== null && <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: 3, marginTop: 1 }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Margin</span><span style={{ fontSize: 12, fontWeight: 700, color: margin >= 0 ? '#065f46' : '#991b1b' }}>${margin.toLocaleString()}</span></div>}
+                  <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 8, marginTop: 4 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
+                      {v.purchasePrice && <div><span style={{ fontSize: 10, color: '#9ca3af', display: 'block' }}>Purchase</span><span style={{ fontSize: 12, fontWeight: 700 }}>${parseFloat(v.purchasePrice).toLocaleString()}</span></div>}
+                      {v.totalCost && <div><span style={{ fontSize: 10, color: '#9ca3af', display: 'block' }}>Total Cost</span><span style={{ fontSize: 12, fontWeight: 700, color: '#0d2550' }}>${parseFloat(v.totalCost).toLocaleString()}</span></div>}
+                      {v.floorPrice && <div style={{ marginTop: 4 }}><span style={{ fontSize: 10, color: '#9ca3af', display: 'block' }}>Floor</span><span style={{ fontSize: 12, fontWeight: 700 }}>${parseFloat(v.floorPrice).toLocaleString()}</span></div>}
+                      {margin !== null && <div style={{ marginTop: 4 }}><span style={{ fontSize: 10, color: '#9ca3af', display: 'block' }}>Margin</span><span style={{ fontSize: 12, fontWeight: 700, color: margin >= 0 ? '#065f46' : '#991b1b' }}>${margin.toLocaleString()}</span></div>}
+                    </div>
+                    {v.totalRepairCosts > 0 && <div style={{ marginTop: 4, display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 10, color: '#9ca3af' }}>Recon</span><span style={{ fontSize: 12, fontWeight: 700, color: '#92400e' }}>${parseFloat(v.totalRepairCosts).toLocaleString()}</span></div>}
                   </div>
                 )}
                 {v.notes && (
@@ -1706,17 +1710,19 @@ export default function Acquisitions() {
                 {/* Operational strip */}
                 <div style={{ padding: '12px 16px 14px', borderTop: '1px solid #f3f4f6', background: '#f9fafb', display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
 
-                  {/* Financials */}
-                  <div style={{ minWidth: 140 }}>
+                  {/* Financials — 2×2 grid */}
+                  {(v.purchasePrice || v.floorPrice || v.totalCost) && (
+                  <div style={{ minWidth: 160 }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Financials</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {v.purchasePrice && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Purchase</span><span style={{ fontSize: 12, fontWeight: 700 }}>${parseFloat(v.purchasePrice).toLocaleString()}</span></div>}
-                      {v.totalRepairCosts > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Recon</span><span style={{ fontSize: 12, fontWeight: 700, color: '#92400e' }}>${parseFloat(v.totalRepairCosts).toLocaleString()}</span></div>}
-                      {v.totalCost && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Total cost</span><span style={{ fontSize: 12, fontWeight: 700, color: '#0d2550' }}>${parseFloat(v.totalCost).toLocaleString()}</span></div>}
-                      {v.floorPrice && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Floor</span><span style={{ fontSize: 12, fontWeight: 700 }}>${parseFloat(v.floorPrice).toLocaleString()}</span></div>}
-                      {margin !== null && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, borderTop: '1px solid #e5e7eb', paddingTop: 4 }}><span style={{ fontSize: 11, color: '#9ca3af' }}>Margin</span><span style={{ fontSize: 12, fontWeight: 700, color: margin >= 0 ? '#065f46' : '#991b1b' }}>${margin.toLocaleString()}</span></div>}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 20px' }}>
+                      {v.purchasePrice && <div><span style={{ fontSize: 10, color: '#9ca3af', display: 'block' }}>Purchase</span><span style={{ fontSize: 12, fontWeight: 700 }}>${parseFloat(v.purchasePrice).toLocaleString()}</span></div>}
+                      {v.totalCost && <div><span style={{ fontSize: 10, color: '#9ca3af', display: 'block' }}>Total Cost</span><span style={{ fontSize: 12, fontWeight: 700, color: '#0d2550' }}>${parseFloat(v.totalCost).toLocaleString()}</span></div>}
+                      {v.floorPrice && <div style={{ marginTop: 4 }}><span style={{ fontSize: 10, color: '#9ca3af', display: 'block' }}>Floor</span><span style={{ fontSize: 12, fontWeight: 700 }}>${parseFloat(v.floorPrice).toLocaleString()}</span></div>}
+                      {margin !== null && <div style={{ marginTop: 4 }}><span style={{ fontSize: 10, color: '#9ca3af', display: 'block' }}>Margin</span><span style={{ fontSize: 12, fontWeight: 700, color: margin >= 0 ? '#065f46' : '#991b1b' }}>${margin.toLocaleString()}</span></div>}
                     </div>
+                    {v.totalRepairCosts > 0 && <div style={{ marginTop: 4, display: 'flex', justifyContent: 'space-between', gap: 16 }}><span style={{ fontSize: 10, color: '#9ca3af' }}>Recon</span><span style={{ fontSize: 12, fontWeight: 700, color: '#92400e' }}>${parseFloat(v.totalRepairCosts).toLocaleString()}</span></div>}
                   </div>
+                  )}
 
                   {/* Stage */}
                   <div>

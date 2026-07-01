@@ -283,9 +283,9 @@ export function VehicleCard({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Photo area — 200px */}
+      {/* Photo area — 160px */}
       <div style={{
-        height: 200, background: '#f5f7fa', position: 'relative',
+        height: 160, background: '#f5f7fa', position: 'relative',
         flexShrink: 0, overflow: 'hidden',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
@@ -302,31 +302,29 @@ export function VehicleCard({
       </div>
 
       {/* Card body */}
-      <div style={{ padding: '14px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <div style={{ padding: '12px 14px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
 
-        {/* Year — small muted uppercase */}
-        <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em' }}>
-          {vehicle.year}
+        {/* Year + VIN inline */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+            {vehicle.year}
+          </span>
+          <span style={{
+            fontFamily: 'monospace', fontSize: 10, color: '#9ca3af',
+            letterSpacing: '.03em',
+          }}>
+            {vehicle.vin || '—'}
+          </span>
         </div>
 
-        {/* VIN — above make/model */}
-        <div style={{
-          fontFamily: 'monospace', fontSize: 11, fontWeight: 600, color: '#6b7280',
-          background: '#f3f4f6', padding: '3px 8px', borderRadius: 4,
-          border: '1px solid #e5e7eb', display: 'inline-block', alignSelf: 'flex-start',
-          letterSpacing: '.04em',
-        }}>
-          {vehicle.vin || '—'}
-        </div>
-
-        {/* Make + Model — 16px bold navy */}
-        <div style={{ fontSize: 16, fontWeight: 800, color: '#0d2550', lineHeight: 1.2 }}>
+        {/* Make + Model — 15px bold navy */}
+        <div style={{ fontSize: 15, fontWeight: 800, color: '#0d2550', lineHeight: 1.25 }}>
           {vehicle.make} {vehicle.model}
         </div>
 
-        {/* Trim + Color + Condition — 13px muted */}
+        {/* Trim + Color + Condition — 12px muted */}
         {(vehicle.trim || vehicle.color || vehicle.interior_color || vehicle.condition) && (
-          <div style={{ fontSize: 13, color: '#6b7280' }}>
+          <div style={{ fontSize: 12, color: '#6b7280' }}>
             {[
               vehicle.trim,
               vehicle.color && vehicle.interior_color
@@ -338,7 +336,7 @@ export function VehicleCard({
         )}
 
         {/* Mileage | List Price or Buyer — 2-col grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, paddingTop: 8, borderTop: '1px solid #f3f4f6', marginTop: 2 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, paddingTop: 7, borderTop: '1px solid #f3f4f6', marginTop: 3 }}>
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Mileage</div>
             <div style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>{mileageDisplay}</div>
