@@ -1185,7 +1185,7 @@ export default function Acquisitions() {
     // Separate deal record fields from vehicle fields
     const {
       seller_name, buyer_id: formBuyerId, purchase_amount, lienholder, payoff_amount,
-      cashiers_check, title_electronic, pickup_address,
+      cashiers_check, title_electronic, pickup_address, source_id,
       needsTransport, transportScheduledAt, vendorNotes,
       ...vehicleFields
     } = vehicleData;
