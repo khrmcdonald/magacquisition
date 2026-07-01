@@ -1132,6 +1132,26 @@ export default function Acquisitions() {
   const [mileageMap, setMileageMap] = useState({});
   const [viewMode, setViewMode] = useState('grid');
 
+  // ── Detail panel ────────────────────────────────────────────────────────────
+  const [panelVehicle, setPanelVehicle] = useState(null);
+  const [panelDeal, setPanelDeal] = useState(null);
+  const [panelLoading, setPanelLoading] = useState(false);
+  const [panelPhotoIdx, setPanelPhotoIdx] = useState(0);
+
+  const openPanel = async (v) => {
+    setPanelVehicle(v);
+    setPanelPhotoIdx(0);
+    setPanelDeal(null);
+    setPanelLoading(true);
+    const { data: deal } = await supabase
+      .from('deal_records').select('*').eq('vehicle_id', v.id)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    setPanelDeal(deal || null);
+    setPanelLoading(false);
+  };
+
+  const closePanel = () => { setPanelVehicle(null); setPanelDeal(null); };
+
   useEffect(() => {
     if (!data.vehicles.length) return;
     const ids = data.vehicles.map(v => v.id);
@@ -1586,7 +1606,7 @@ export default function Acquisitions() {
           {!isReadOnly && <span>Click "Add vehicle" to intake your first car</span>}
         </div>
       ) : viewMode === 'grid' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14, transition: 'padding-right 0.3s', paddingRight: panelVehicle ? 460 : 0 }}>
           {filtered.map(v => {
             const st = STATUS_LABELS[v.status] || STATUS_LABELS.intake;
             const margin = v.floorPrice && v.totalCost ? (parseFloat(v.floorPrice) - parseFloat(v.totalCost)) : null;
@@ -1612,75 +1632,46 @@ export default function Acquisitions() {
                       </div>
                     : null
                 }
+                highlighted={panelVehicle?.id === v.id}
                 actionButton={
-                  !isReadOnly ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                      {/* Stage advancement */}
-                      {(v.status === 'intake' || v.status === 'no_sale') && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          <button onClick={() => handleStatusChange(v, 'inspection')} style={{ width: '100%', background: '#fef3c7', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '8px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>→ Inspect</button>
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            <button onClick={() => handleStatusChange(v, 'recon')} style={{ flex: 1, background: '#f9fafb', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 7, padding: '5px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Skip → Recon</button>
-                            <button onClick={() => handleStatusChange(v, 'ready')} style={{ flex: 1, background: '#f9fafb', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 7, padding: '5px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Skip → Ready</button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {!isReadOnly && (
+                      <>
+                        {(v.status === 'intake' || v.status === 'no_sale') && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            <button onClick={() => handleStatusChange(v, 'inspection')} style={{ width: '100%', background: '#fef3c7', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>→ Inspect</button>
+                            <div style={{ display: 'flex', gap: 3 }}>
+                              <button onClick={() => handleStatusChange(v, 'recon')} style={{ flex: 1, background: '#f9fafb', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 7, padding: '4px 0', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>Skip → Recon</button>
+                              <button onClick={() => handleStatusChange(v, 'ready')} style={{ flex: 1, background: '#f9fafb', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 7, padding: '4px 0', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>Skip → Ready</button>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                      {v.status === 'inspection' && (
-                        <div style={{ display: 'flex', gap: 5 }}>
-                          <button onClick={() => printInspectionChecklist(v)} style={{ flex: 1, background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 8, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Print</button>
-                          <button onClick={() => setInspectionModal(v)} style={{ flex: 1, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Enter Results</button>
-                        </div>
-                      )}
-                      {v.status === 'recon' && (
-                        <button onClick={() => handleStatusChange(v, 'ready')} style={{ width: '100%', background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '8px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>✓ Mark Ready</button>
-                      )}
-                      {/* Other actions row */}
-                      <div style={{ display: 'flex', gap: 5 }}>
+                        )}
+                        {v.status === 'inspection' && (
+                          <div style={{ display: 'flex', gap: 5 }}>
+                            <button onClick={() => printInspectionChecklist(v)} style={{ flex: 1, background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 8, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Print</button>
+                            <button onClick={() => setInspectionModal(v)} style={{ flex: 1, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Enter Results</button>
+                          </div>
+                        )}
+                        {v.status === 'recon' && (
+                          <button onClick={() => handleStatusChange(v, 'ready')} style={{ width: '100%', background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✓ Mark Ready</button>
+                        )}
                         {v.status === 'ready' && data.auction.isOpen && (
-                          <button onClick={() => handleList(v)} style={{ flex: 1, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>List now</button>
+                          <button onClick={() => handleList(v)} style={{ width: '100%', background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>List now</button>
                         )}
                         {v.status === 'in_auction' && (
-                          <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { showToast('Failed to remove: ' + err.message, 'error'); } }} style={{ flex: 1, background: '#fef3c7', color: '#92400e', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
+                          <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { showToast('Failed: ' + err.message, 'error'); } }} style={{ width: '100%', background: '#fef3c7', color: '#92400e', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove from Auction</button>
                         )}
-                        <button onClick={() => setDetailModal(v)} style={{ ...iconBtn }} title="Details">🔍</button>
-                        <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} style={{ ...iconBtn }} title="Edit">✏️</button>
-                        {['intake', 'inspection', 'recon', 'ready', 'no_sale'].includes(v.status) && (
-                          <button onClick={() => setRepairModal(v)} style={{ ...iconBtn }} title="Repairs">🔧</button>
-                        )}
-                        <button onClick={() => handlePrintBuySheet(v)} style={{ ...iconBtn }} title="Buy sheet">🧾</button>
-                        <button onClick={() => setConfirmDelete(v)} style={{ ...iconBtn, background: '#FEF2F2', border: '1px solid #FECACA' }} title="Delete">🗑️</button>
-                      </div>
-                    </div>
-                  ) : null
+                      </>
+                    )}
+                    <button
+                      onClick={() => openPanel(v)}
+                      style={{ width: '100%', background: panelVehicle?.id === v.id ? '#0d2550' : '#fff', color: panelVehicle?.id === v.id ? '#fff' : '#0d2550', border: '1.5px solid #0d2550', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
+                    >
+                      {panelVehicle?.id === v.id ? '← Viewing' : 'View Listing'}
+                    </button>
+                  </div>
                 }
-              >
-                {/* Financials — 2×2 grid */}
-                {(v.purchasePrice || v.floorPrice || v.totalCost) && (
-                  <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 8, marginTop: 4 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
-                      {v.purchasePrice && <div><span style={{ fontSize: 10, color: '#9ca3af', display: 'block' }}>Purchase</span><span style={{ fontSize: 12, fontWeight: 700 }}>${parseFloat(v.purchasePrice).toLocaleString()}</span></div>}
-                      {v.totalCost && <div><span style={{ fontSize: 10, color: '#9ca3af', display: 'block' }}>Total Cost</span><span style={{ fontSize: 12, fontWeight: 700, color: '#0d2550' }}>${parseFloat(v.totalCost).toLocaleString()}</span></div>}
-                      {v.floorPrice && <div style={{ marginTop: 4 }}><span style={{ fontSize: 10, color: '#9ca3af', display: 'block' }}>Floor</span><span style={{ fontSize: 12, fontWeight: 700 }}>${parseFloat(v.floorPrice).toLocaleString()}</span></div>}
-                      {margin !== null && <div style={{ marginTop: 4 }}><span style={{ fontSize: 10, color: '#9ca3af', display: 'block' }}>Margin</span><span style={{ fontSize: 12, fontWeight: 700, color: margin >= 0 ? '#065f46' : '#991b1b' }}>${margin.toLocaleString()}</span></div>}
-                    </div>
-                    {v.totalRepairCosts > 0 && <div style={{ marginTop: 4, display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 10, color: '#9ca3af' }}>Recon</span><span style={{ fontSize: 12, fontWeight: 700, color: '#92400e' }}>${parseFloat(v.totalRepairCosts).toLocaleString()}</span></div>}
-                  </div>
-                )}
-                {v.notes && (
-                  <div style={{ fontSize: 11, color: '#6b7280', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '5px 8px', lineHeight: 1.4 }}>
-                    {v.notes}
-                  </div>
-                )}
-                {v.arbitration?.status === 'open' && (
-                  <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 6, padding: '6px 10px', fontSize: 11, color: '#991b1b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>⚠ Arbitration filed</span>
-                    {!isReadOnly && <button onClick={() => setResolveModal(v)} style={{ background: '#991b1b', color: '#fff', border: 'none', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}>Resolve</button>}
-                  </div>
-                )}
-                {v.arbitration?.status === 'resolved' && (
-                  <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 6, padding: '5px 8px', fontSize: 11, color: '#065f46' }}>✓ Arbitration resolved</div>
-                )}
-              </VehicleCard>
+              />
             );
           })}
         </div>
@@ -1970,6 +1961,159 @@ export default function Acquisitions() {
           </div>
         </div>
       )}
+
+      {/* ── Detail panel ──────────────────────────────────────────────────────── */}
+      {panelVehicle && (() => {
+        const pv = data.vehicles.find(vv => vv.id === panelVehicle.id) || panelVehicle;
+        const photos = Array.isArray(pv.photos) ? pv.photos : [];
+        const pvMargin = pv.floorPrice && pv.totalCost ? parseFloat(pv.floorPrice) - parseFloat(pv.totalCost) : null;
+        const pvTransport = (data.transport || []).find(t => t.vehicleId === pv.id);
+        const pvSource = sourceOptions.find(s => s.value === pv.sourceId)?.label || null;
+        const pvMileage = pv.mileage ?? mileageMap[pv.id] ?? null;
+        const st = STATUS_LABELS[pv.status] || STATUS_LABELS.intake;
+        const fmt$ = (n) => n != null ? `$${parseFloat(n).toLocaleString()}` : '—';
+        const fmtBool = (b) => b === true ? 'Yes' : b === false ? 'No' : '—';
+        const sectionHdr = (label) => (
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', borderBottom: '1px solid #f3f4f6', paddingBottom: 6, marginBottom: 10, marginTop: 18 }}>{label}</div>
+        );
+        const row = (label, value, valueStyle = {}) => value ? (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: '#6b7280' }}>{label}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', textAlign: 'right', maxWidth: '60%', ...valueStyle }}>{value}</span>
+          </div>
+        ) : null;
+
+        return (
+          <div style={{
+            position: 'fixed', top: 0, right: 0, width: 440, height: '100vh',
+            background: '#fff', boxShadow: '-6px 0 32px rgba(0,0,0,0.12)',
+            zIndex: 400, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          }}>
+            {/* Panel header */}
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, background: '#0d2550' }}>
+              <button onClick={closePanel} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 30, height: 30, borderRadius: '50%', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: '#fff', fontWeight: 800, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {pv.year} {pv.make} {pv.model}
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, marginTop: 1 }}>{pv.trim || pv.vin || ''}</div>
+              </div>
+              <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{st.label}</span>
+            </div>
+
+            {/* Scrollable body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 0 100px' }}>
+              {/* Photo gallery */}
+              <div style={{ position: 'relative', background: '#f5f7fa', height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {photos.length > 0 ? (
+                  <img src={photos[panelPhotoIdx] || photos[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontSize: 56, opacity: 0.1 }}>🚗</span>
+                )}
+                {photos.length > 1 && (
+                  <>
+                    <button onClick={() => setPanelPhotoIdx(i => Math.max(0, i - 1))} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', color: '#fff', border: 'none', borderRadius: '50%', width: 32, height: 32, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+                    <button onClick={() => setPanelPhotoIdx(i => Math.min(photos.length - 1, i + 1))} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', color: '#fff', border: 'none', borderRadius: '50%', width: 32, height: 32, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+                    <div style={{ position: 'absolute', bottom: 8, right: 10, background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20 }}>{panelPhotoIdx + 1} / {photos.length}</div>
+                  </>
+                )}
+              </div>
+
+              <div style={{ padding: '0 18px' }}>
+                {/* Vehicle details */}
+                {sectionHdr('Vehicle')}
+                <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#6b7280', background: '#f3f4f6', padding: '4px 8px', borderRadius: 4, display: 'inline-block', marginBottom: 10, letterSpacing: '.04em' }}>{pv.vin || '—'}</div>
+                {row('Condition', pv.condition)}
+                {row('Color', pv.color && pv.interior_color ? `${pv.color} / ${pv.interior_color}` : (pv.color || pv.interior_color))}
+                {row('Mileage', pvMileage != null ? `${parseInt(pvMileage).toLocaleString()} mi` : null)}
+                {row('Date Purchased', pv.datePurchased ? new Date(pv.datePurchased + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : null)}
+                {row('Source', pvSource)}
+                {row('Buyer', pv.buyer_name)}
+
+                {/* Financials */}
+                {(pv.purchasePrice || pv.totalCost || pv.floorPrice) && (
+                  <>
+                    {sectionHdr('Financials')}
+                    {row('Purchase Price', fmt$(pv.purchasePrice))}
+                    {pv.overheadCosts > 0 && row('Overhead / Fees', fmt$(pv.overheadCosts))}
+                    {pv.totalRepairCosts > 0 && row('Recon Costs', fmt$(pv.totalRepairCosts), { color: '#92400e' })}
+                    <div style={{ borderTop: '1px solid #f3f4f6', marginBottom: 6 }} />
+                    {row('Total Cost', fmt$(pv.totalCost), { color: '#0d2550', fontWeight: 700 })}
+                    {row('Floor Price', fmt$(pv.floorPrice))}
+                    {row('List Price', fmt$(pv.listPrice))}
+                    {pvMargin !== null && row('Margin', fmt$(pvMargin), { color: pvMargin >= 0 ? '#065f46' : '#991b1b', fontWeight: 700 })}
+                  </>
+                )}
+
+                {/* Deal record */}
+                {panelLoading && <div style={{ color: '#9ca3af', fontSize: 12, marginTop: 16 }}>Loading deal record…</div>}
+                {panelDeal && (
+                  <>
+                    {sectionHdr('Deal Record')}
+                    {row('Seller', panelDeal.seller_name)}
+                    {row('Purchase Amount', fmt$(panelDeal.purchase_amount))}
+                    {panelDeal.lienholder && row('Lienholder', panelDeal.lienholder)}
+                    {panelDeal.lienholder && row('Payoff Amount', fmt$(panelDeal.payoff_amount))}
+                    {panelDeal.lienholder && panelDeal.purchase_amount && panelDeal.payoff_amount && row('Equity', fmt$(parseFloat(panelDeal.purchase_amount) - parseFloat(panelDeal.payoff_amount)))}
+                    {row("Cashier's Check", fmtBool(panelDeal.cashiers_check))}
+                    {row('Electronic Title', fmtBool(panelDeal.title_electronic))}
+                    {row('Pickup Address', panelDeal.pickup_address)}
+                  </>
+                )}
+
+                {/* Title */}
+                {pv.titleStatus && (
+                  <>
+                    {sectionHdr('Title')}
+                    {row('Status', pv.titleStatus.charAt(0).toUpperCase() + pv.titleStatus.slice(1))}
+                    {row('Electronic', fmtBool(pv.titleElectronic))}
+                    {pv.titleNotes && <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>{pv.titleNotes}</div>}
+                  </>
+                )}
+
+                {/* Transport */}
+                {pvTransport && (
+                  <>
+                    {sectionHdr('Transport')}
+                    {row('Status', pvTransport.status.charAt(0).toUpperCase() + pvTransport.status.slice(1))}
+                    {row('Type', pvTransport.storeName === 'Intake' ? 'Intake Pickup' : 'Auction Delivery')}
+                    {pvTransport.scheduledDate && row('Scheduled', new Date(pvTransport.scheduledDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}
+                    {pvTransport.storeName !== 'Intake' && row('Destination', pvTransport.storeName)}
+                  </>
+                )}
+
+                {/* Notes */}
+                {pv.notes && (
+                  <>
+                    {sectionHdr('Disclosure Notes')}
+                    <div style={{ fontSize: 13, color: '#374151', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '8px 10px', lineHeight: 1.5 }}>{pv.notes}</div>
+                  </>
+                )}
+
+                {/* Arbitration */}
+                {pv.arbitration?.status === 'open' && (
+                  <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 6, padding: '8px 12px', fontSize: 12, color: '#991b1b', marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>⚠ Arbitration filed</span>
+                    {!isReadOnly && <button onClick={() => { setResolveModal(pv); closePanel(); }} style={{ background: '#991b1b', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer' }}>Resolve</button>}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Panel footer actions */}
+            {!isReadOnly && (
+              <div style={{ padding: '12px 16px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: 8, flexShrink: 0, background: '#fff' }}>
+                <button onClick={() => { setEditing(pv); setSaveError(null); setShowForm(true); }} style={{ flex: 1, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+                {['intake', 'inspection', 'recon', 'ready', 'no_sale'].includes(pv.status) && (
+                  <button onClick={() => setRepairModal(pv)} style={{ flex: 1, background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>🔧 Repairs</button>
+                )}
+                <button onClick={() => handlePrintBuySheet(pv)} style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: 8, padding: '9px 12px', fontSize: 13, cursor: 'pointer' }}>🧾</button>
+                <button onClick={() => { setConfirmDelete(pv); closePanel(); }} style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 8, padding: '9px 12px', fontSize: 13, cursor: 'pointer' }}>🗑️</button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Delete confirm */}
       {confirmDelete && (

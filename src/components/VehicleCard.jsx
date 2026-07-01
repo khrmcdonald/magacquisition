@@ -305,12 +305,12 @@ export function VehicleCard({
       <div style={{ padding: '12px 14px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
 
         {/* Year + VIN inline */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '.04em' }}>
             {vehicle.year}
           </span>
           <span style={{
-            fontFamily: 'monospace', fontSize: 10, color: '#9ca3af',
+            fontFamily: 'monospace', fontSize: 11, color: '#6b7280',
             letterSpacing: '.03em',
           }}>
             {vehicle.vin || '—'}
