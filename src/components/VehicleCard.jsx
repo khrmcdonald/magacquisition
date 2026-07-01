@@ -304,22 +304,14 @@ export function VehicleCard({
       {/* Card body */}
       <div style={{ padding: '12px 14px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
 
-        {/* Year + VIN inline */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '.04em' }}>
-            {vehicle.year}
-          </span>
-          <span style={{
-            fontFamily: 'monospace', fontSize: 11, color: '#6b7280',
-            letterSpacing: '.03em',
-          }}>
-            {vehicle.vin || '—'}
-          </span>
+        {/* Year Make Model — one line */}
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#0d2550', lineHeight: 1.25 }}>
+          {vehicle.year} {vehicle.make} {vehicle.model}
         </div>
 
-        {/* Make + Model — 15px bold navy */}
-        <div style={{ fontSize: 15, fontWeight: 800, color: '#0d2550', lineHeight: 1.25 }}>
-          {vehicle.make} {vehicle.model}
+        {/* VIN */}
+        <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#9ca3af', letterSpacing: '.03em', marginTop: 1 }}>
+          {vehicle.vin || '—'}
         </div>
 
         {/* Trim + Color + Condition — 12px muted */}
@@ -379,18 +371,20 @@ export function VehicleCard({
           </div>
         ) : null}
 
-        {/* Age flag — wholesale/gm/admin only */}
-        {showAge && <AgePill vehicle={vehicle} />}
-
-        {/* Title status */}
-        {showTitleStatus && vehicle.titleStatus && (() => {
-          const ts = TITLE_STATUS_STYLE[vehicle.titleStatus];
-          return ts ? (
-            <span style={{ background: ts.bg, color: ts.color, border: `1px solid ${ts.border}`, borderRadius: 20, padding: '2px 9px', fontSize: 10, fontWeight: 700, display: 'inline-block', marginTop: 2 }}>
-              {ts.label}
-            </span>
-          ) : null;
-        })()}
+        {/* Age + Title status — same row, compact */}
+        {(showAge || (showTitleStatus && vehicle.titleStatus)) && (
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+            {showAge && <AgePill vehicle={vehicle} style={{ fontSize: 10, padding: '1px 7px' }} />}
+            {showTitleStatus && vehicle.titleStatus && (() => {
+              const ts = TITLE_STATUS_STYLE[vehicle.titleStatus];
+              return ts ? (
+                <span style={{ background: ts.bg, color: ts.color, border: `1px solid ${ts.border}`, borderRadius: 20, padding: '1px 7px', fontSize: 10, fontWeight: 700 }}>
+                  {ts.label}
+                </span>
+              ) : null;
+            })()}
+          </div>
+        )}
 
         {/* Disclosure callout */}
         {vehicle.disclosure_notes && (

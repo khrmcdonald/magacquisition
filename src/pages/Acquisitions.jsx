@@ -2026,14 +2026,14 @@ export default function Acquisitions() {
                 {row('Condition', pv.condition)}
                 {row('Color', pv.color && pv.interior_color ? `${pv.color} / ${pv.interior_color}` : (pv.color || pv.interior_color))}
                 {row('Mileage', pvMileage != null ? `${parseInt(pvMileage).toLocaleString()} mi` : null)}
-                {row('Date Purchased', pv.datePurchased ? new Date(pv.datePurchased + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : null)}
-                {row('Source', pvSource)}
                 {row('Buyer', pv.buyer_name)}
 
                 {/* Financials */}
-                {(pv.purchasePrice || pv.totalCost || pv.floorPrice) && (
+                {(pv.purchasePrice || pv.totalCost || pv.floorPrice || pvSource || pv.datePurchased) && (
                   <>
                     {sectionHdr('Financials')}
+                    {pv.datePurchased && row('Date Purchased', new Date(pv.datePurchased + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))}
+                    {pvSource && row('Source', pvSource)}
                     {row('Purchase Price', fmt$(pv.purchasePrice))}
                     {pv.overheadCosts > 0 && row('Overhead / Fees', fmt$(pv.overheadCosts))}
                     {pv.totalRepairCosts > 0 && row('Recon Costs', fmt$(pv.totalRepairCosts), { color: '#92400e' })}
@@ -2042,22 +2042,6 @@ export default function Acquisitions() {
                     {row('Floor Price', fmt$(pv.floorPrice))}
                     {row('List Price', fmt$(pv.listPrice))}
                     {pvMargin !== null && row('Margin', fmt$(pvMargin), { color: pvMargin >= 0 ? '#065f46' : '#991b1b', fontWeight: 700 })}
-                  </>
-                )}
-
-                {/* Deal record */}
-                {panelLoading && <div style={{ color: '#9ca3af', fontSize: 12, marginTop: 16 }}>Loading deal record…</div>}
-                {panelDeal && (
-                  <>
-                    {sectionHdr('Deal Record')}
-                    {row('Seller', panelDeal.seller_name)}
-                    {row('Purchase Amount', fmt$(panelDeal.purchase_amount))}
-                    {panelDeal.lienholder && row('Lienholder', panelDeal.lienholder)}
-                    {panelDeal.lienholder && row('Payoff Amount', fmt$(panelDeal.payoff_amount))}
-                    {panelDeal.lienholder && panelDeal.purchase_amount && panelDeal.payoff_amount && row('Equity', fmt$(parseFloat(panelDeal.purchase_amount) - parseFloat(panelDeal.payoff_amount)))}
-                    {row("Cashier's Check", fmtBool(panelDeal.cashiers_check))}
-                    {row('Electronic Title', fmtBool(panelDeal.title_electronic))}
-                    {row('Pickup Address', panelDeal.pickup_address)}
                   </>
                 )}
 
