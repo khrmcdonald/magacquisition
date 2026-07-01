@@ -5,10 +5,10 @@ import { useData } from '../context/DataContext';
 import { VehicleCard } from '../components/VehicleCard';
 
 const STEPS = [
-  { key: 'awarded',    label: 'Awarded',    icon: '🏆' },
-  { key: 'dispatched', label: 'Dispatched', icon: '📦' },
-  { key: 'inTransit',  label: 'In Transit', icon: '🚚' },
-  { key: 'arrived',    label: 'Arrived',    icon: '✅' },
+  { key: 'awarded',    label: 'Awarded',    icon: '1' },
+  { key: 'dispatched', label: 'Dispatched', icon: '2' },
+  { key: 'inTransit',  label: 'In Transit', icon: '3' },
+  { key: 'arrived',    label: 'Arrived',    icon: '4' },
 ];
 
 const STATUS_LABEL = {
@@ -250,43 +250,49 @@ export default function Transport() {
                 }
               >
                 {/* Transport details strip */}
-                <div style={{ padding: '10px 16px 12px', borderTop: '1px solid #f3f4f6', background: '#f9fafb' }}>
-                  {/* Info row: Leg type → Scheduled → Pickup/Destination */}
-                  <div style={{ display: 'flex', gap: 24, marginBottom: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                    {/* Leg type — always first */}
-                    <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Leg Type</div>
-                      <span style={{ background: legType.bg, color: legType.color, padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{legType.label}</span>
-                    </div>
+                <div style={{ padding: '12px 16px 14px', borderTop: '1px solid #f1f5f9' }}>
+                  {/* Info row */}
+                  <div style={{ display: 'flex', gap: 20, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {/* Leg type */}
+                    <span style={{ background: legType.bg, color: legType.color, padding: '2px 9px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>{legType.label}</span>
 
-                    {/* Scheduled — always second */}
-                    <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Scheduled</div>
+                    {/* Separator */}
+                    <span style={{ color: '#e2e8f0', fontSize: 16 }}>|</span>
+
+                    {/* Scheduled */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.07em' }}>Scheduled</span>
                       {scheduledDisplay
-                        ? <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>{scheduledDisplay}</span>
-                        : <span style={{ fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>Not set</span>}
+                        ? <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>{scheduledDisplay}</span>
+                        : <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>Not set</span>}
                     </div>
 
-                    {/* Pickup from / Going to — third */}
+                    {/* Separator */}
+                    <span style={{ color: '#e2e8f0', fontSize: 16 }}>|</span>
+
+                    {/* Pickup from / Going to */}
                     {isIntake(t) ? (
-                      <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Pickup From</div>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>{t.notes || 'Address not set'}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.07em' }}>Pickup From</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>{t.notes || 'Address not set'}</span>
                       </div>
                     ) : (
                       <>
-                        <div>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Going To</div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <StoreAvatar locationId={tLocationId} size={20} />
-                            <span style={{ fontSize: 13, fontWeight: 700, color: '#0d2550' }}>{tStoreName}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.07em' }}>Going To</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <StoreAvatar locationId={tLocationId} size={18} />
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#0d2550' }}>{tStoreName}</span>
                           </div>
                         </div>
                         {t.winningBid && (
-                          <div>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Winning Bid</div>
-                            <div style={{ fontSize: 13, fontWeight: 800, color: '#0d2550' }}>${t.winningBid.toLocaleString()}</div>
-                          </div>
+                          <>
+                            <span style={{ color: '#e2e8f0', fontSize: 16 }}>|</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              <span style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.07em' }}>Winning Bid</span>
+                              <span style={{ fontSize: 12, fontWeight: 800, color: '#0d2550' }}>${t.winningBid.toLocaleString()}</span>
+                            </div>
+                          </>
                         )}
                       </>
                     )}

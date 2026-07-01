@@ -12,6 +12,13 @@ const STATUS = {
   issue:    { label: 'Issue',    color: '#991b1b', bg: '#fee2e2', border: '#fca5a5' },
 };
 
+const TITLE_ACCENT = {
+  pending:  '#f59e0b',
+  received: '#3b82f6',
+  clear:    '#10b981',
+  issue:    '#ef4444',
+};
+
 const NEXT = { pending: 'received', received: 'clear' };
 const NEXT_LABEL = { pending: 'Mark Received', received: 'Mark Clear' };
 
@@ -120,6 +127,23 @@ export default function Titles() {
         </div>
       </div>
 
+      {/* Stats row */}
+      {isWholesale && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+          {[
+            { label: 'Pending',  value: counts.pending,  accent: TITLE_ACCENT.pending,  color: '#92400e' },
+            { label: 'Received', value: counts.received, accent: TITLE_ACCENT.received, color: '#1e40af' },
+            { label: 'Issues',   value: counts.issue,    accent: TITLE_ACCENT.issue,    color: '#991b1b' },
+            { label: 'Clear',    value: counts.clear,    accent: TITLE_ACCENT.clear,    color: '#065f46' },
+          ].map(({ label, value, accent, color }) => (
+            <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 8, padding: '10px 14px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{value}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Pipeline legend */}
       {isWholesale && (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
@@ -177,55 +201,41 @@ export default function Titles() {
             const vin6 = v.vin ? v.vin.slice(-6).toUpperCase() : null;
 
             return (
-              <div key={v.id} style={{ background: '#fff', border: `1px solid ${v.titleStatus === 'issue' ? '#fca5a5' : '#e5e7eb'}`, borderRadius: 12, padding: '14px 18px', display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <div key={v.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderLeft: `4px solid ${TITLE_ACCENT[v.titleStatus] || '#e2e8f0'}`, borderRadius: 10, padding: '13px 18px', display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 {/* Vehicle info */}
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 5 }}>
                     <span
                       onClick={() => setDetailVehicle(v)}
-                      style={{ fontSize: 15, fontWeight: 700, color: '#0d2550', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'transparent' }}
-                      onMouseEnter={e => e.currentTarget.style.textDecorationColor = '#0d2550'}
-                      onMouseLeave={e => e.currentTarget.style.textDecorationColor = 'transparent'}
+                      style={{ fontSize: 15, fontWeight: 700, color: '#111827', cursor: 'pointer' }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#0d2550'}
+                      onMouseLeave={e => e.currentTarget.style.color = '#111827'}
                     >
                       {v.year} {v.make} {v.model}{v.trim ? ` ${v.trim}` : ''}
                     </span>
-                    <span style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}`, borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>
+                    <span style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}`, borderRadius: 6, padding: '2px 9px', fontSize: 10, fontWeight: 700 }}>
                       {v.titleStatus === 'issue' ? '⚠ ' : ''}{st.label}
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                    {vin6 && (
-                      <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>VIN</div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', fontFamily: 'monospace' }}>···{vin6}</div>
-                      </div>
-                    )}
+                  {/* Compact meta — one line */}
+                  <div style={{ fontSize: 12, color: '#6b7280', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    {vin6 && <span style={{ fontFamily: 'monospace', color: '#94a3b8', fontSize: 11 }}>···{vin6}</span>}
+                    {vin6 && <span style={{ color: '#d1d5db' }}>·</span>}
                     {days !== null && (
-                      <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Days waiting</div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: days >= 30 ? '#991b1b' : '#374151' }}>{days}d</div>
-                      </div>
+                      <span style={{ fontWeight: 600, color: days >= 30 ? '#b91c1c' : '#374151' }}>{days}d waiting</span>
                     )}
-                    {v.datePurchased && (
-                      <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Purchased</div>
-                        <div style={{ fontSize: 12, color: '#374151' }}>{new Date(v.datePurchased + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                      </div>
-                    )}
-                    <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>
-                        {isAwarded ? 'Title going to' : 'Destination'}
-                      </div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: isAwarded ? '#0d2550' : '#6b7280' }}>
-                        {isAwarded ? v.winnerName || '—' : 'Internal'}
-                      </div>
-                    </div>
+                    {v.datePurchased && <span style={{ color: '#d1d5db' }}>·</span>}
+                    {v.datePurchased && <span>{new Date(v.datePurchased + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>}
+                    <span style={{ color: '#d1d5db' }}>→</span>
+                    <span style={{ fontWeight: 600, color: isAwarded ? '#0d2550' : '#6b7280' }}>
+                      {isAwarded ? v.winnerName || '—' : 'Internal'}
+                    </span>
                   </div>
 
                   {/* Issue note */}
                   {v.titleStatus === 'issue' && v.titleNotes && (
-                    <div style={{ marginTop: 10, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#991b1b' }}>
+                    <div style={{ marginTop: 8, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 7, padding: '7px 12px', fontSize: 12, color: '#991b1b' }}>
                       <span style={{ fontWeight: 700 }}>Issue: </span>{v.titleNotes}
                     </div>
                   )}

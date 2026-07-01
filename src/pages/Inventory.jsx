@@ -5,61 +5,29 @@ import { useData } from '../context/DataContext';
 import { VehicleCard, AuctionCountdownPill } from '../components/VehicleCard';
 
 // ── Detail modal ──────────────────────────────────────────────────────────────
-function Detail({ label, value, mono, highlight }) {
-  return (
-    <div>
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>
-        {label}
-      </div>
-      <div style={{
-        fontSize: mono ? 11 : 13, fontWeight: highlight ? 700 : 500,
-        color: highlight ? '#0d2550' : '#374151',
-        fontFamily: mono ? 'monospace' : undefined,
-        wordBreak: mono ? 'break-all' : undefined,
-      }}>
-        {value}
-      </div>
-    </div>
-  );
-}
-
 function VehicleDetailModal({ vehicle, mileage, onBuyNow, onClose }) {
   const [photoIdx, setPhotoIdx] = useState(0);
   const isInAuction = vehicle.status === 'in_auction';
   const photos = Array.isArray(vehicle.photos) && vehicle.photos.length > 0 ? vehicle.photos : null;
-  const mileageDisplay = mileage != null ? `${parseInt(mileage).toLocaleString()} mi` : '—';
-
-  const StatusBadge = ({ status }) => {
-    const styles = {
-      ready:      { background: '#d1fae5', color: '#065f46', label: 'Available' },
-      in_auction: { background: '#dbeafe', color: '#1e40af', label: 'In Auction' },
-    };
-    const s = styles[status] || { background: '#f3f4f6', color: '#6b7280', label: status };
-    return (
-      <span style={{ background: s.background, color: s.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
-        {s.label}
-      </span>
-    );
-  };
+  const mileageDisplay = mileage != null ? `${parseInt(mileage).toLocaleString()} mi` : null;
+  const listPrice = vehicle.list_price ? `$${parseFloat(vehicle.list_price).toLocaleString()}` : null;
+  const specs = [vehicle.color, mileageDisplay].filter(Boolean).join(' · ');
 
   return (
     <div className="modal-overlay" onClick={onClose} style={{ alignItems: 'flex-start', paddingTop: 32, paddingBottom: 32, overflowY: 'auto' }}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560, width: '100%', padding: 0, overflow: 'hidden' }}>
-        {/* Photo gallery */}
-        <div style={{ position: 'relative', background: '#f0f4f8', height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 540, width: '100%', padding: 0, overflow: 'hidden', borderRadius: 14 }}>
+        {/* Photo */}
+        <div style={{ position: 'relative', background: '#f1f5f9', height: 264, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {photos
             ? <img src={photos[photoIdx]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : <span style={{ fontSize: 72, opacity: 0.2 }}>🚗</span>
+            : <div style={{ fontSize: 40, fontWeight: 900, color: '#cbd5e1', letterSpacing: -1 }}>{(vehicle.make || '').slice(0, 3).toUpperCase()}</div>
           }
-          <div style={{ position: 'absolute', top: 12, left: 12 }}><StatusBadge status={vehicle.status} /></div>
           <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(0,0,0,0.45)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
           {photos && photos.length > 1 && (
             <>
-              <button onClick={() => setPhotoIdx(i => (i - 1 + photos.length) % photos.length)} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.4)', border: 'none', color: '#fff', width: 36, height: 36, borderRadius: '50%', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-              <button onClick={() => setPhotoIdx(i => (i + 1) % photos.length)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.4)', border: 'none', color: '#fff', width: 36, height: 36, borderRadius: '50%', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
-              <div style={{ position: 'absolute', bottom: 10, right: 14, background: 'rgba(0,0,0,0.45)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10 }}>
-                {photoIdx + 1} / {photos.length}
-              </div>
+              <button onClick={() => setPhotoIdx(i => (i - 1 + photos.length) % photos.length)} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.4)', border: 'none', color: '#fff', width: 34, height: 34, borderRadius: '50%', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+              <button onClick={() => setPhotoIdx(i => (i + 1) % photos.length)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.4)', border: 'none', color: '#fff', width: 34, height: 34, borderRadius: '50%', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+              <div style={{ position: 'absolute', bottom: 10, right: 14, background: 'rgba(0,0,0,0.45)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10 }}>{photoIdx + 1} / {photos.length}</div>
             </>
           )}
         </div>
@@ -68,39 +36,62 @@ function VehicleDetailModal({ vehicle, mileage, onBuyNow, onClose }) {
         {photos && photos.length > 1 && (
           <div style={{ display: 'flex', gap: 6, padding: '8px 16px', background: '#f8fafc', overflowX: 'auto' }}>
             {photos.map((p, i) => (
-              <img key={i} src={p} alt="" onClick={() => setPhotoIdx(i)} style={{ width: 56, height: 42, objectFit: 'cover', borderRadius: 4, flexShrink: 0, cursor: 'pointer', border: i === photoIdx ? '2px solid #0d2550' : '2px solid transparent', opacity: i === photoIdx ? 1 : 0.65 }} />
+              <img key={i} src={p} alt="" onClick={() => setPhotoIdx(i)} style={{ width: 54, height: 40, objectFit: 'cover', borderRadius: 4, flexShrink: 0, cursor: 'pointer', border: i === photoIdx ? '2px solid #0d2550' : '2px solid transparent', opacity: i === photoIdx ? 1 : 0.65 }} />
             ))}
           </div>
         )}
 
-        {/* Content */}
-        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Body */}
+        <div style={{ padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Hero identity */}
           <div>
-            <div style={{ fontWeight: 700, fontSize: 20, color: '#111827', lineHeight: 1.2 }}>{vehicle.year} {vehicle.make} {vehicle.model}</div>
-            {vehicle.trim && <div style={{ fontSize: 14, color: '#6b7280', marginTop: 3 }}>{vehicle.trim}</div>}
+            <div style={{ fontWeight: 800, fontSize: 21, color: '#111827', lineHeight: 1.15 }}>{vehicle.year} {vehicle.make} {vehicle.model}</div>
+            {vehicle.trim && <div style={{ fontSize: 14, color: '#6b7280', marginTop: 2 }}>{vehicle.trim}</div>}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Detail label="VIN" value={vehicle.vin || '—'} mono />
-            <Detail label="Status" value={<StatusBadge status={vehicle.status} />} />
-            <Detail label="Color" value={vehicle.color || '—'} />
-            <Detail label="Mileage" value={mileageDisplay} />
-            <Detail label="List Price" value={vehicle.list_price ? `$${parseFloat(vehicle.list_price).toLocaleString()}` : '—'} highlight />
+
+          {/* Specs + status pill inline */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            {specs && <span style={{ fontSize: 13, color: '#6b7280' }}>{specs}</span>}
+            <span style={{ background: isInAuction ? '#dbeafe' : '#d1fae5', color: isInAuction ? '#1e40af' : '#065f46', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+              {isInAuction ? 'In Auction' : 'Available'}
+            </span>
           </div>
+
+          {/* VIN */}
+          {vehicle.vin && (
+            <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#9ca3af', background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 6, padding: '5px 10px', letterSpacing: '.04em', display: 'inline-block', width: 'fit-content' }}>
+              {vehicle.vin}
+            </div>
+          )}
+
+          {/* List price */}
+          {listPrice && (
+            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 12, marginTop: 2 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 3 }}>List Price</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#0d2550', lineHeight: 1 }}>{listPrice}</div>
+            </div>
+          )}
+
+          {/* Disclosure */}
           {vehicle.disclosure_notes && (
-            <div style={{ background: '#fff8e7', border: '1px solid #f1bb25', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>
+            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>
               <span style={{ fontWeight: 700 }}>Disclosure: </span>{vehicle.disclosure_notes}
             </div>
           )}
+
+          {/* Notes */}
           {vehicle.notes && (
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Description</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>Description</div>
               <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{vehicle.notes}</div>
             </div>
           )}
+
+          {/* CTA */}
           <button
             onClick={() => { if (!isInAuction) { onClose(); onBuyNow(vehicle); } }}
             disabled={isInAuction}
-            style={{ padding: '13px 0', fontSize: 15, fontWeight: 700, border: 'none', borderRadius: 8, cursor: isInAuction ? 'not-allowed' : 'pointer', background: isInAuction ? '#e5e7eb' : '#0d2550', color: isInAuction ? '#9ca3af' : '#fff' }}
+            style={{ marginTop: 6, padding: '14px 0', fontSize: 15, fontWeight: 700, border: 'none', borderRadius: 9, cursor: isInAuction ? 'not-allowed' : 'pointer', background: isInAuction ? '#f1f5f9' : '#0d2550', color: isInAuction ? '#94a3b8' : '#fff' }}
           >
             {isInAuction ? 'Currently in Auction' : 'Buy Now'}
           </button>
@@ -174,7 +165,7 @@ export default function Inventory() {
 
   const listed = vehicles.filter(v => v.status === 'ready');
   const inAuction = vehicles.filter(v => v.status === 'in_auction');
-  const availablePrices = listed.map(v => parseFloat(v.listPrice)).filter(p => p > 0);
+  const availablePrices = listed.map(v => parseFloat(v.list_price)).filter(p => p > 0);
   const avgAsk = availablePrices.length ? Math.round(availablePrices.reduce((s, p) => s + p, 0) / availablePrices.length) : null;
   const lowestAsk = availablePrices.length ? Math.min(...availablePrices) : null;
 
