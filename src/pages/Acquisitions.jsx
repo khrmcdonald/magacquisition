@@ -441,7 +441,7 @@ function YesNoToggle({ value, onChange }) {
 
 
 // ── VehicleForm ───────────────────────────────────────────────────────────────
-function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], addLocation, pickupAddresses = [], addPickupAddress, buyers = [], vehicles = [], editingId = null }) {
+function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], addLocation, pickupAddresses = [], addPickupAddress, buyers = [], vehicles = [], editingId = null, existingTransport = null }) {
   const [form, setForm] = useState(initial ? {
     ...initial,
     photos: Array.isArray(initial.photos) ? initial.photos : [],
@@ -781,6 +781,15 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
 
       {/* ── Transport ─────────────────────────────────────────────────────── */}
       {sectionLabel('Transport')}
+      {existingTransport ? (
+        <div style={{ background: '#f0fdf4', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '12px 16px', fontSize: 13, color: '#065f46' }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>Transport already scheduled</div>
+          {existingTransport.scheduledDate && <div>Pickup: {new Date(existingTransport.scheduledDate).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}</div>}
+          {existingTransport.notes && <div>Address: {existingTransport.notes}</div>}
+          <div style={{ marginTop: 4, color: '#047857' }}>Status: {existingTransport.status}</div>
+        </div>
+      ) : (
+      <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Does this vehicle need transport to arrive?</div>
         <YesNoToggle value={form.needsTransport} onChange={v => set('needsTransport', v)} />
@@ -827,6 +836,8 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
           )}
         </div>
         </>
+      )}
+      </>
       )}
 
       {/* ── Photos ────────────────────────────────────────────────────────── */}
@@ -1198,7 +1209,7 @@ export default function Acquisitions() {
     saveFields.buyer_name = formBuyerId ? (selectedBuyer?.name || null) : null;
 
     if (editing) {
-      try { await updateVehicle(editing.id, { ...saveFields, status: editing.status }); }
+      try { await updateVehicle(editing.id, { ...saveFields, source_id, status: editing.status }); }
       catch (err) { showToast(`Update failed: ${fmtErr(err)}`, 'error'); setSaveError(`Update failed: ${fmtErr(err)}`); return; }
       if (vehicleData.mileage) {
         try {
@@ -1873,6 +1884,7 @@ export default function Acquisitions() {
                 buyers={buyers}
                 vehicles={data.vehicles}
                 editingId={editing?.id || null}
+                existingTransport={editing ? (data.transport || []).find(t => t.vehicleId === editing.id) || null : null}
               />
             </div>
           </div>
