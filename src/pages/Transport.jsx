@@ -5,11 +5,10 @@ import { useData } from '../context/DataContext';
 import { VehicleCard } from '../components/VehicleCard';
 
 const STEPS = [
-  { key: 'awarded',       label: 'Awarded',       icon: '🏆' },
-  { key: 'dispatched',    label: 'Dispatched',     icon: '📦' },
-  { key: 'inTransit',     label: 'In Transit',     icon: '🚚' },
-  { key: 'arrived',       label: 'Arrived',        icon: '✅' },
-  { key: 'titleReceived', label: 'Title Received', icon: '📄' },
+  { key: 'awarded',    label: 'Awarded',    icon: '🏆' },
+  { key: 'dispatched', label: 'Dispatched', icon: '📦' },
+  { key: 'inTransit',  label: 'In Transit', icon: '🚚' },
+  { key: 'arrived',    label: 'Arrived',    icon: '✅' },
 ];
 
 const STATUS_LABEL = {
@@ -20,33 +19,33 @@ const STATUS_LABEL = {
   titleReceived: { label: 'Complete',         bg: '#d1fae5', color: '#065f46' },
 };
 
-// ── Step tracker ──────────────────────────────────────────────────────────────
 function StepTracker({ steps, currentStatus, onUpdate, canUpdate }) {
   const stepKeys = STEPS.map(s => s.key);
   const currentIdx = stepKeys.indexOf(currentStatus);
 
   return (
-    <div style={{ margin: '10px 0 4px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+    <div style={{ margin: '8px 0 2px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
         {STEPS.map((step, i) => {
           const done = i <= currentIdx;
           const active = i === currentIdx;
           const isClickable = canUpdate && i !== currentIdx;
           return (
             <React.Fragment key={step.key}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                 <div
                   onClick={() => isClickable && onUpdate(step.key)}
                   title={isClickable ? (i < currentIdx ? `← Back to ${step.label}` : `→ Mark as ${step.label}`) : ''}
                   style={{
-                    width: 34, height: 34, borderRadius: '50%',
+                    width: 30, height: 30, borderRadius: '50%',
                     background: done ? '#0d2550' : '#f3f4f6',
                     color: done ? '#fff' : '#9ca3af',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: done ? 13 : 15, fontWeight: 700,
+                    fontSize: done ? 11 : 13, fontWeight: 700,
                     cursor: isClickable ? 'pointer' : 'default',
-                    border: active ? '3px solid #e8b84b' : done ? '3px solid #0d2550' : '3px solid #e5e7eb',
+                    border: active ? '2.5px solid #e8b84b' : done ? '2.5px solid #0d2550' : '2.5px solid #e5e7eb',
                     transition: 'all 0.15s',
+                    flexShrink: 0,
                   }}
                   onMouseEnter={e => { if (isClickable) e.currentTarget.style.transform = 'scale(1.1)'; }}
                   onMouseLeave={e => { e.currentTarget.style.transform = ''; }}
@@ -63,7 +62,7 @@ function StepTracker({ steps, currentStatus, onUpdate, canUpdate }) {
                 )}
               </div>
               {i < STEPS.length - 1 && (
-                <div style={{ width: 20, height: 2, background: i < currentIdx ? '#0d2550' : '#e5e7eb', marginBottom: 22, flexShrink: 0 }} />
+                <div style={{ width: 18, height: 2, background: i < currentIdx ? '#0d2550' : '#e5e7eb', marginBottom: 20, flexShrink: 0 }} />
               )}
             </React.Fragment>
           );
@@ -73,15 +72,17 @@ function StepTracker({ steps, currentStatus, onUpdate, canUpdate }) {
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
 export default function Transport() {
   const { user } = useAuth();
-  const { data, updateTransport, deleteTransport } = useData();
+  const { data, updateTransport, deleteTransport, updateTransportSchedule } = useData();
   const [filter, setFilter] = useState('all');
-  const [typeTab, setTypeTab] = useState('all'); // wholesale only: 'deliveries' | 'intake' | 'all'
+  const [typeTab, setTypeTab] = useState('all');
   const [notesModal, setNotesModal] = useState(null);
   const [notes, setNotes] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState(null); // transport id
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [editScheduleModal, setEditScheduleModal] = useState(null);
+  const [scheduleInput, setScheduleInput] = useState('');
+  const [savingSchedule, setSavingSchedule] = useState(false);
 
   const isWholesale = user.role === 'wholesale' || user.role === 'admin';
   const isGM = user.role === 'gm';
@@ -92,52 +93,72 @@ export default function Transport() {
 
   const isIntake = (t) => t.storeName === 'Intake';
 
-  // For wholesale: split by type tab
   const myTransport = isWholesale
     ? typeTab === 'deliveries' ? allTransport.filter(t => !isIntake(t))
-      : typeTab === 'intake'     ? allTransport.filter(t =>  isIntake(t))
+      : typeTab === 'intake'   ? allTransport.filter(t =>  isIntake(t))
       : allTransport
     : allTransport;
 
-  const filtered = filter === 'all' ? myTransport
-    : filter === 'complete' ? myTransport.filter(t => t.status === 'titleReceived')
-    : myTransport.filter(t => t.status !== 'titleReceived');
+  const filtered = filter === 'all'      ? myTransport
+    : filter === 'complete'              ? myTransport.filter(t => ['arrived', 'titleReceived'].includes(t.status))
+    : myTransport.filter(t => !['arrived', 'titleReceived'].includes(t.status));
 
   const deliveries = allTransport.filter(t => !isIntake(t));
   const intakes    = allTransport.filter(t =>  isIntake(t));
 
+  const openEditSchedule = (t) => {
+    const val = t.scheduledDate
+      ? new Date(t.scheduledDate).toISOString().slice(0, 16)
+      : '';
+    setScheduleInput(val);
+    setEditScheduleModal(t);
+  };
+
+  const handleSaveSchedule = async () => {
+    if (!editScheduleModal) return;
+    setSavingSchedule(true);
+    try {
+      const iso = scheduleInput ? new Date(scheduleInput).toISOString() : null;
+      await updateTransportSchedule(editScheduleModal.id, iso);
+      setEditScheduleModal(null);
+    } catch (err) {
+      alert('Failed to save: ' + err.message);
+    } finally {
+      setSavingSchedule(false);
+    }
+  };
+
   return (
     <div style={{ background: '#f0f2f5', minHeight: '100vh', margin: '-20px -16px', padding: '24px 20px' }}>
       {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>Transport & Title</h1>
+      <div style={{ marginBottom: 16 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>Transport</h1>
         <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 2, marginBottom: 0 }}>
-          {isWholesale ? 'Manage all vehicle movements — intake pickups and auction deliveries' : `Incoming vehicles for ${user.name}`}
+          {isWholesale ? 'Intake pickups and auction deliveries' : `Incoming vehicles for ${user.name}`}
         </p>
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
         {[
           { label: isWholesale ? 'Auction deliveries' : 'Total vehicles', value: isWholesale ? deliveries.length : allTransport.length, accent: '#0d2550', color: '#0d2550' },
-          { label: isWholesale ? 'Intake pickups'    : 'In transit',      value: isWholesale ? intakes.length : allTransport.filter(t => ['dispatched','inTransit'].includes(t.status)).length, accent: '#e8b84b', color: '#92400e' },
-          { label: 'In transit',     value: allTransport.filter(t => ['dispatched','inTransit'].includes(t.status)).length, accent: '#3b82f6', color: '#1e40af' },
-          { label: 'Title received', value: allTransport.filter(t => t.status === 'titleReceived').length,                  accent: '#10b981', color: '#065f46' },
+          { label: isWholesale ? 'Intake pickups' : 'In transit', value: isWholesale ? intakes.length : allTransport.filter(t => ['dispatched','inTransit'].includes(t.status)).length, accent: '#e8b84b', color: '#92400e' },
+          { label: 'In transit', value: allTransport.filter(t => ['dispatched','inTransit'].includes(t.status)).length, accent: '#3b82f6', color: '#1e40af' },
         ].map(({ label, value, accent, color }) => (
-          <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 10, padding: '12px 16px' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{label}</div>
+          <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 10, padding: '10px 14px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 3 }}>{label}</div>
             <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{value}</div>
           </div>
         ))}
       </div>
 
-      {/* Type tabs (wholesale only) + status filter pills */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+      {/* Tabs + filters */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         {isWholesale && (
-          <div style={{ display: 'flex', background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: 10, overflow: 'hidden', marginRight: 8 }}>
+          <div style={{ display: 'flex', background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: 10, overflow: 'hidden', marginRight: 6 }}>
             {[['all','All'], ['deliveries','Auction'], ['intake','Private']].map(([key, label]) => (
               <button key={key} onClick={() => setTypeTab(key)} style={{
-                padding: '8px 16px', border: 'none', borderRight: key !== 'all' ? '1px solid #e5e7eb' : 'none',
+                padding: '7px 14px', border: 'none', borderRight: key !== 'intake' ? '1px solid #e5e7eb' : 'none',
                 cursor: 'pointer', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
                 background: typeTab === key ? '#0d2550' : 'transparent',
                 color: typeTab === key ? '#fff' : '#374151',
@@ -148,7 +169,7 @@ export default function Transport() {
         )}
         {[['all','All'], ['active','In progress'], ['complete','Complete']].map(([key, label]) => (
           <button key={key} onClick={() => setFilter(key)} style={{
-            padding: '7px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
             border: '1.5px solid',
             borderColor: filter === key ? '#0d2550' : '#e5e7eb',
             background: filter === key ? '#0d2550' : '#fff',
@@ -164,13 +185,13 @@ export default function Transport() {
           <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }}>{typeTab === 'intake' ? '📦' : '🚚'}</div>
           <div style={{ fontSize: 16, fontWeight: 600, color: '#374151', marginBottom: 6 }}>No vehicles to track</div>
           <div style={{ fontSize: 13 }}>
-            {typeTab === 'intake' ? 'Intake pickups are created when adding vehicles in Acquisitions with "Needs transport" checked'
+            {typeTab === 'intake' ? 'Intake pickups are created when adding vehicles with "Needs transport" checked'
               : typeTab === 'deliveries' ? 'Delivery records are created automatically when an auction closes'
               : 'Vehicles appear here after being added or after an auction closes'}
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {filtered.map(t => {
             const st = STATUS_LABEL[t.status] || STATUS_LABEL.awarded;
             const canUpdate = isWholesale;
@@ -181,10 +202,17 @@ export default function Transport() {
               id: t.vehicleId, year: null, make: t.vehicleName || '', model: '', trim: '', color: null, vin: null, photos: [], list_price: null, status: 'active',
             };
 
-            // Next step button
             const stepKeys = STEPS.map(s => s.key);
             const nextIdx = stepKeys.indexOf(t.status) + 1;
             const nextStep = nextIdx < STEPS.length ? STEPS[nextIdx] : null;
+
+            const legType = isIntake(t)
+              ? { label: 'Intake Pickup', bg: '#fef3c7', color: '#92400e' }
+              : { label: 'Auction Delivery', bg: '#eff6ff', color: '#1e40af' };
+
+            const scheduledDisplay = t.scheduledDate
+              ? new Date(t.scheduledDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+              : null;
 
             return (
               <VehicleCard
@@ -199,7 +227,7 @@ export default function Transport() {
                 pricePill={null}
                 actionButton={
                   canUpdate ? (
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 5 }}>
                       <button
                         className="btn-secondary"
                         style={{ padding: '4px 10px', fontSize: 11, whiteSpace: 'nowrap' }}
@@ -207,6 +235,11 @@ export default function Transport() {
                       >
                         Notes
                       </button>
+                      <button
+                        onClick={() => openEditSchedule(t)}
+                        title="Edit schedule"
+                        style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af', borderRadius: 8, padding: '4px 8px', fontSize: 13, cursor: 'pointer' }}
+                      >✏️</button>
                       <button
                         onClick={() => setConfirmDelete(t.id)}
                         title="Delete record"
@@ -217,54 +250,47 @@ export default function Transport() {
                 }
               >
                 {/* Transport details strip */}
-                <div style={{ padding: '10px 16px 14px', borderTop: '1px solid #f3f4f6', background: '#f9fafb' }}>
-                  {/* Destination + winning bid */}
-                  {t.storeName === 'Intake' ? (
-                    <div style={{ display: 'flex', gap: 20, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ padding: '10px 16px 12px', borderTop: '1px solid #f3f4f6', background: '#f9fafb' }}>
+                  {/* Info row: Leg type → Scheduled → Pickup/Destination */}
+                  <div style={{ display: 'flex', gap: 24, marginBottom: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                    {/* Leg type — always first */}
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Leg Type</div>
+                      <span style={{ background: legType.bg, color: legType.color, padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{legType.label}</span>
+                    </div>
+
+                    {/* Scheduled — always second */}
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Scheduled</div>
+                      {scheduledDisplay
+                        ? <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>{scheduledDisplay}</span>
+                        : <span style={{ fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>Not set</span>}
+                    </div>
+
+                    {/* Pickup from / Going to — third */}
+                    {isIntake(t) ? (
                       <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Pickup from</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Pickup From</div>
                         <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>{t.notes || 'Address not set'}</span>
                       </div>
-                      {t.scheduledDate && (
+                    ) : (
+                      <>
                         <div>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Scheduled</div>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>
-                            {new Date(t.scheduledDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                          </span>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Going To</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <StoreAvatar locationId={tLocationId} size={20} />
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#0d2550' }}>{tStoreName}</span>
+                          </div>
                         </div>
-                      )}
-                      <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Leg type</div>
-                        <span style={{ background: '#fef3c7', color: '#92400e', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Intake Pickup</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', gap: 20, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Going to</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <StoreAvatar locationId={tLocationId} size={22} />
-                          <span style={{ fontSize: 13, fontWeight: 700, color: '#0d2550' }}>{tStoreName}</span>
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Winning bid</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: '#0d2550' }}>${t.winningBid?.toLocaleString() ?? '—'}</div>
-                      </div>
-                      {t.scheduledDate && (
-                        <div>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Scheduled</div>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>
-                            {new Date(t.scheduledDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      )}
-                      <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Leg type</div>
-                        <span style={{ background: '#eff6ff', color: '#1e40af', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Auction Delivery</span>
-                      </div>
-                    </div>
-                  )}
+                        {t.winningBid && (
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Winning Bid</div>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: '#0d2550' }}>${t.winningBid.toLocaleString()}</div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
 
                   {/* Step tracker */}
                   <StepTracker
@@ -275,12 +301,12 @@ export default function Transport() {
                   />
 
                   {/* Next step button */}
-                  {canUpdate && nextStep && t.status !== 'titleReceived' && (
+                  {canUpdate && nextStep && (
                     <button
                       onClick={() => updateTransport(t.vehicleId, nextStep.key)}
                       style={{
-                        marginTop: 10, background: '#0d2550', color: '#fff', border: 'none',
-                        borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700,
+                        marginTop: 8, background: '#0d2550', color: '#fff', border: 'none',
+                        borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700,
                         cursor: 'pointer',
                       }}
                     >
@@ -288,9 +314,9 @@ export default function Transport() {
                     </button>
                   )}
 
-                  {/* Notes */}
-                  {t.notes && (
-                    <div style={{ marginTop: 10, background: '#fff', borderRadius: 6, padding: '8px 12px', fontSize: 12, color: '#374151', borderLeft: '3px solid #e8b84b' }}>
+                  {/* Notes (intake notes shown in "Pickup From" above; only show for auction deliveries) */}
+                  {t.notes && !isIntake(t) && (
+                    <div style={{ marginTop: 8, background: '#fff', borderRadius: 6, padding: '6px 10px', fontSize: 12, color: '#374151', borderLeft: '3px solid #e8b84b' }}>
                       📝 {t.notes}
                     </div>
                   )}
@@ -298,6 +324,44 @@ export default function Transport() {
               </VehicleCard>
             );
           })}
+        </div>
+      )}
+
+      {/* Edit schedule modal */}
+      {editScheduleModal && (
+        <div className="modal-overlay" onClick={() => setEditScheduleModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
+            <div className="modal-header">
+              <h2>Edit scheduled date</h2>
+              <button onClick={() => setEditScheduleModal(null)} style={{ background: 'none', border: 'none', fontSize: 22, color: '#9ca3af', cursor: 'pointer' }}>×</button>
+            </div>
+            <div className="modal-body">
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 12 }}>{editScheduleModal.vehicleName}</div>
+              <div className="form-group">
+                <label>Pickup / delivery date &amp; time</label>
+                <input
+                  type="datetime-local"
+                  value={scheduleInput}
+                  onChange={e => setScheduleInput(e.target.value)}
+                />
+              </div>
+              {scheduleInput && (
+                <button
+                  type="button"
+                  onClick={() => setScheduleInput('')}
+                  style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: 12, cursor: 'pointer', padding: 0, marginTop: 4 }}
+                >
+                  Clear date
+                </button>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setEditScheduleModal(null)}>Cancel</button>
+              <button className="btn-navy" onClick={handleSaveSchedule} disabled={savingSchedule}>
+                {savingSchedule ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -317,9 +381,7 @@ export default function Transport() {
               <button
                 style={{ background: '#991b1b', color: '#fff', border: 'none', padding: '9px 20px', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
                 onClick={async () => { await deleteTransport(confirmDelete); setConfirmDelete(null); }}
-              >
-                Delete
-              </button>
+              >Delete</button>
             </div>
           </div>
         </div>

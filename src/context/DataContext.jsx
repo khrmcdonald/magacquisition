@@ -639,6 +639,14 @@ export function DataProvider({ children }) {
     setTransport(prev => prev.filter(t => t.id !== id));
   };
 
+  const updateTransportSchedule = async (id, scheduledDate) => {
+    const { error } = await supabase.from('transport')
+      .update({ scheduled_date: scheduledDate || null })
+      .eq('id', id);
+    if (error) throw error;
+    setTransport(prev => prev.map(t => t.id === id ? { ...t, scheduledDate: scheduledDate || null } : t));
+  };
+
   // ── Repair orders ─────────────────────────────────────────────────────────
   const addRepairVendor = async (name, phone) => {
     const { data: row, error } = await supabase
@@ -915,7 +923,7 @@ export function DataProvider({ children }) {
       placeBid, addBid,
       getHighBid, getMyBid, getAllBidsForVehicle,
       // Transport
-      updateTransport, deleteTransport,
+      updateTransport, deleteTransport, updateTransportSchedule,
       // Repair orders
       repairOrders, repairVendors,
       addRepairOrder, updateRepairOrder, deleteRepairOrder,
