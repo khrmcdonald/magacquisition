@@ -488,7 +488,7 @@ export function DataProvider({ children }) {
       org_id:              ORG_ID,
       status:              vehicle.status || 'intake',
       intake_at:           new Date().toISOString(),
-      vin:                 vehicle.vin              || null,
+      vin:                 vehicle.vin?.trim()       || null,
       year:                vehicle.year             || null,
       make:                vehicle.make             || null,
       model:               vehicle.model            || null,
