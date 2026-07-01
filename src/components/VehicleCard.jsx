@@ -132,6 +132,16 @@ const TITLE_STATUS_STYLE = {
   issue:    { label: '⚠ Title Issue',   color: '#991b1b', bg: '#fee2e2', border: '#fca5a5' },
 };
 
+const STATUS_ACCENT = {
+  intake:     '#f59e0b',
+  no_sale:    '#94a3b8',
+  inspection: '#3b82f6',
+  recon:      '#8b5cf6',
+  ready:      '#10b981',
+  in_auction: '#0d2550',
+  sold:       '#6b7280',
+};
+
 export function VehicleCard({
   variant = 'grid',
   vehicle,
@@ -177,8 +187,6 @@ export function VehicleCard({
         )
         : null
       );
-
-  const borderColor = hovered ? '#0d2550' : highlighted ? '#0d2550' : '#e5e7eb';
 
   // ── LIST VARIANT ────────────────────────────────────────────────────────────
   if (variant === 'list') {
@@ -266,119 +274,83 @@ export function VehicleCard({
   }
 
   // ── GRID VARIANT ────────────────────────────────────────────────────────────
+  const accentColor = STATUS_ACCENT[vehicle.status] || '#e2e8f0';
+
+  const specParts = [
+    vehicle.color && vehicle.interior_color
+      ? `${vehicle.color} / ${vehicle.interior_color}`
+      : (vehicle.color || vehicle.interior_color || null),
+    vehicle.condition,
+    mileage != null ? `${parseInt(mileage).toLocaleString()} mi` : null,
+  ].filter(Boolean);
+
   return (
     <div
       onClick={onClick}
       style={{
         background: '#fff',
-        borderRadius: 12,
-        border: `1.5px solid ${borderColor}`,
-        boxShadow: highlighted ? '0 0 0 2px rgba(13,37,80,0.12)' : 'none',
+        borderRadius: 10,
+        border: `1px solid ${highlighted ? '#0d2550' : hovered ? '#cbd5e1' : '#e2e8f0'}`,
+        borderLeft: `4px solid ${accentColor}`,
+        boxShadow: highlighted
+          ? '0 0 0 3px rgba(13,37,80,0.1)'
+          : hovered ? '0 4px 16px rgba(0,0,0,0.07)' : '0 1px 3px rgba(0,0,0,0.04)',
         overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
         cursor: onClick ? 'pointer' : 'default',
-        transition: 'border-color 0.15s, transform 0.15s, box-shadow 0.15s',
-        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
+        transition: 'border-color 0.15s, box-shadow 0.15s, transform 0.12s',
+        transform: hovered ? 'translateY(-2px)' : 'none',
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Photo area — 160px */}
-      <div style={{
-        height: 160, background: '#f5f7fa', position: 'relative',
-        flexShrink: 0, overflow: 'hidden',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
+      {/* Photo — clean, overlays only in corners */}
+      <div style={{ height: 148, background: '#f1f5f9', position: 'relative', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {photos[0]
           ? <img src={photos[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <span style={{ fontSize: 48, opacity: 0.12, color: '#d1d5db' }}>🚗</span>
+          : <div style={{ fontSize: 30, fontWeight: 900, color: '#cbd5e1', letterSpacing: -1, userSelect: 'none' }}>
+              {(vehicle.make || '').slice(0, 3).toUpperCase()}
+            </div>
         }
-        {badgeContent && (
-          <div style={{ position: 'absolute', top: 10, left: 10 }}>{badgeContent}</div>
-        )}
-        {pricePillContent && (
-          <div style={{ position: 'absolute', top: 10, right: 10 }}>{pricePillContent}</div>
-        )}
+        {badgeContent && <div style={{ position: 'absolute', top: 8, left: 8 }}>{badgeContent}</div>}
+        {pricePillContent && <div style={{ position: 'absolute', top: 8, right: 8 }}>{pricePillContent}</div>}
       </div>
 
       {/* Card body */}
-      <div style={{ padding: '12px 14px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ padding: '10px 14px 12px', flex: 1, display: 'flex', flexDirection: 'column' }}>
 
-        {/* Year Make Model — one line */}
-        <div style={{ fontSize: 14, fontWeight: 800, color: '#0d2550', lineHeight: 1.25 }}>
+        {/* Hero: Year Make Model */}
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#111827', lineHeight: 1.2, marginBottom: 1 }}>
           {vehicle.year} {vehicle.make} {vehicle.model}
         </div>
 
+        {/* Trim */}
+        {vehicle.trim && (
+          <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 2 }}>
+            {vehicle.trim}
+          </div>
+        )}
+
+        {/* Specs: color · condition · mileage */}
+        {specParts.length > 0 && (
+          <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.3, marginBottom: 3 }}>
+            {specParts.join(' · ')}
+          </div>
+        )}
+
         {/* VIN */}
-        <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#9ca3af', letterSpacing: '.03em', marginTop: 1 }}>
+        <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#c4c9d3', letterSpacing: '.04em', marginBottom: 6 }}>
           {vehicle.vin || '—'}
         </div>
 
-        {/* Trim + Color + Condition — 12px muted */}
-        {(vehicle.trim || vehicle.color || vehicle.interior_color || vehicle.condition) && (
-          <div style={{ fontSize: 12, color: '#6b7280' }}>
-            {[
-              vehicle.trim,
-              vehicle.color && vehicle.interior_color
-                ? `${vehicle.color} / ${vehicle.interior_color}`
-                : (vehicle.color || vehicle.interior_color || null),
-              vehicle.condition,
-            ].filter(Boolean).join(' · ')}
-          </div>
-        )}
-
-        {/* Mileage | List Price or Buyer — 2-col grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, paddingTop: 7, borderTop: '1px solid #f3f4f6', marginTop: 3 }}>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Mileage</div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>{mileageDisplay}</div>
-          </div>
-          <div>
-            {vehicle.list_price ? (
-              <>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>List Price</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#0d2550' }}>{listPrice}</div>
-              </>
-            ) : vehicle.buyer_name ? (
-              <>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Buyer</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{vehicle.buyer_name}</div>
-              </>
-            ) : null}
-          </div>
-        </div>
-
-        {/* Cost basis — admin/gm/wholesale only */}
-        {showCostBasis && costBasis != null && (
-          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>
-            Cost basis: <span style={{ fontWeight: 700, color: '#6b7280' }}>${parseFloat(costBasis).toLocaleString()}</span>
-          </div>
-        )}
-
-        {/* Date purchased + source */}
-        {(showDatePurchased && vehicle.datePurchased) || sourceName ? (
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 3 }}>
-            {showDatePurchased && vehicle.datePurchased && (
-              <div style={{ fontSize: 11, color: '#9ca3af' }}>
-                Purchased: <span style={{ fontWeight: 700, color: '#6b7280' }}>{new Date(vehicle.datePurchased + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-              </div>
-            )}
-            {sourceName && (
-              <div style={{ fontSize: 11, color: '#9ca3af' }}>
-                Source: <span style={{ fontWeight: 700, color: '#6b7280' }}>{sourceName}</span>
-              </div>
-            )}
-          </div>
-        ) : null}
-
-        {/* Age + Title status — same row, compact */}
+        {/* Age + Title status — compact inline row */}
         {(showAge || (showTitleStatus && vehicle.titleStatus)) && (
-          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
-            {showAge && <AgePill vehicle={vehicle} style={{ fontSize: 10, padding: '1px 7px' }} />}
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 }}>
+            {showAge && <AgePill vehicle={vehicle} style={{ fontSize: 10, padding: '1px 6px' }} />}
             {showTitleStatus && vehicle.titleStatus && (() => {
               const ts = TITLE_STATUS_STYLE[vehicle.titleStatus];
               return ts ? (
-                <span style={{ background: ts.bg, color: ts.color, border: `1px solid ${ts.border}`, borderRadius: 20, padding: '1px 7px', fontSize: 10, fontWeight: 700 }}>
+                <span style={{ background: ts.bg, color: ts.color, border: `1px solid ${ts.border}`, borderRadius: 20, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>
                   {ts.label}
                 </span>
               ) : null;
@@ -386,43 +358,39 @@ export function VehicleCard({
           </div>
         )}
 
-        {/* Disclosure callout */}
+        {/* Cost basis */}
+        {showCostBasis && costBasis != null && (
+          <div style={{ marginBottom: 4 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#374151' }}>${parseFloat(costBasis).toLocaleString()}</span>
+            <span style={{ fontSize: 10, color: '#9ca3af', marginLeft: 4 }}>cost basis</span>
+          </div>
+        )}
+
+        {/* List price */}
+        {vehicle.list_price && (
+          <div style={{ marginBottom: 4 }}>
+            <span style={{ fontSize: 15, fontWeight: 800, color: '#0d2550' }}>{listPrice}</span>
+          </div>
+        )}
+
+        {/* Disclosure */}
         {vehicle.disclosure_notes && (
-          <div style={{
-            background: '#FFFBEB', border: '1px solid #FCD34D',
-            borderRadius: 6, padding: '6px 10px', fontSize: 11, color: '#BA7517', lineHeight: 1.4,
-          }}>
+          <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 6, padding: '5px 8px', fontSize: 11, color: '#b45309', lineHeight: 1.4, marginBottom: 4 }}>
             ⚠ {vehicle.disclosure_notes}
           </div>
         )}
 
-        {/* Extra content slot */}
         {children}
 
-        {/* Footer: Details (left) + primary action (right) */}
+        {/* Action footer */}
         {(onDetails || actionButton) && (
-          <div
-            style={{ marginTop: 'auto', paddingTop: 6, display: 'flex', gap: 8 }}
-            onClick={e => e.stopPropagation()}
-          >
+          <div style={{ marginTop: 'auto', paddingTop: 8, borderTop: '1px solid #f1f5f9' }} onClick={e => e.stopPropagation()}>
             {onDetails && (
-              <button
-                onClick={onDetails}
-                style={{
-                  flex: '0 0 40%', padding: '10px 0', fontSize: 13, fontWeight: 600,
-                  border: '1.5px solid #e5e7eb', borderRadius: 8,
-                  background: '#fff', color: '#374151', cursor: 'pointer',
-                  transition: 'border-color 0.12s, background 0.12s',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = '#0d2550'; e.currentTarget.style.background = '#f8faff'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.background = '#fff'; }}
-              >
+              <button onClick={onDetails} style={{ width: '100%', padding: '9px 0', fontSize: 12, fontWeight: 600, border: '1.5px solid #e2e8f0', borderRadius: 7, background: '#fff', color: '#374151', cursor: 'pointer' }}>
                 Details
               </button>
             )}
-            {actionButton && (
-              <div style={{ flex: 1 }}>{actionButton}</div>
-            )}
+            {actionButton && <div>{actionButton}</div>}
           </div>
         )}
       </div>

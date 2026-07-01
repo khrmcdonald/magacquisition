@@ -1616,56 +1616,50 @@ export default function Acquisitions() {
                 key={v.id}
                 vehicle={v}
                 showAge={['wholesale', 'gm', 'admin'].includes(user.role)}
-                showDatePurchased={true}
                 showTitleStatus={true}
-                sourceName={sourceOptions.find(s => s.value === v.sourceId)?.label || null}
                 mileage={v.mileage ?? mileageMap[v.id] ?? null}
+                showCostBasis={!!v.totalCost}
+                costBasis={v.totalCost}
                 badge={
-                  <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
+                  <span style={{ background: st.bg, color: st.color, padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 700, letterSpacing: '.02em' }}>
                     {st.label}
                   </span>
                 }
-                pricePill={
-                  v.totalCost
-                    ? <div style={{ background: 'rgba(255,255,255,0.93)', color: '#374151', fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.14)' }}>
-                        ${parseFloat(v.totalCost).toLocaleString()} cost
-                      </div>
-                    : null
-                }
+                pricePill={null}
                 highlighted={panelVehicle?.id === v.id}
                 actionButton={
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {!isReadOnly && (
                       <>
                         {(v.status === 'intake' || v.status === 'no_sale') && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                            <button onClick={() => handleStatusChange(v, 'inspection')} style={{ width: '100%', background: '#fef3c7', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>→ Inspect</button>
-                            <div style={{ display: 'flex', gap: 3 }}>
-                              <button onClick={() => handleStatusChange(v, 'recon')} style={{ flex: 1, background: '#f9fafb', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 7, padding: '4px 0', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>Skip → Recon</button>
-                              <button onClick={() => handleStatusChange(v, 'ready')} style={{ flex: 1, background: '#f9fafb', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 7, padding: '4px 0', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>Skip → Ready</button>
+                          <>
+                            <button onClick={() => handleStatusChange(v, 'inspection')} style={{ width: '100%', background: '#fff7ed', color: '#9a3412', border: '1.5px solid #fdba74', borderRadius: 7, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>→ Inspection</button>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
+                              <button onClick={() => handleStatusChange(v, 'recon')} style={{ background: 'none', border: 'none', fontSize: 10, color: '#94a3b8', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2, padding: '1px 0' }}>Skip to Recon</button>
+                              <button onClick={() => handleStatusChange(v, 'ready')} style={{ background: 'none', border: 'none', fontSize: 10, color: '#94a3b8', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2, padding: '1px 0' }}>Skip to Ready</button>
                             </div>
-                          </div>
+                          </>
                         )}
                         {v.status === 'inspection' && (
                           <div style={{ display: 'flex', gap: 5 }}>
-                            <button onClick={() => printInspectionChecklist(v)} style={{ flex: 1, background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 8, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Print</button>
-                            <button onClick={() => setInspectionModal(v)} style={{ flex: 1, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Enter Results</button>
+                            <button onClick={() => printInspectionChecklist(v)} style={{ background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', borderRadius: 7, padding: '8px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Print</button>
+                            <button onClick={() => setInspectionModal(v)} style={{ flex: 1, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 7, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Enter Results</button>
                           </div>
                         )}
                         {v.status === 'recon' && (
-                          <button onClick={() => handleStatusChange(v, 'ready')} style={{ width: '100%', background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✓ Mark Ready</button>
+                          <button onClick={() => handleStatusChange(v, 'ready')} style={{ width: '100%', background: '#f0fdf4', color: '#15803d', border: '1.5px solid #86efac', borderRadius: 7, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✓ Mark Ready</button>
                         )}
                         {v.status === 'ready' && data.auction.isOpen && (
-                          <button onClick={() => handleList(v)} style={{ width: '100%', background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>List now</button>
+                          <button onClick={() => handleList(v)} style={{ width: '100%', background: '#0d2550', color: '#fff', border: 'none', borderRadius: 7, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>List in Auction</button>
                         )}
                         {v.status === 'in_auction' && (
-                          <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { showToast('Failed: ' + err.message, 'error'); } }} style={{ width: '100%', background: '#fef3c7', color: '#92400e', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove from Auction</button>
+                          <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { showToast('Failed: ' + err.message, 'error'); } }} style={{ width: '100%', background: '#fefce8', color: '#854d0e', border: '1.5px solid #fde047', borderRadius: 7, padding: '8px 0', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove from Auction</button>
                         )}
                       </>
                     )}
                     <button
                       onClick={() => openPanel(v)}
-                      style={{ width: '100%', background: panelVehicle?.id === v.id ? '#0d2550' : '#fff', color: panelVehicle?.id === v.id ? '#fff' : '#0d2550', border: '1.5px solid #0d2550', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
+                      style={{ width: '100%', background: panelVehicle?.id === v.id ? '#0d2550' : '#fff', color: panelVehicle?.id === v.id ? '#fff' : '#0d2550', border: '1.5px solid #0d2550', borderRadius: 7, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
                     >
                       {panelVehicle?.id === v.id ? '← Viewing' : 'View Listing'}
                     </button>
@@ -2030,18 +2024,39 @@ export default function Acquisitions() {
                 {/* Financials */}
                 {(pv.purchasePrice || pv.totalCost || pv.floorPrice || pvSource || pv.datePurchased || pv.buyer_name) && (
                   <>
-                    {sectionHdr('Financials')}
+                    {sectionHdr('Acquisition')}
                     {pv.datePurchased && row('Date Purchased', new Date(pv.datePurchased + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))}
                     {pvSource && row('Source', pvSource)}
                     {pv.buyer_name && row('Buyer', pv.buyer_name)}
+
+                    {/* Key numbers — 3 stat boxes */}
+                    {(pv.totalCost || pv.floorPrice) && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, margin: '14px 0 10px' }}>
+                        {[
+                          { label: 'Cost Basis', value: fmt$(pv.totalCost) },
+                          { label: 'Floor', value: fmt$(pv.floorPrice) },
+                          {
+                            label: 'Margin',
+                            value: pvMargin !== null ? fmt$(pvMargin) : '—',
+                            color: pvMargin !== null ? (pvMargin >= 0 ? '#15803d' : '#b91c1c') : '#9ca3af',
+                            bg: pvMargin !== null ? (pvMargin >= 0 ? '#f0fdf4' : '#fef2f2') : '#f9fafb',
+                            border: pvMargin !== null ? (pvMargin >= 0 ? '#bbf7d0' : '#fecaca') : '#e5e7eb',
+                          },
+                        ].map(({ label, value, color, bg, border }) => (
+                          <div key={label} style={{ background: bg || '#f8faff', border: `1px solid ${border || '#e2e8f0'}`, borderRadius: 8, padding: '8px 6px', textAlign: 'center' }}>
+                            <div style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{label}</div>
+                            <div style={{ fontSize: 15, fontWeight: 800, color: color || '#0d2550', lineHeight: 1 }}>{value}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Breakdown */}
+                    {sectionHdr('Breakdown')}
                     {row('Purchase Price', fmt$(pv.purchasePrice))}
                     {pv.overheadCosts > 0 && row('Overhead / Fees', fmt$(pv.overheadCosts))}
                     {pv.totalRepairCosts > 0 && row('Recon Costs', fmt$(pv.totalRepairCosts), { color: '#92400e' })}
-                    <div style={{ borderTop: '1px solid #f3f4f6', marginBottom: 6 }} />
-                    {row('Total Cost', fmt$(pv.totalCost), { color: '#0d2550', fontWeight: 700 })}
-                    {row('Floor Price', fmt$(pv.floorPrice))}
                     {row('List Price', fmt$(pv.listPrice))}
-                    {pvMargin !== null && row('Margin', fmt$(pvMargin), { color: pvMargin >= 0 ? '#065f46' : '#991b1b', fontWeight: 700 })}
                   </>
                 )}
 
