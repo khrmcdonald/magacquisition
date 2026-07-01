@@ -2026,14 +2026,14 @@ export default function Acquisitions() {
                 {row('Condition', pv.condition)}
                 {row('Color', pv.color && pv.interior_color ? `${pv.color} / ${pv.interior_color}` : (pv.color || pv.interior_color))}
                 {row('Mileage', pvMileage != null ? `${parseInt(pvMileage).toLocaleString()} mi` : null)}
-                {row('Buyer', pv.buyer_name)}
 
                 {/* Financials */}
-                {(pv.purchasePrice || pv.totalCost || pv.floorPrice || pvSource || pv.datePurchased) && (
+                {(pv.purchasePrice || pv.totalCost || pv.floorPrice || pvSource || pv.datePurchased || pv.buyer_name) && (
                   <>
                     {sectionHdr('Financials')}
                     {pv.datePurchased && row('Date Purchased', new Date(pv.datePurchased + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))}
                     {pvSource && row('Source', pvSource)}
+                    {pv.buyer_name && row('Buyer', pv.buyer_name)}
                     {row('Purchase Price', fmt$(pv.purchasePrice))}
                     {pv.overheadCosts > 0 && row('Overhead / Fees', fmt$(pv.overheadCosts))}
                     {pv.totalRepairCosts > 0 && row('Recon Costs', fmt$(pv.totalRepairCosts), { color: '#92400e' })}
