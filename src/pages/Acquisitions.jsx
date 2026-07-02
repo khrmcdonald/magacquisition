@@ -1514,108 +1514,63 @@ export default function Acquisitions() {
         )}
       </div>
 
-      {/* Filter panel */}
-      <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
+      {/* Filter bar — single row */}
+      {(() => {
+        const sel = { padding: '7px 10px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#374151', background: '#fff', cursor: 'pointer', height: 36 };
+        const active = statusFilter !== 'all' || buyerFilter || sourceFilter || dateRange !== 'all' || ageFilter !== 'all' || search;
+        return (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ ...sel, borderColor: statusFilter !== 'all' ? '#0d2550' : '#e5e7eb', color: statusFilter !== 'all' ? '#0d2550' : '#374151' }}>
+                <option value="all">All statuses</option>
+                {Object.entries(STATUS_LABELS).filter(([k]) => k !== 'no_sale').map(([k, { label }]) => (
+                  <option key={k} value={k}>{label} ({statusCounts[k] || 0})</option>
+                ))}
+              </select>
 
-        {/* Row 1: Status */}
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>Status</div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <button onClick={() => setStatusFilter('all')} style={{
-              padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
-              border: `1.5px solid ${statusFilter === 'all' ? '#0d2550' : '#e5e7eb'}`,
-              background: statusFilter === 'all' ? '#0d2550' : '#fff',
-              color: statusFilter === 'all' ? '#fff' : '#6b7280',
-            }}>All</button>
-            {Object.entries(STATUS_LABELS).filter(([key]) => key !== 'no_sale').map(([key, { label, color, accent }]) => {
-              const active = statusFilter === key;
-              return (
-                <button key={key} onClick={() => setStatusFilter(active ? 'all' : key)} style={{
-                  padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
-                  border: `1.5px solid ${active ? accent : '#e5e7eb'}`,
-                  background: active ? accent : '#fff',
-                  color: active ? '#fff' : '#6b7280',
-                }}>
-                  {label}
-                  <span style={{ marginLeft: 5, opacity: 0.75 }}>{statusCounts[key] || 0}</span>
+              <select value={ageFilter} onChange={e => setAgeFilter(e.target.value)} style={{ ...sel, borderColor: ageFilter !== 'all' ? '#b45309' : '#e5e7eb', color: ageFilter !== 'all' ? '#b45309' : '#374151' }}>
+                <option value="all">Any age</option>
+                <option value="<30">{'< 30 days'}</option>
+                <option value="30-60">Aging · 30–60d</option>
+                <option value="60-90">At Risk · 60–90d</option>
+                <option value="90+">Liquidate · 90d+</option>
+              </select>
+
+              <select value={dateRange} onChange={e => setDateRange(e.target.value)} style={{ ...sel, borderColor: dateRange !== 'all' ? '#0d2550' : '#e5e7eb', color: dateRange !== 'all' ? '#0d2550' : '#374151' }}>
+                <option value="all">All time</option>
+                <option value="week">Last 7 days</option>
+                <option value="month">Last 30 days</option>
+                <option value="custom">Custom range…</option>
+              </select>
+
+              <select value={buyerFilter} onChange={e => setBuyerFilter(e.target.value)} style={{ ...sel, borderColor: buyerFilter ? '#0d2550' : '#e5e7eb', color: buyerFilter ? '#0d2550' : '#374151' }}>
+                <option value="">All buyers</option>
+                {buyers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+
+              <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} style={{ ...sel, borderColor: sourceFilter ? '#0d2550' : '#e5e7eb', color: sourceFilter ? '#0d2550' : '#374151' }}>
+                <option value="">All sources</option>
+                {sourceOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+
+              {active && (
+                <button onClick={() => { setStatusFilter('all'); setBuyerFilter(''); setSourceFilter(''); setDateRange('all'); setDateFrom(''); setDateTo(''); setAgeFilter('all'); setSearch(''); }}
+                  style={{ padding: '6px 12px', border: '1px solid #fecaca', borderRadius: 8, background: '#fef2f2', color: '#991b1b', fontSize: 12, fontWeight: 700, cursor: 'pointer', height: 36, whiteSpace: 'nowrap' }}>
+                  ✕ Clear
                 </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Row 2: Age */}
-        <div style={{ marginBottom: 12, borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>Age in inventory</div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {[
-              ['all',   'All',              null,      '#f3f4f6', '#374151'],
-              ['<30',   '< 30 days',        null,      '#eff6ff', '#1e40af'],
-              ['30-60', 'Aging · 30–60d',   '⚠',      '#fef9c3', '#78350f'],
-              ['60-90', 'At Risk · 60–90d', '⚠',      '#fef3c7', '#b45309'],
-              ['90+',   'Liquidate · 90d+', '⚠',      '#fee2e2', '#991b1b'],
-            ].map(([val, label, icon, bg, color]) => (
-              <button key={val} onClick={() => setAgeFilter(val)} style={{
-                padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${ageFilter === val ? color : '#e5e7eb'}`,
-                background: ageFilter === val ? bg : '#fff', color: ageFilter === val ? color : '#6b7280',
-                fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
-                boxShadow: ageFilter === val ? `0 0 0 1px ${color}33` : 'none',
-              }}>
-                {icon && ageFilter === val ? `${icon} ` : ''}{label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Row 3: Date purchased + Buyer + Source + clear */}
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 5 }}>Date purchased</div>
-            <div style={{ display: 'flex', border: '1.5px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
-              {[['all','All'],['week','Last 7d'],['month','Last 30d'],['custom','Custom']].map(([val, label], i, arr) => (
-                <button key={val} onClick={() => setDateRange(val)} style={{
-                  padding: '6px 11px', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
-                  borderRight: i < arr.length - 1 ? '1px solid #e5e7eb' : 'none',
-                  background: dateRange === val ? '#0d2550' : '#fff',
-                  color: dateRange === val ? '#fff' : '#6b7280',
-                }}>
-                  {label}
-                </button>
-              ))}
+              )}
             </div>
+
             {dateRange === 'custom' && (
-              <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>
                 <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ padding: '5px 8px', border: '1.5px solid #e5e7eb', borderRadius: 6, fontSize: 12, background: '#fff' }} />
                 <span style={{ fontSize: 12, color: '#9ca3af' }}>to</span>
                 <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ padding: '5px 8px', border: '1.5px solid #e5e7eb', borderRadius: 6, fontSize: 12, background: '#fff' }} />
               </div>
             )}
           </div>
-
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 5 }}>Buyer</div>
-            <select value={buyerFilter} onChange={e => setBuyerFilter(e.target.value)} style={{ padding: '7px 10px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#374151', background: '#fff', cursor: 'pointer' }}>
-              <option value="">All buyers</option>
-              {buyers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 5 }}>Source</div>
-            <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} style={{ padding: '7px 10px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#374151', background: '#fff', cursor: 'pointer' }}>
-              <option value="">All sources</option>
-              {sourceOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
-          </div>
-
-          {(statusFilter !== 'all' || buyerFilter || sourceFilter || dateRange !== 'all' || ageFilter !== 'all' || search) && (
-            <button onClick={() => { setStatusFilter('all'); setBuyerFilter(''); setSourceFilter(''); setDateRange('all'); setDateFrom(''); setDateTo(''); setAgeFilter('all'); setSearch(''); }}
-              style={{ padding: '7px 14px', border: '1px solid #fecaca', borderRadius: 8, background: '#fef2f2', color: '#991b1b', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-              ✕ Clear all
-            </button>
-          )}
-        </div>
-      </div>
+        );
+      })()}
 
       <div style={{ marginBottom: 10 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: '#6b7280' }}>{filtered.length} vehicles</span>
