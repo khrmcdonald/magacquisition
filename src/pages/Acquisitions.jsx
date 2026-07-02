@@ -1516,8 +1516,36 @@ export default function Acquisitions() {
 
       {/* Filter panel */}
       <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
-        {/* Row 1: Age */}
+
+        {/* Row 1: Status */}
         <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>Status</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button onClick={() => setStatusFilter('all')} style={{
+              padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+              border: `1.5px solid ${statusFilter === 'all' ? '#0d2550' : '#e5e7eb'}`,
+              background: statusFilter === 'all' ? '#0d2550' : '#fff',
+              color: statusFilter === 'all' ? '#fff' : '#6b7280',
+            }}>All</button>
+            {Object.entries(STATUS_LABELS).filter(([key]) => key !== 'no_sale').map(([key, { label, color, accent }]) => {
+              const active = statusFilter === key;
+              return (
+                <button key={key} onClick={() => setStatusFilter(active ? 'all' : key)} style={{
+                  padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                  border: `1.5px solid ${active ? accent : '#e5e7eb'}`,
+                  background: active ? accent : '#fff',
+                  color: active ? '#fff' : '#6b7280',
+                }}>
+                  {label}
+                  <span style={{ marginLeft: 5, opacity: 0.75 }}>{statusCounts[key] || 0}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Row 2: Age */}
+        <div style={{ marginBottom: 12, borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>Age in inventory</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {[
@@ -1539,7 +1567,7 @@ export default function Acquisitions() {
           </div>
         </div>
 
-        {/* Row 2: Date purchased + Buyer + clear */}
+        {/* Row 3: Date purchased + Buyer + Source + clear */}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 5 }}>Date purchased</div>
@@ -1580,44 +1608,13 @@ export default function Acquisitions() {
             </select>
           </div>
 
-          {(buyerFilter || sourceFilter || dateRange !== 'all' || ageFilter !== 'all') && (
-            <button onClick={() => { setBuyerFilter(''); setSourceFilter(''); setDateRange('all'); setDateFrom(''); setDateTo(''); setAgeFilter('all'); }}
+          {(statusFilter !== 'all' || buyerFilter || sourceFilter || dateRange !== 'all' || ageFilter !== 'all' || search) && (
+            <button onClick={() => { setStatusFilter('all'); setBuyerFilter(''); setSourceFilter(''); setDateRange('all'); setDateFrom(''); setDateTo(''); setAgeFilter('all'); setSearch(''); }}
               style={{ padding: '7px 14px', border: '1px solid #fecaca', borderRadius: 8, background: '#fef2f2', color: '#991b1b', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-              ✕ Clear all filters
+              ✕ Clear all
             </button>
           )}
         </div>
-      </div>
-
-      {/* Status KPI tiles — click to filter */}
-      {statusFilter !== 'all' && (
-        <div style={{ marginBottom: 10 }}>
-          <button onClick={() => setStatusFilter('all')} style={{ background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 20, padding: '4px 14px', fontSize: 12, fontWeight: 700, color: '#374151', cursor: 'pointer' }}>
-            ✕ Clear filter — view all
-          </button>
-        </div>
-      )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, marginBottom: 20 }}>
-        {Object.entries(STATUS_LABELS).filter(([key]) => key !== 'no_sale').map(([key, { label, color, accent }]) => {
-          const active = statusFilter === key;
-          return (
-            <div
-              key={key}
-              onClick={() => setStatusFilter(active ? 'all' : key)}
-              style={{
-                background: '#fff',
-                border: `1px solid ${active ? accent : '#e5e7eb'}`,
-                borderTop: `3px solid ${accent}`,
-                borderRadius: 10, padding: '12px 16px', cursor: 'pointer',
-                transition: 'border-color 0.15s',
-                boxShadow: active ? `0 0 0 2px ${accent}33` : 'none',
-              }}
-            >
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{statusCounts[key] || 0}</div>
-            </div>
-          );
-        })}
       </div>
 
       {/* Search + vehicle count */}
