@@ -180,20 +180,27 @@ function InviteUserCard() {
 }
 
 
-function TeamMembersCard({ profiles, onUpdateBuyerNumber, roleLabel, roleBadge }) {
+function TeamMembersCard({ profiles, onUpdateProfile, roleLabel }) {
   const { showToast } = useToast();
-  const [editing, setEditing] = useState(null); // { id, value }
+  const [editing, setEditing] = useState(null); // { id, name, role, buyer_number }
+  const [saving, setSaving] = useState(false);
+
+  const startEdit = (p) => setEditing({ id: p.id, name: p.name || '', role: p.role || 'bidder', buyer_number: p.buyer_number || '' });
 
   const handleSave = async () => {
     if (!editing) return;
+    setSaving(true);
     try {
-      await onUpdateBuyerNumber(editing.id, editing.value.trim());
-      showToast('Buyer number saved.', 'success');
+      await onUpdateProfile(editing.id, { name: editing.name.trim(), role: editing.role, buyerNumber: editing.buyer_number.trim() });
+      showToast('User updated.', 'success');
       setEditing(null);
     } catch (err) {
       showToast('Failed to save: ' + err.message, 'error');
     }
+    setSaving(false);
   };
+
+  const inp = { padding: '6px 10px', border: '1.5px solid #e5e7eb', borderRadius: 6, fontSize: 13, outline: 'none', background: '#fff', width: '100%', boxSizing: 'border-box' };
 
   return (
     <div className="card" style={{ padding: 0, marginBottom: 24 }}>
@@ -204,39 +211,53 @@ function TeamMembersCard({ profiles, onUpdateBuyerNumber, roleLabel, roleBadge }
       <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {profiles.length === 0 && <div style={{ fontSize: 13, color: '#9ca3af' }}>No users found.</div>}
         {profiles.map(p => (
-          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: '#0d2550', color: '#e8b84b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>
-              {(p.name || '?')[0].toUpperCase()}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{p.name}</div>
-              <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>{roleLabel[p.role] || p.role}</div>
-            </div>
-            {editing?.id === p.id ? (
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <input
-                  autoFocus
-                  value={editing.value}
-                  onChange={e => setEditing(prev => ({ ...prev, value: e.target.value }))}
-                  onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(null); }}
-                  placeholder="Buyer #"
-                  style={{ width: 110, padding: '5px 9px', borderRadius: 6, border: '1.5px solid #0d2550', fontSize: 13, outline: 'none' }}
-                />
-                <button onClick={handleSave} style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 11px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Save</button>
-                <button onClick={() => setEditing(null)} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '5px 9px', fontSize: 12, cursor: 'pointer', color: '#6b7280' }}>Cancel</button>
+          <div key={p.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb', overflow: 'hidden' }}>
+            {/* Row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px' }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: '#0d2550', color: '#e8b84b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>
+                {(p.name || '?')[0].toUpperCase()}
               </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                {p.buyer_number
-                  ? <span style={{ background: '#f0f4fb', color: '#0d2550', padding: '2px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, fontFamily: 'monospace' }}>#{p.buyer_number}</span>
-                  : null
-                }
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{p.name}</div>
+                <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>{roleLabel[p.role] || p.role}</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {p.buyer_number && (
+                  <span style={{ background: '#f0f4fb', color: '#0d2550', padding: '2px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, fontFamily: 'monospace' }}>#{p.buyer_number}</span>
+                )}
                 <button
-                  onClick={() => setEditing({ id: p.id, value: p.buyer_number || '' })}
-                  style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '3px 9px', fontSize: 11, cursor: 'pointer', color: '#6b7280', fontWeight: 600, whiteSpace: 'nowrap' }}
+                  onClick={() => editing?.id === p.id ? setEditing(null) : startEdit(p)}
+                  style={{ background: editing?.id === p.id ? '#f3f4f6' : 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer', color: '#374151', fontWeight: 600 }}
                 >
-                  {p.buyer_number ? 'Edit #' : '+ Buyer #'}
+                  {editing?.id === p.id ? 'Cancel' : 'Edit'}
                 </button>
+              </div>
+            </div>
+            {/* Edit form */}
+            {editing?.id === p.id && (
+              <div style={{ borderTop: '1px solid #e5e7eb', padding: '14px 16px', background: '#fff', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Name</div>
+                    <input value={editing.name} onChange={e => setEditing(prev => ({ ...prev, name: e.target.value }))} style={inp} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Role</div>
+                    <select value={editing.role} onChange={e => setEditing(prev => ({ ...prev, role: e.target.value }))} style={{ ...inp, cursor: 'pointer' }}>
+                      {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Buyer #</div>
+                    <input value={editing.buyer_number} onChange={e => setEditing(prev => ({ ...prev, buyer_number: e.target.value }))} placeholder="e.g. 1042" style={inp} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={handleSave} disabled={saving} style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
+                    {saving ? 'Saving…' : 'Save'}
+                  </button>
+                  <button onClick={() => setEditing(null)} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '7px 14px', fontSize: 13, cursor: 'pointer', color: '#6b7280' }}>Cancel</button>
+                </div>
               </div>
             )}
           </div>
@@ -248,7 +269,7 @@ function TeamMembersCard({ profiles, onUpdateBuyerNumber, roleLabel, roleBadge }
 
 export default function Admin() {
   const { user } = useAuth();
-  const { data, updateStorePhoto, addAcquisitionSource, deleteAcquisitionSource, addLocation, deleteLocation, updateBuyerNumber, saveOrgSettings } = useData();
+  const { data, updateStorePhoto, addAcquisitionSource, deleteAcquisitionSource, addLocation, deleteLocation, updateProfile, saveOrgSettings } = useData();
   const { showToast } = useToast();
   const fileRefs = useRef({});
   const logoRef = useRef(null);
@@ -410,7 +431,7 @@ export default function Admin() {
       {activeTab === 'users' && (
         <div>
           <InviteUserCard />
-          <TeamMembersCard profiles={data.profiles || []} onUpdateBuyerNumber={updateBuyerNumber} roleLabel={roleLabel} roleBadge={roleBadge} />
+          <TeamMembersCard profiles={data.profiles || []} onUpdateProfile={updateProfile} roleLabel={roleLabel} roleBadge={roleBadge} />
         </div>
       )}
 
@@ -471,7 +492,7 @@ export default function Admin() {
             <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>Store profiles and headshots — appears throughout the app</p>
           </div>
           <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {(data.locations || []).filter(l => l.is_buyer_store).map(loc => (
+            {(data.locations || []).map(loc => (
               <div key={loc.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px', background: '#f9fafb', borderRadius: 10, border: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   <StoreAvatar locationId={loc.id} size={52} />

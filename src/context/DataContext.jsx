@@ -886,12 +886,22 @@ export function DataProvider({ children }) {
     if (error) throw error;
     setAcquisitionSources(prev => prev.filter(s => s.id !== id));
   };
-  const updateBuyerNumber = async (userId, buyerNumber) => {
-    const { error } = await supabase.from('profiles').update({ buyer_number: buyerNumber || null }).eq('id', userId);
+  const updateProfile = async (userId, { name, role, buyerNumber }) => {
+    const { error } = await supabase.from('profiles')
+      .update({ name, role, buyer_number: buyerNumber || null })
+      .eq('id', userId);
     if (error) throw error;
-    const updated = p => p.id === userId ? { ...p, buyer_number: buyerNumber || null } : p;
-    setBuyers(prev => prev.map(updated));
-    setProfiles(prev => prev.map(updated));
+    // Re-fetch to get fresh state including any newly registered users
+    const { data: fresh } = await supabase.from('profiles')
+      .select('id, name, buyer_number, role').eq('org_id', ORG_ID);
+    if (fresh) {
+      setBuyers(fresh.filter(p => p.role === 'wholesale'));
+      setProfiles(fresh);
+    }
+  };
+  const updateBuyerNumber = async (userId, buyerNumber) => {
+    const existing = profiles.find(p => p.id === userId);
+    await updateProfile(userId, { name: existing?.name, role: existing?.role, buyerNumber });
   };
 
   const saveOrgSettings = async (settings) => {
@@ -941,6 +951,7 @@ export function DataProvider({ children }) {
       // Sources & locations
       addAcquisitionSource, deleteAcquisitionSource,
       addLocation, deleteLocation,
+      updateProfile,
       updateBuyerNumber,
       saveOrgSettings,
     }}>
