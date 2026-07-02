@@ -333,8 +333,9 @@ export default function Admin() {
     setSavingLocation(false);
   };
 
-  const handleDeleteLocation = async (id) => {
-    if (!window.confirm('Delete this location?')) return;
+  const handleDeleteLocation = async (id, name) => {
+    const confirmed = window.prompt(`Type the location name to confirm deletion:\n\n"${name}"\n\nWarning: existing users assigned to this store will lose their store association.`);
+    if (confirmed?.trim() !== name) { if (confirmed !== null) showToast('Name did not match — not deleted.', 'error'); return; }
     try { await deleteLocation(id); showToast('Location removed.', 'success'); }
     catch (err) { showToast('Failed to remove: ' + err.message, 'error'); }
   };
@@ -492,7 +493,7 @@ export default function Admin() {
                 {(data.locations || []).map(l => (
                   <div key={l.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
                     <span style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{l.name}</span>
-                    <button onClick={() => handleDeleteLocation(l.id)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 18, padding: '0 2px' }} onMouseEnter={e => e.currentTarget.style.color = '#ef4444'} onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}>×</button>
+                    <button onClick={() => handleDeleteLocation(l.id, l.name)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 18, padding: '0 2px' }} onMouseEnter={e => e.currentTarget.style.color = '#ef4444'} onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}>×</button>
                   </div>
                 ))}
               </div>
