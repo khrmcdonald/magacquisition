@@ -188,6 +188,8 @@ export function VehicleCard({
         : null
       );
 
+  const borderColor = hovered ? '#0d2550' : highlighted ? '#0d2550' : '#e5e7eb';
+
   // ── LIST VARIANT ────────────────────────────────────────────────────────────
   if (variant === 'list') {
     return (

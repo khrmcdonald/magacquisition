@@ -2056,7 +2056,7 @@ export default function Acquisitions() {
                     {row('Purchase Price', fmt$(pv.purchasePrice))}
                     {pv.overheadCosts > 0 && row('Overhead / Fees', fmt$(pv.overheadCosts))}
                     {pv.totalRepairCosts > 0 && row('Recon Costs', fmt$(pv.totalRepairCosts), { color: '#92400e' })}
-                    {row('List Price', fmt$(pv.listPrice))}
+                    {row('Floor Price', fmt$(pv.floorPrice))}
                   </>
                 )}
 

@@ -4,13 +4,25 @@ import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { VehicleCard, AuctionCountdownPill } from '../components/VehicleCard';
 
+// ── Shared field component (used by Buy Now confirmation modal) ────────────────
+function Detail({ label, value, mono, highlight }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: mono ? 11 : 13, fontWeight: highlight ? 700 : 500, color: highlight ? '#0d2550' : '#374151', fontFamily: mono ? 'monospace' : undefined }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
 // ── Detail modal ──────────────────────────────────────────────────────────────
 function VehicleDetailModal({ vehicle, mileage, onBuyNow, onClose }) {
   const [photoIdx, setPhotoIdx] = useState(0);
   const isInAuction = vehicle.status === 'in_auction';
   const photos = Array.isArray(vehicle.photos) && vehicle.photos.length > 0 ? vehicle.photos : null;
   const mileageDisplay = mileage != null ? `${parseInt(mileage).toLocaleString()} mi` : null;
-  const listPrice = vehicle.list_price ? `$${parseFloat(vehicle.list_price).toLocaleString()}` : null;
+  const listPrice = vehicle.floor_price ? `$${parseFloat(vehicle.floor_price).toLocaleString()}` : null;
   const specs = [vehicle.color, mileageDisplay].filter(Boolean).join(' · ');
 
   return (
@@ -165,7 +177,7 @@ export default function Inventory() {
 
   const listed = vehicles.filter(v => v.status === 'ready');
   const inAuction = vehicles.filter(v => v.status === 'in_auction');
-  const availablePrices = listed.map(v => parseFloat(v.list_price)).filter(p => p > 0);
+  const availablePrices = listed.map(v => parseFloat(v.floor_price)).filter(p => p > 0);
   const avgAsk = availablePrices.length ? Math.round(availablePrices.reduce((s, p) => s + p, 0) / availablePrices.length) : null;
   const lowestAsk = availablePrices.length ? Math.min(...availablePrices) : null;
 
@@ -274,7 +286,12 @@ export default function Inventory() {
                 mileage={mileageMap[v.id] ?? null}
                 auctionCloseDate={data.auction?.closeDate}
                 badge={isInAuction ? null : undefined}
-                pricePill={isInAuction ? <AuctionCountdownPill closeDate={data.auction?.closeDate} /> : undefined}
+                pricePill={isInAuction
+                  ? <AuctionCountdownPill closeDate={data.auction?.closeDate} />
+                  : v.floor_price
+                    ? <div style={{ background: 'rgba(255,255,255,0.93)', color: '#0d2550', fontSize: 12, fontWeight: 800, padding: '2px 9px', borderRadius: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.14)' }}>${parseFloat(v.floor_price).toLocaleString()}</div>
+                    : null
+                }
                 onDetails={() => setDetailVehicle(v)}
                 actionButton={
                   <button
@@ -384,7 +401,7 @@ export default function Inventory() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
                 <Detail label="VIN" value={buyTarget.vin || '—'} mono />
                 <Detail label="Color" value={buyTarget.color || '—'} />
-                <Detail label="List Price" value={buyTarget.list_price ? `$${parseFloat(buyTarget.list_price).toLocaleString()}` : '—'} highlight />
+                <Detail label="Floor Price" value={buyTarget.floor_price ? `$${parseFloat(buyTarget.floor_price).toLocaleString()}` : '—'} highlight />
               </div>
               {buyTarget.disclosure_notes && (
                 <div style={{ background: '#fff8e7', border: '1px solid #f1bb25', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#92400e', marginBottom: 16 }}>
