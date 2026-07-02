@@ -302,7 +302,9 @@ export function VehicleCard({
       style={{
         background: '#fff',
         borderRadius: 10,
-        border: `1px solid ${highlighted ? '#0d2550' : hovered ? '#cbd5e1' : '#e2e8f0'}`,
+        borderTop: `1px solid ${highlighted ? '#0d2550' : hovered ? '#cbd5e1' : '#e2e8f0'}`,
+        borderRight: `1px solid ${highlighted ? '#0d2550' : hovered ? '#cbd5e1' : '#e2e8f0'}`,
+        borderBottom: `1px solid ${highlighted ? '#0d2550' : hovered ? '#cbd5e1' : '#e2e8f0'}`,
         borderLeft: `4px solid ${accentColor}`,
         boxShadow: highlighted
           ? '0 0 0 3px rgba(13,37,80,0.1)'
@@ -310,7 +312,7 @@ export function VehicleCard({
         overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
         cursor: onClick ? 'pointer' : 'default',
-        transition: 'border-color 0.15s, box-shadow 0.15s, transform 0.12s',
+        transition: 'box-shadow 0.15s, transform 0.12s',
         transform: hovered ? 'translateY(-2px)' : 'none',
       }}
       onMouseEnter={() => setHovered(true)}
