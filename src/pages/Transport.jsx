@@ -281,12 +281,24 @@ export default function Transport() {
                     </button>
                   }
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
                     <span style={{ background: legType.bg, color: legType.color, padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
                       {legType.label}
                     </span>
                     {sched && <span style={{ fontSize: 11, color: '#6b7280' }}>{sched}</span>}
                   </div>
+                  {isIntake(t) && t.notes
+                    ? <div style={{ fontSize: 11, color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>From: {t.notes}</div>
+                    : !isIntake(t) && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 11, color: '#0d2550', fontWeight: 700 }}>{t.storeName}</span>
+                        {(() => {
+                          const wb = (data.bids || []).filter(b => b.vehicleId === t.vehicleId).reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null);
+                          return wb ? <span style={{ fontSize: 11, color: '#059669', fontWeight: 700 }}>${wb.amount.toLocaleString()}</span> : null;
+                        })()}
+                      </div>
+                    )
+                  }
                 </VehicleCard>
               );
             })}
