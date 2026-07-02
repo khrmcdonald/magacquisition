@@ -1514,53 +1514,57 @@ export default function Acquisitions() {
         )}
       </div>
 
-      {/* Filter bar — single row */}
+      {/* Filter row */}
       {(() => {
-        const sel = { padding: '7px 10px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#374151', background: '#fff', cursor: 'pointer', height: 36 };
-        const active = statusFilter !== 'all' || buyerFilter || sourceFilter || dateRange !== 'all' || ageFilter !== 'all' || search;
+        const pill = (active) => ({
+          appearance: 'none', WebkitAppearance: 'none',
+          width: 'auto', flexShrink: 0,
+          padding: '6px 24px 6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700,
+          border: `1.5px solid ${active ? '#0d2550' : '#e5e7eb'}`,
+          background: `${active ? '#0d2550' : '#fff'} url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='${active ? '%23fff' : '%239ca3af'}'/%3E%3C/svg%3E") no-repeat right 10px center`,
+          backgroundSize: '8px 5px',
+          color: active ? '#fff' : '#374151',
+          cursor: 'pointer',
+        });
+        const anyActive = statusFilter !== 'all' || buyerFilter || sourceFilter || dateRange !== 'all' || ageFilter !== 'all' || search;
         return (
-          <div style={{ marginBottom: 12 }}>
+          <div style={{ marginBottom: 14 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ ...sel, borderColor: statusFilter !== 'all' ? '#0d2550' : '#e5e7eb', color: statusFilter !== 'all' ? '#0d2550' : '#374151' }}>
+              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={pill(statusFilter !== 'all')}>
                 <option value="all">All statuses</option>
                 {Object.entries(STATUS_LABELS).filter(([k]) => k !== 'no_sale').map(([k, { label }]) => (
                   <option key={k} value={k}>{label} ({statusCounts[k] || 0})</option>
                 ))}
               </select>
-
-              <select value={ageFilter} onChange={e => setAgeFilter(e.target.value)} style={{ ...sel, borderColor: ageFilter !== 'all' ? '#b45309' : '#e5e7eb', color: ageFilter !== 'all' ? '#b45309' : '#374151' }}>
+              <select value={ageFilter} onChange={e => setAgeFilter(e.target.value)} style={pill(ageFilter !== 'all')}>
                 <option value="all">Any age</option>
                 <option value="<30">{'< 30 days'}</option>
-                <option value="30-60">Aging · 30–60d</option>
-                <option value="60-90">At Risk · 60–90d</option>
-                <option value="90+">Liquidate · 90d+</option>
+                <option value="30-60">Aging 30–60d</option>
+                <option value="60-90">At Risk 60–90d</option>
+                <option value="90+">Liquidate 90d+</option>
               </select>
-
-              <select value={dateRange} onChange={e => setDateRange(e.target.value)} style={{ ...sel, borderColor: dateRange !== 'all' ? '#0d2550' : '#e5e7eb', color: dateRange !== 'all' ? '#0d2550' : '#374151' }}>
+              <select value={dateRange} onChange={e => setDateRange(e.target.value)} style={pill(dateRange !== 'all')}>
                 <option value="all">All time</option>
                 <option value="week">Last 7 days</option>
                 <option value="month">Last 30 days</option>
-                <option value="custom">Custom range…</option>
+                <option value="custom">Custom…</option>
               </select>
-
-              <select value={buyerFilter} onChange={e => setBuyerFilter(e.target.value)} style={{ ...sel, borderColor: buyerFilter ? '#0d2550' : '#e5e7eb', color: buyerFilter ? '#0d2550' : '#374151' }}>
+              <select value={buyerFilter} onChange={e => setBuyerFilter(e.target.value)} style={pill(!!buyerFilter)}>
                 <option value="">All buyers</option>
                 {buyers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
-
-              <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} style={{ ...sel, borderColor: sourceFilter ? '#0d2550' : '#e5e7eb', color: sourceFilter ? '#0d2550' : '#374151' }}>
+              <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} style={pill(!!sourceFilter)}>
                 <option value="">All sources</option>
                 {sourceOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
-
-              {active && (
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#9ca3af', marginLeft: 4 }}>{filtered.length} vehicles</span>
+              {anyActive && (
                 <button onClick={() => { setStatusFilter('all'); setBuyerFilter(''); setSourceFilter(''); setDateRange('all'); setDateFrom(''); setDateTo(''); setAgeFilter('all'); setSearch(''); }}
-                  style={{ padding: '6px 12px', border: '1px solid #fecaca', borderRadius: 8, background: '#fef2f2', color: '#991b1b', fontSize: 12, fontWeight: 700, cursor: 'pointer', height: 36, whiteSpace: 'nowrap' }}>
+                  style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '0 4px' }}>
                   ✕ Clear
                 </button>
               )}
             </div>
-
             {dateRange === 'custom' && (
               <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>
                 <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ padding: '5px 8px', border: '1.5px solid #e5e7eb', borderRadius: 6, fontSize: 12, background: '#fff' }} />
