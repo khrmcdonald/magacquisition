@@ -208,9 +208,7 @@ export default function Inventory() {
                   onTitleClick={() => navigate(`/acquisitions?v=${v.id}`)}
                   pricePill={isInAuction
                     ? <AuctionCountdownPill closeDate={data.auction?.closeDate} />
-                    : v.floor_price
-                      ? <div style={{ background: 'rgba(255,255,255,0.93)', color: '#0d2550', fontSize: 12, fontWeight: 800, padding: '2px 9px', borderRadius: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.14)' }}>${parseFloat(v.floor_price).toLocaleString()}</div>
-                      : null
+                    : null
                   }
                   actionButton={
                     isWholesale ? (
