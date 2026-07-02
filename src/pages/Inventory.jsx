@@ -17,7 +17,7 @@ function Detail({ label, value, mono, highlight }) {
 }
 
 // ── Detail modal ──────────────────────────────────────────────────────────────
-function VehicleDetailModal({ vehicle, mileage, onBuyNow, onClose }) {
+function VehicleDetailModal({ vehicle, mileage, onBuyNow, onClose, canBuyNow }) {
   const [photoIdx, setPhotoIdx] = useState(0);
   const isInAuction = vehicle.status === 'in_auction';
   const photos = Array.isArray(vehicle.photos) && vehicle.photos.length > 0 ? vehicle.photos : null;
@@ -79,7 +79,7 @@ function VehicleDetailModal({ vehicle, mileage, onBuyNow, onClose }) {
           {/* List price */}
           {listPrice && (
             <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 12, marginTop: 2 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 3 }}>List Price</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 3 }}>Asking Price</div>
               <div style={{ fontSize: 28, fontWeight: 800, color: '#0d2550', lineHeight: 1 }}>{listPrice}</div>
             </div>
           )}
@@ -100,13 +100,15 @@ function VehicleDetailModal({ vehicle, mileage, onBuyNow, onClose }) {
           )}
 
           {/* CTA */}
-          <button
-            onClick={() => { if (!isInAuction) { onClose(); onBuyNow(vehicle); } }}
-            disabled={isInAuction}
-            style={{ marginTop: 6, padding: '14px 0', fontSize: 15, fontWeight: 700, border: 'none', borderRadius: 9, cursor: isInAuction ? 'not-allowed' : 'pointer', background: isInAuction ? '#f1f5f9' : '#0d2550', color: isInAuction ? '#94a3b8' : '#fff' }}
-          >
-            {isInAuction ? 'Currently in Auction' : 'Buy Now'}
-          </button>
+          {canBuyNow && (
+            <button
+              onClick={() => { if (!isInAuction) { onClose(); onBuyNow(vehicle); } }}
+              disabled={isInAuction}
+              style={{ marginTop: 6, padding: '14px 0', fontSize: 15, fontWeight: 700, border: 'none', borderRadius: 9, cursor: isInAuction ? 'not-allowed' : 'pointer', background: isInAuction ? '#f1f5f9' : '#0d2550', color: isInAuction ? '#94a3b8' : '#fff' }}
+            >
+              {isInAuction ? 'Currently in Auction' : 'Buy Now'}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -128,6 +130,7 @@ export default function Inventory() {
   const [viewMode, setViewMode] = useState('grid');
 
   const orgId = user?.org_id;
+  const isWholesale = user?.role === 'wholesale' || user?.role === 'admin';
 
   const CONDITION_SCORE = { excellent: 5, good: 4, fair: 3, poor: 2 };
   const CONDITION_COLOR = { 5: '#065f46', 4: '#1e40af', 3: '#92400e', 2: '#991b1b' };
@@ -293,7 +296,13 @@ export default function Inventory() {
                     : null
                 }
                 onDetails={() => setDetailVehicle(v)}
-                actionButton={
+                actionButton={isWholesale ? (
+                  isInAuction ? (
+                    <div style={{ width: '100%', padding: '9px 0', fontSize: 12, fontWeight: 700, color: '#1e40af', background: '#dbeafe', borderRadius: 8, textAlign: 'center' }}>
+                      🔨 Bidding Open · {bidCount} bid{bidCount !== 1 ? 's' : ''}
+                    </div>
+                  ) : null
+                ) : (
                   <button
                     onClick={e => { e.stopPropagation(); !isInAuction && setBuyTarget(v); }}
                     disabled={isInAuction}
@@ -308,7 +317,7 @@ export default function Inventory() {
                   >
                     {isInAuction ? '🔨 Bidding Open' : '🛒 Buy Now'}
                   </button>
-                }
+                )}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
                   {v.condition && (
@@ -346,7 +355,7 @@ export default function Inventory() {
                 auctionCloseDate={data.auction?.closeDate}
                 badge={isInAuction ? <AuctionCountdownPill closeDate={data.auction?.closeDate} /> : undefined}
                 onClick={() => setDetailVehicle(v)}
-                actionButton={
+                actionButton={isWholesale ? null : (
                   <button
                     onClick={e => { e.stopPropagation(); !isInAuction && setBuyTarget(v); }}
                     disabled={isInAuction}
@@ -361,7 +370,7 @@ export default function Inventory() {
                   >
                     {isInAuction ? 'In Auction' : 'Buy Now'}
                   </button>
-                }
+                )}
               >
                 {isInAuction && (
                   <div style={{ padding: '6px 16px 10px', fontSize: 11, color: '#9ca3af' }}>
@@ -382,6 +391,7 @@ export default function Inventory() {
           mileage={mileageMap[detailVehicle.id] ?? null}
           onBuyNow={setBuyTarget}
           onClose={() => setDetailVehicle(null)}
+          canBuyNow={!isWholesale}
         />
       )}
 
