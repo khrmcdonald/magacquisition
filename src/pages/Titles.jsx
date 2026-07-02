@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/Toast';
-import VehicleDetailModal from '../components/VehicleDetailModal';
+import { VehicleCard } from '../components/VehicleCard';
 
 const STATUS = {
   pending:  { label: 'Pending',  color: '#92400e', bg: '#fef3c7', border: '#fde68a' },
@@ -32,28 +33,54 @@ export default function Titles() {
   const { user } = useAuth();
   const { data, setVehicles } = useData();
   const { showToast } = useToast();
+  const navigate = useNavigate();
 
   const isWholesale = ['wholesale', 'gm', 'admin'].includes(user?.role);
   const isBidder = user?.role === 'bidder';
 
-  const [statusFilter, setStatusFilter] = useState('active'); // 'active' | 'all' | 'pending' | 'received' | 'clear' | 'issue'
-  const [issueModal, setIssueModal] = useState(null); // vehicle
-  const [issueNote, setIssueNote] = useState('');
-  const [saving, setSaving] = useState(null);
-  const [detailVehicle, setDetailVehicle] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('active');
+  const [saving, setSaving]             = useState(null);
+  const [panelVehicle, setPanelVehicle] = useState(null);
+  const [showIssueForm, setShowIssueForm] = useState(false);
+  const [issueNote, setIssueNote]       = useState('');
 
-  // Which vehicles to show
-  const vehicles = (data.vehicles || []).filter(v => {
-    if (isBidder) {
-      // Retail: only their won vehicles where title is coming to them
-      return v.status === 'awarded' && (v.winnerId === user.id || v.locationId === user.locationId);
-    }
-    return true; // wholesale/admin: all
-  }).filter(v => {
+  const allVehicles = (data.vehicles || []).filter(v => {
+    if (isBidder) return v.status === 'awarded' && (v.winnerId === user.id || v.locationId === user.locationId);
+    return true;
+  });
+
+  const vehicles = allVehicles.filter(v => {
     if (statusFilter === 'active') return ['pending', 'received', 'issue'].includes(v.titleStatus);
     if (statusFilter === 'all') return true;
     return v.titleStatus === statusFilter;
-  }).sort((a, b) => (daysSince(b) ?? 0) - (daysSince(a) ?? 0)); // oldest first
+  }).sort((a, b) => (daysSince(b) ?? 0) - (daysSince(a) ?? 0));
+
+  const counts = {
+    active:   allVehicles.filter(v => ['pending','received','issue'].includes(v.titleStatus)).length,
+    pending:  allVehicles.filter(v => v.titleStatus === 'pending').length,
+    received: allVehicles.filter(v => v.titleStatus === 'received').length,
+    issue:    allVehicles.filter(v => v.titleStatus === 'issue').length,
+    clear:    allVehicles.filter(v => v.titleStatus === 'clear').length,
+  };
+
+  const FILTER_TABS = [
+    { key: 'active',   label: 'Active',   count: counts.active },
+    { key: 'pending',  label: 'Pending',  count: counts.pending },
+    { key: 'received', label: 'Received', count: counts.received },
+    { key: 'issue',    label: 'Issues',   count: counts.issue },
+    { key: 'clear',    label: 'Clear',    count: counts.clear },
+    { key: 'all',      label: 'All',      count: allVehicles.length },
+  ];
+
+  const openPanel = (v) => { setPanelVehicle(v); setShowIssueForm(false); setIssueNote(''); };
+  const closePanel = () => { setPanelVehicle(null); setShowIssueForm(false); setIssueNote(''); };
+
+  // Keep panel in sync with live data
+  const pv = panelVehicle ? (data.vehicles || []).find(v => v.id === panelVehicle.id) || panelVehicle : null;
+  const pvDays = pv ? daysSince(pv) : null;
+  const pvSt   = pv ? (STATUS[pv.titleStatus] || STATUS.pending) : null;
+  const pvNext = pv ? NEXT[pv.titleStatus] : null;
+  const pvIsAwarded = pv?.status === 'awarded';
 
   const advanceStatus = async (v) => {
     const next = NEXT[v.titleStatus];
@@ -65,69 +92,54 @@ export default function Titles() {
     } else {
       setVehicles(prev => prev.map(vv => vv.id === v.id ? { ...vv, titleStatus: next } : vv));
       showToast(`Title marked ${STATUS[next].label.toLowerCase()}`, 'success');
-      if (next === 'clear') setStatusFilter('clear');
     }
     setSaving(null);
   };
 
   const flagIssue = async () => {
-    if (!issueNote.trim()) return;
-    setSaving(issueModal.id);
+    if (!pv || !issueNote.trim()) return;
+    setSaving(pv.id);
     const { error } = await supabase.from('vehicles')
       .update({ title_status: 'issue', title_notes: issueNote.trim() })
-      .eq('id', issueModal.id);
+      .eq('id', pv.id);
     if (error) {
       showToast(`Failed: ${error.message}`, 'error');
     } else {
-      setVehicles(prev => prev.map(vv => vv.id === issueModal.id ? { ...vv, titleStatus: 'issue', titleNotes: issueNote.trim() } : vv));
-      showToast('Issue flagged', 'success');
-      setIssueModal(null);
+      setVehicles(prev => prev.map(vv => vv.id === pv.id ? { ...vv, titleStatus: 'issue', titleNotes: issueNote.trim() } : vv));
+      setShowIssueForm(false);
       setIssueNote('');
+      showToast('Issue flagged', 'success');
     }
     setSaving(null);
   };
 
-  const resolveIssue = async (v) => {
-    setSaving(v.id);
+  const resolveIssue = async () => {
+    if (!pv) return;
+    setSaving(pv.id);
     const { error } = await supabase.from('vehicles')
       .update({ title_status: 'received', title_notes: null })
-      .eq('id', v.id);
+      .eq('id', pv.id);
     if (error) {
       showToast(`Failed: ${error.message}`, 'error');
     } else {
-      setVehicles(prev => prev.map(vv => vv.id === v.id ? { ...vv, titleStatus: 'received', titleNotes: null } : vv));
+      setVehicles(prev => prev.map(vv => vv.id === pv.id ? { ...vv, titleStatus: 'received', titleNotes: null } : vv));
       showToast('Issue resolved — title marked Received', 'success');
     }
     setSaving(null);
   };
 
-  const counts = {
-    active: (data.vehicles || []).filter(v => ['pending','received','issue'].includes(v.titleStatus)).length,
-    pending: (data.vehicles || []).filter(v => v.titleStatus === 'pending').length,
-    received: (data.vehicles || []).filter(v => v.titleStatus === 'received').length,
-    issue: (data.vehicles || []).filter(v => v.titleStatus === 'issue').length,
-    clear: (data.vehicles || []).filter(v => v.titleStatus === 'clear').length,
-  };
-
-  const FILTER_TABS = [
-    { key: 'active',   label: 'Active',   count: counts.active },
-    { key: 'pending',  label: 'Pending',  count: counts.pending },
-    { key: 'received', label: 'Received', count: counts.received },
-    { key: 'issue',    label: 'Issue',    count: counts.issue },
-    { key: 'clear',    label: 'Clear',    count: counts.clear },
-    { key: 'all',      label: 'All',      count: (data.vehicles || []).length },
-  ];
-
   return (
-    <div style={{ padding: '0 0 40px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-        <div className="page-header" style={{ marginBottom: 0 }}>
-          <h1>Titles</h1>
-          <p>{isWholesale ? 'Track title status for every vehicle in the pipeline.' : 'Title status for your vehicles.'}</p>
-        </div>
+    <div style={{ padding: '0 0 40px', position: 'relative' }}>
+
+      {/* Header */}
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>Titles</h1>
+        <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 2, marginBottom: 0 }}>
+          {isWholesale ? 'Track title status for every vehicle in the pipeline.' : 'Title status for your vehicles.'}
+        </p>
       </div>
 
-      {/* Stats row */}
+      {/* Stat boxes */}
       {isWholesale && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
           {[
@@ -136,7 +148,7 @@ export default function Titles() {
             { label: 'Issues',   value: counts.issue,    accent: TITLE_ACCENT.issue,    color: '#991b1b' },
             { label: 'Clear',    value: counts.clear,    accent: TITLE_ACCENT.clear,    color: '#065f46' },
           ].map(({ label, value, accent, color }) => (
-            <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 8, padding: '10px 14px' }}>
+            <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 10, padding: '12px 16px' }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{label}</div>
               <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{value}</div>
             </div>
@@ -144,29 +156,12 @@ export default function Titles() {
         </div>
       )}
 
-      {/* Pipeline legend */}
-      {isWholesale && (
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
-          {['pending','received','clear'].map((s, i) => (
-            <React.Fragment key={s}>
-              <span style={{ background: STATUS[s].bg, color: STATUS[s].color, border: `1px solid ${STATUS[s].border}`, borderRadius: 20, padding: '3px 12px', fontSize: 12, fontWeight: 700 }}>
-                {STATUS[s].label}
-              </span>
-              {i < 2 && <span style={{ color: '#d1d5db', fontSize: 14 }}>→</span>}
-            </React.Fragment>
-          ))}
-          <span style={{ color: '#d1d5db', marginLeft: 4 }}>·</span>
-          <span style={{ background: STATUS.issue.bg, color: STATUS.issue.color, border: `1px solid ${STATUS.issue.border}`, borderRadius: 20, padding: '3px 12px', fontSize: 12, fontWeight: 700 }}>
-            ⚠ Issue (flag anytime)
-          </span>
-        </div>
-      )}
-
       {/* Filter tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
         {FILTER_TABS.map(t => (
           <button key={t.key} onClick={() => setStatusFilter(t.key)} style={{
-            padding: '6px 14px', borderRadius: 20, border: `1.5px solid ${statusFilter === t.key ? '#0d2550' : '#e5e7eb'}`,
+            padding: '6px 14px', borderRadius: 20,
+            border: `1.5px solid ${statusFilter === t.key ? '#0d2550' : '#e5e7eb'}`,
             background: statusFilter === t.key ? '#0d2550' : '#fff',
             color: statusFilter === t.key ? '#fff' : '#6b7280',
             fontSize: 12, fontWeight: 700, cursor: 'pointer',
@@ -182,138 +177,176 @@ export default function Titles() {
         ))}
       </div>
 
-      {/* Vehicle list */}
-      {vehicles.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9ca3af' }}>
-          <div style={{ fontSize: 40, marginBottom: 12, opacity: .3 }}>📄</div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: '#374151', marginBottom: 6 }}>No titles to show</div>
-          <div style={{ fontSize: 13 }}>
+      {/* Grid */}
+      <div style={{ paddingRight: panelVehicle ? 460 : 0, transition: 'padding-right 0.2s' }}>
+        {vehicles.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9ca3af', fontSize: 13 }}>
             {statusFilter === 'active' ? 'All titles are clear.' : `No vehicles with status "${statusFilter}".`}
           </div>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {vehicles.map(v => {
-            const st = STATUS[v.titleStatus] || STATUS.pending;
-            const days = daysSince(v);
-            const next = NEXT[v.titleStatus];
-            const isAwarded = v.status === 'awarded';
-            const vin6 = v.vin ? v.vin.slice(-6).toUpperCase() : null;
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
+            {vehicles.map(v => {
+              const st = STATUS[v.titleStatus] || STATUS.pending;
+              const days = daysSince(v);
+              const isActive = panelVehicle?.id === v.id;
 
-            return (
-              <div key={v.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderLeft: `4px solid ${TITLE_ACCENT[v.titleStatus] || '#e2e8f0'}`, borderRadius: 10, padding: '13px 18px', display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                {/* Vehicle info */}
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 5 }}>
-                    <span
-                      onClick={() => setDetailVehicle(v)}
-                      style={{ fontSize: 15, fontWeight: 700, color: '#111827', cursor: 'pointer' }}
-                      onMouseEnter={e => e.currentTarget.style.color = '#0d2550'}
-                      onMouseLeave={e => e.currentTarget.style.color = '#111827'}
-                    >
-                      {v.year} {v.make} {v.model}{v.trim ? ` ${v.trim}` : ''}
-                    </span>
-                    <span style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}`, borderRadius: 6, padding: '2px 9px', fontSize: 10, fontWeight: 700 }}>
+              return (
+                <VehicleCard
+                  key={v.id}
+                  variant="grid"
+                  vehicle={v}
+                  mileage={v.mileage}
+                  highlighted={isActive}
+                  accentOverride={TITLE_ACCENT[v.titleStatus] || '#e2e8f0'}
+                  onTitleClick={() => navigate(`/acquisitions?v=${v.id}`)}
+                  badge={
+                    <span style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}`, padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 700 }}>
                       {v.titleStatus === 'issue' ? '⚠ ' : ''}{st.label}
                     </span>
-                  </div>
-
-                  {/* Compact meta — one line */}
-                  <div style={{ fontSize: 12, color: '#6b7280', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                    {vin6 && <span style={{ fontFamily: 'monospace', color: '#94a3b8', fontSize: 11 }}>···{vin6}</span>}
-                    {vin6 && <span style={{ color: '#d1d5db' }}>·</span>}
+                  }
+                  pricePill={null}
+                  actionButton={
+                    <button
+                      onClick={() => isActive ? closePanel() : openPanel(v)}
+                      style={{ width: '100%', background: isActive ? '#0d2550' : '#fff', color: isActive ? '#fff' : '#0d2550', border: '1.5px solid #0d2550', borderRadius: 7, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}>
+                      {isActive ? '← Viewing' : 'View Title'}
+                    </button>
+                  }
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                     {days !== null && (
-                      <span style={{ fontWeight: 600, color: days >= 30 ? '#b91c1c' : '#374151' }}>{days}d waiting</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: days >= 30 ? '#b91c1c' : '#6b7280' }}>
+                        {days}d waiting
+                      </span>
                     )}
-                    {v.datePurchased && <span style={{ color: '#d1d5db' }}>·</span>}
-                    {v.datePurchased && <span>{new Date(v.datePurchased + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>}
-                    <span style={{ color: '#d1d5db' }}>→</span>
-                    <span style={{ fontWeight: 600, color: isAwarded ? '#0d2550' : '#6b7280' }}>
-                      {isAwarded ? v.winnerName || '—' : 'Internal'}
-                    </span>
+                    {v.titleStatus === 'issue' && v.titleNotes && (
+                      <span style={{ fontSize: 10, color: '#991b1b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>· {v.titleNotes}</span>
+                    )}
                   </div>
+                </VehicleCard>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-                  {/* Issue note */}
-                  {v.titleStatus === 'issue' && v.titleNotes && (
-                    <div style={{ marginTop: 8, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 7, padding: '7px 12px', fontSize: 12, color: '#991b1b' }}>
-                      <span style={{ fontWeight: 700 }}>Issue: </span>{v.titleNotes}
-                    </div>
-                  )}
+      {/* Slide-out panel */}
+      {pv && (
+        <div style={{
+          position: 'fixed', right: 0, top: 0, bottom: 0, width: 460,
+          background: '#fff', borderLeft: '1px solid #e5e7eb',
+          boxShadow: '-4px 0 24px rgba(0,0,0,0.08)',
+          zIndex: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column',
+        }}>
+          {/* Close */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '14px 18px 0' }}>
+            <button onClick={closePanel}
+              style={{ background: '#f1f5f9', border: 'none', borderRadius: 20, width: 30, height: 30, cursor: 'pointer', fontSize: 18, color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+          </div>
+
+          {/* Vehicle hero */}
+          <div style={{ padding: '4px 20px 20px' }}>
+            {pv.photos?.[0]
+              ? <img src={pv.photos[0]} alt="" style={{ width: '100%', height: 168, objectFit: 'cover', borderRadius: 10, marginBottom: 14 }} />
+              : <div style={{ width: '100%', height: 120, background: '#f1f5f9', borderRadius: 10, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: 32, fontWeight: 900, color: '#cbd5e1', letterSpacing: 2 }}>
+                    {[pv.make?.[0], pv.model?.[0]].filter(Boolean).join('').toUpperCase()}
+                  </span>
                 </div>
+            }
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#111827', lineHeight: 1.15 }}>
+              {[pv.year, pv.make, pv.model].filter(Boolean).join(' ') || 'Unknown Vehicle'}
+            </div>
+            {pv.trim && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{pv.trim}</div>}
+            {(() => {
+              const parts = [pv.color, pv.condition, pv.mileage != null ? `${parseInt(pv.mileage).toLocaleString()} mi` : null].filter(Boolean);
+              return parts.length > 0 ? <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{parts.join(' · ')}</div> : null;
+            })()}
+            {pv.vin && <div style={{ fontSize: 10, fontFamily: 'monospace', color: '#c4c9d3', marginTop: 3 }}>···{pv.vin.slice(-6).toUpperCase()}</div>}
 
-                {/* Actions — wholesale/admin only */}
-                {isWholesale && (
-                  <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center', flexWrap: 'wrap' }}>
-                    {v.titleStatus === 'issue' ? (
-                      <button
-                        onClick={() => resolveIssue(v)}
-                        disabled={saving === v.id}
-                        style={{ background: '#d1fae5', color: '#065f46', border: '1px solid #6ee7b7', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: saving === v.id ? .6 : 1 }}
-                      >
-                        ✓ Resolve issue
-                      </button>
-                    ) : next ? (
-                      <button
-                        onClick={() => advanceStatus(v)}
-                        disabled={saving === v.id}
-                        style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: saving === v.id ? .6 : 1 }}
-                      >
-                        {saving === v.id ? '…' : NEXT_LABEL[v.titleStatus]}
-                      </button>
-                    ) : null}
+            {/* Stat boxes */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 16 }}>
+              <div style={{ background: pvSt?.bg || '#f8fafc', borderRadius: 8, padding: '10px 12px', textAlign: 'center' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>Status</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: pvSt?.color || '#374151', lineHeight: 1.2 }}>{pvSt?.label || '—'}</div>
+              </div>
+              <div style={{ background: pvDays >= 30 ? '#fee2e2' : '#f8fafc', borderRadius: 8, padding: '10px 12px', textAlign: 'center' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>Waiting</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: pvDays >= 30 ? '#991b1b' : '#374151', lineHeight: 1 }}>{pvDays !== null ? `${pvDays}d` : '—'}</div>
+              </div>
+              <div style={{ background: '#f8fafc', borderRadius: 8, padding: '10px 12px', textAlign: 'center' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>Destination</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: pvIsAwarded ? '#0d2550' : '#6b7280', lineHeight: 1.2 }}>
+                  {pvIsAwarded ? (pv.winnerName || '—') : 'Internal'}
+                </div>
+              </div>
+            </div>
+          </div>
 
-                    {v.titleStatus !== 'issue' && v.titleStatus !== 'clear' && (
-                      <button
-                        onClick={() => { setIssueModal(v); setIssueNote(''); }}
-                        style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                      >
-                        ⚠ Flag issue
+          <div style={{ borderTop: '1px solid #f1f5f9' }} />
+
+          {/* Title details + actions */}
+          <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em' }}>Title</div>
+
+            {pv.datePurchased && (
+              <div style={{ fontSize: 12, color: '#6b7280' }}>
+                Purchased {new Date(pv.datePurchased + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              </div>
+            )}
+
+            {pv.titleStatus === 'issue' && pv.titleNotes && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#991b1b' }}>
+                <span style={{ fontWeight: 700 }}>Issue: </span>{pv.titleNotes}
+              </div>
+            )}
+
+            {isWholesale && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                {pv.titleStatus === 'issue' ? (
+                  <button onClick={resolveIssue} disabled={saving === pv.id}
+                    style={{ background: '#d1fae5', color: '#065f46', border: '1px solid #6ee7b7', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: saving === pv.id ? 0.6 : 1 }}>
+                    {saving === pv.id ? '…' : '✓ Resolve Issue'}
+                  </button>
+                ) : pvNext ? (
+                  <button onClick={() => advanceStatus(pv)} disabled={saving === pv.id}
+                    style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: saving === pv.id ? 0.6 : 1 }}>
+                    {saving === pv.id ? '…' : NEXT_LABEL[pv.titleStatus]}
+                  </button>
+                ) : null}
+
+                {pv.titleStatus !== 'issue' && pv.titleStatus !== 'clear' && !showIssueForm && (
+                  <button onClick={() => setShowIssueForm(true)}
+                    style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                    ⚠ Flag Issue
+                  </button>
+                )}
+
+                {showIssueForm && (
+                  <div style={{ border: '1px solid #fecaca', borderRadius: 8, padding: '12px 14px', background: '#fef2f2', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#991b1b', textTransform: 'uppercase', letterSpacing: '.06em' }}>Describe the issue</div>
+                    <textarea
+                      autoFocus
+                      value={issueNote}
+                      onChange={e => setIssueNote(e.target.value)}
+                      placeholder="e.g. Wrong mileage on title, needs seller signature…"
+                      rows={3}
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', border: '1.5px solid #fecaca', borderRadius: 6, fontSize: 13, resize: 'vertical', fontFamily: 'inherit', background: '#fff' }}
+                    />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={flagIssue} disabled={!issueNote.trim() || saving === pv.id}
+                        style={{ flex: 1, background: '#991b1b', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: (!issueNote.trim() || saving === pv.id) ? 0.6 : 1 }}>
+                        {saving === pv.id ? 'Saving…' : 'Flag Issue'}
                       </button>
-                    )}
+                      <button onClick={() => { setShowIssueForm(false); setIssueNote(''); }}
+                        style={{ background: 'none', border: '1px solid #fecaca', borderRadius: 6, padding: '8px 14px', fontSize: 13, cursor: 'pointer', color: '#991b1b' }}>
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Vehicle detail modal */}
-      {detailVehicle && (
-        <VehicleDetailModal vehicle={detailVehicle} onClose={() => setDetailVehicle(null)} />
-      )}
-
-      {/* Issue modal */}
-      {issueModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,.2)' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 4 }}>Flag title issue</div>
-            <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 18 }}>
-              {issueModal.year} {issueModal.make} {issueModal.model}
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>
-              What's the issue?
-            </div>
-            <textarea
-              autoFocus
-              value={issueNote}
-              onChange={e => setIssueNote(e.target.value)}
-              placeholder="e.g. Wrong mileage on title, needs seller signature, title lost in mail…"
-              rows={3}
-              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, resize: 'vertical', fontFamily: 'inherit' }}
-            />
-            <div style={{ display: 'flex', gap: 10, marginTop: 18, justifyContent: 'flex-end' }}>
-              <button onClick={() => setIssueModal(null)} style={{ padding: '9px 18px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', color: '#6b7280', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                Cancel
-              </button>
-              <button
-                onClick={flagIssue}
-                disabled={!issueNote.trim() || saving === issueModal?.id}
-                style={{ padding: '9px 18px', background: '#991b1b', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: (!issueNote.trim() || saving === issueModal?.id) ? .6 : 1 }}
-              >
-                {saving === issueModal?.id ? 'Saving…' : 'Flag issue'}
-              </button>
-            </div>
+            )}
           </div>
         </div>
       )}
