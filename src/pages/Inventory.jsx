@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { VehicleCard, AuctionCountdownPill } from '../components/VehicleCard';
 
-// ── Shared field component (used by Buy Now confirmation modal) ────────────────
 function Detail({ label, value, mono, highlight }) {
   return (
     <div>
@@ -16,120 +16,23 @@ function Detail({ label, value, mono, highlight }) {
   );
 }
 
-// ── Detail modal ──────────────────────────────────────────────────────────────
-function VehicleDetailModal({ vehicle, mileage, onBuyNow, onClose, canBuyNow }) {
-  const [photoIdx, setPhotoIdx] = useState(0);
-  const isInAuction = vehicle.status === 'in_auction';
-  const photos = Array.isArray(vehicle.photos) && vehicle.photos.length > 0 ? vehicle.photos : null;
-  const mileageDisplay = mileage != null ? `${parseInt(mileage).toLocaleString()} mi` : null;
-  const listPrice = vehicle.floor_price ? `$${parseFloat(vehicle.floor_price).toLocaleString()}` : null;
-  const specs = [vehicle.color, mileageDisplay].filter(Boolean).join(' · ');
-
-  return (
-    <div className="modal-overlay" onClick={onClose} style={{ alignItems: 'flex-start', paddingTop: 32, paddingBottom: 32, overflowY: 'auto' }}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 540, width: '100%', padding: 0, overflow: 'hidden', borderRadius: 14 }}>
-        {/* Photo */}
-        <div style={{ position: 'relative', background: '#f1f5f9', height: 264, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {photos
-            ? <img src={photos[photoIdx]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : <div style={{ fontSize: 40, fontWeight: 900, color: '#cbd5e1', letterSpacing: -1 }}>{(vehicle.make || '').slice(0, 3).toUpperCase()}</div>
-          }
-          <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(0,0,0,0.45)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
-          {photos && photos.length > 1 && (
-            <>
-              <button onClick={() => setPhotoIdx(i => (i - 1 + photos.length) % photos.length)} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.4)', border: 'none', color: '#fff', width: 34, height: 34, borderRadius: '50%', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-              <button onClick={() => setPhotoIdx(i => (i + 1) % photos.length)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.4)', border: 'none', color: '#fff', width: 34, height: 34, borderRadius: '50%', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
-              <div style={{ position: 'absolute', bottom: 10, right: 14, background: 'rgba(0,0,0,0.45)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10 }}>{photoIdx + 1} / {photos.length}</div>
-            </>
-          )}
-        </div>
-
-        {/* Thumbnails */}
-        {photos && photos.length > 1 && (
-          <div style={{ display: 'flex', gap: 6, padding: '8px 16px', background: '#f8fafc', overflowX: 'auto' }}>
-            {photos.map((p, i) => (
-              <img key={i} src={p} alt="" onClick={() => setPhotoIdx(i)} style={{ width: 54, height: 40, objectFit: 'cover', borderRadius: 4, flexShrink: 0, cursor: 'pointer', border: i === photoIdx ? '2px solid #0d2550' : '2px solid transparent', opacity: i === photoIdx ? 1 : 0.65 }} />
-            ))}
-          </div>
-        )}
-
-        {/* Body */}
-        <div style={{ padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Hero identity */}
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 21, color: '#111827', lineHeight: 1.15 }}>{vehicle.year} {vehicle.make} {vehicle.model}</div>
-            {vehicle.trim && <div style={{ fontSize: 14, color: '#6b7280', marginTop: 2 }}>{vehicle.trim}</div>}
-          </div>
-
-          {/* Specs + status pill inline */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            {specs && <span style={{ fontSize: 13, color: '#6b7280' }}>{specs}</span>}
-            <span style={{ background: isInAuction ? '#dbeafe' : '#d1fae5', color: isInAuction ? '#1e40af' : '#065f46', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
-              {isInAuction ? 'In Auction' : 'Available'}
-            </span>
-          </div>
-
-          {/* VIN */}
-          {vehicle.vin && (
-            <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#9ca3af', background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 6, padding: '5px 10px', letterSpacing: '.04em', display: 'inline-block', width: 'fit-content' }}>
-              {vehicle.vin}
-            </div>
-          )}
-
-          {/* List price */}
-          {listPrice && (
-            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 12, marginTop: 2 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 3 }}>Asking Price</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: '#0d2550', lineHeight: 1 }}>{listPrice}</div>
-            </div>
-          )}
-
-          {/* Disclosure */}
-          {vehicle.disclosure_notes && (
-            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>
-              <span style={{ fontWeight: 700 }}>Disclosure: </span>{vehicle.disclosure_notes}
-            </div>
-          )}
-
-          {/* Notes */}
-          {vehicle.notes && (
-            <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>Description</div>
-              <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{vehicle.notes}</div>
-            </div>
-          )}
-
-          {/* CTA */}
-          {canBuyNow && (
-            <button
-              onClick={() => { if (!isInAuction) { onClose(); onBuyNow(vehicle); } }}
-              disabled={isInAuction}
-              style={{ marginTop: 6, padding: '14px 0', fontSize: 15, fontWeight: 700, border: 'none', borderRadius: 9, cursor: isInAuction ? 'not-allowed' : 'pointer', background: isInAuction ? '#f1f5f9' : '#0d2550', color: isInAuction ? '#94a3b8' : '#fff' }}
-            >
-              {isInAuction ? 'Currently in Auction' : 'Buy Now'}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Main page ─────────────────────────────────────────────────────────────────
 export default function Inventory() {
   const { user } = useAuth();
   const { data } = useData();
-  const [vehicles, setVehicles] = useState([]);
-  const [mileageMap, setMileageMap] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [buyTarget, setBuyTarget] = useState(null);
-  const [detailVehicle, setDetailVehicle] = useState(null);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [viewMode, setViewMode] = useState('grid');
+  const navigate = useNavigate();
 
-  const orgId = user?.org_id;
+  const [vehicles, setVehicles]       = useState([]);
+  const [mileageMap, setMileageMap]   = useState({});
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState(null);
+  const [buyTarget, setBuyTarget]     = useState(null);
+  const [panelVehicle, setPanelVehicle] = useState(null);
+  const [panelPhotoIdx, setPanelPhotoIdx] = useState(0);
+  const [search, setSearch]           = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [viewMode, setViewMode]       = useState('grid');
+
+  const orgId      = user?.org_id;
   const isWholesale = user?.role === 'wholesale' || user?.role === 'admin';
 
   const CONDITION_SCORE = { excellent: 5, good: 4, fair: 3, poor: 2 };
@@ -178,10 +81,10 @@ export default function Inventory() {
     return () => supabase.removeChannel(channel);
   }, [orgId]);
 
-  const listed = vehicles.filter(v => v.status === 'ready');
+  const listed    = vehicles.filter(v => v.status === 'ready');
   const inAuction = vehicles.filter(v => v.status === 'in_auction');
   const availablePrices = listed.map(v => parseFloat(v.floor_price)).filter(p => p > 0);
-  const avgAsk = availablePrices.length ? Math.round(availablePrices.reduce((s, p) => s + p, 0) / availablePrices.length) : null;
+  const avgAsk    = availablePrices.length ? Math.round(availablePrices.reduce((s, p) => s + p, 0) / availablePrices.length) : null;
   const lowestAsk = availablePrices.length ? Math.min(...availablePrices) : null;
 
   const filteredVehicles = vehicles.filter(v => {
@@ -196,6 +99,12 @@ export default function Inventory() {
     return true;
   });
 
+  // Keep panel in sync with live data
+  const pv = panelVehicle ? vehicles.find(v => v.id === panelVehicle.id) || panelVehicle : null;
+
+  const openPanel = (v) => { setPanelVehicle(v); setPanelPhotoIdx(0); };
+  const closePanel = () => { setPanelVehicle(null); };
+
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 0', color: '#9ca3af' }}>
       Loading inventory…
@@ -208,22 +117,26 @@ export default function Inventory() {
     </div>
   );
 
+  const pvIsInAuction = pv?.status === 'in_auction';
+  const pvPhotos      = pv && Array.isArray(pv.photos) && pv.photos.length > 0 ? pv.photos : null;
+  const pvBidCount    = pv ? (data.bids || []).filter(b => b.vehicleId === pv.id).length : 0;
+  const pvMileage     = pv ? mileageMap[pv.id] ?? null : null;
+
   return (
-    <div style={{ background: '#f0f2f5', minHeight: '100vh', margin: '-20px -16px', padding: '24px 20px' }}>
+    <div style={{ position: 'relative' }}>
+
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>Inventory</h1>
-          <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 2, marginBottom: 0 }}>Available vehicles for purchase — updates live</p>
-        </div>
+      <div style={{ marginBottom: 16 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>Inventory</h1>
+        <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 2, marginBottom: 0 }}>Available vehicles for purchase — updates live</p>
       </div>
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
         {[
-          { label: 'Available Now', value: listed.length, color: '#065f46', accent: '#10b981', suffix: ' cars' },
+          { label: 'Available Now', value: listed.length,    color: '#065f46', accent: '#10b981', suffix: ' cars' },
           { label: 'In Auction',    value: inAuction.length, color: '#1e40af', accent: '#3b82f6', suffix: ' live' },
-          { label: 'Avg Ask',       value: avgAsk ? `$${avgAsk.toLocaleString()}` : '—', color: '#0d2550', accent: '#0d2550' },
+          { label: 'Avg Ask',       value: avgAsk    ? `$${avgAsk.toLocaleString()}`    : '—', color: '#0d2550', accent: '#0d2550' },
           { label: 'Lowest Ask',    value: lowestAsk ? `$${lowestAsk.toLocaleString()}` : '—', color: '#92400e', accent: '#e8b84b' },
         ].map(({ label, value, color, accent, suffix }) => (
           <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 8, padding: '10px 14px' }}>
@@ -235,21 +148,21 @@ export default function Inventory() {
         ))}
       </div>
 
-      {/* Controls: search + filter pills + view toggle */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* Controls */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
           <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 14, pointerEvents: 'none' }}>🔍</span>
           <input
             type="text"
             placeholder="Search by make, model, VIN, color…"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); closePanel(); }}
             style={{ width: '100%', padding: '9px 12px 9px 34px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', background: '#fff', boxSizing: 'border-box' }}
           />
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           {[['all','All'], ['ready','Available'], ['in_auction','In Auction']].map(([val, label]) => (
-            <button key={val} onClick={() => setStatusFilter(val)} style={{
+            <button key={val} onClick={() => { setStatusFilter(val); closePanel(); }} style={{
               padding: '7px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: '1.5px solid',
               borderColor: statusFilter === val ? '#0d2550' : '#e5e7eb',
               background: statusFilter === val ? '#0d2550' : '#fff',
@@ -260,7 +173,7 @@ export default function Inventory() {
         </div>
         <div style={{ display: 'flex', border: '1.5px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
           {[['grid','⊞'],['list','☰']].map(([mode, icon]) => (
-            <button key={mode} onClick={() => setViewMode(mode)} style={{
+            <button key={mode} onClick={() => { setViewMode(mode); closePanel(); }} style={{
               padding: '7px 12px', border: 'none', cursor: 'pointer', fontSize: 14,
               background: viewMode === mode ? '#0d2550' : '#fff',
               color: viewMode === mode ? '#fff' : '#6b7280',
@@ -270,129 +183,262 @@ export default function Inventory() {
         </div>
       </div>
 
-      {/* Vehicle grid / list */}
-      {filteredVehicles.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9ca3af' }}>
-          <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>🚗</div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: '#374151', marginBottom: 6 }}>No vehicles found</div>
-          <div style={{ fontSize: 13 }}>{search ? 'Try a different search term' : 'Check back when new inventory is added'}</div>
-        </div>
-      ) : viewMode === 'grid' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-          {filteredVehicles.map(v => {
-            const isInAuction = v.status === 'in_auction';
-            const bidCount = data.bids.filter(b => b.vehicleId === v.id).length;
-            return (
-              <VehicleCard
-                key={v.id}
-                vehicle={v}
-                mileage={mileageMap[v.id] ?? null}
-                auctionCloseDate={data.auction?.closeDate}
-                badge={isInAuction ? null : undefined}
-                pricePill={isInAuction
-                  ? <AuctionCountdownPill closeDate={data.auction?.closeDate} />
-                  : v.floor_price
-                    ? <div style={{ background: 'rgba(255,255,255,0.93)', color: '#0d2550', fontSize: 12, fontWeight: 800, padding: '2px 9px', borderRadius: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.14)' }}>${parseFloat(v.floor_price).toLocaleString()}</div>
-                    : null
-                }
-                onDetails={() => setDetailVehicle(v)}
-                actionButton={isWholesale ? (
-                  isInAuction ? (
-                    <div style={{ width: '100%', padding: '9px 0', fontSize: 12, fontWeight: 700, color: '#1e40af', background: '#dbeafe', borderRadius: 8, textAlign: 'center' }}>
-                      🔨 Bidding Open · {bidCount} bid{bidCount !== 1 ? 's' : ''}
-                    </div>
-                  ) : null
-                ) : (
-                  <button
-                    onClick={e => { e.stopPropagation(); !isInAuction && setBuyTarget(v); }}
-                    disabled={isInAuction}
-                    style={{
-                      width: '100%', padding: '10px 0', fontSize: 13, fontWeight: 700,
-                      border: 'none', borderRadius: 8,
-                      cursor: isInAuction ? 'not-allowed' : 'pointer',
-                      background: isInAuction ? '#1e40af' : '#0d2550',
-                      color: '#fff',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                    }}
-                  >
-                    {isInAuction ? '🔨 Bidding Open' : '🛒 Buy Now'}
-                  </button>
-                )}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
-                  {v.condition && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <span style={{
-                        background: CONDITION_COLOR[conditionScore(v.condition)] || '#6b7280',
-                        color: '#fff', fontWeight: 800, fontSize: 12,
-                        width: 22, height: 22, borderRadius: 6,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>{conditionScore(v.condition)}</span>
-                      <span style={{ fontSize: 11, color: '#6b7280' }}>{conditionLabel(v.condition)}</span>
-                    </div>
-                  )}
-                  {isInAuction && (
-                    <div style={{ fontSize: 11, color: '#9ca3af' }}>
-                      {bidCount === 0 ? '0 bids' : `${bidCount} bid${bidCount !== 1 ? 's' : ''}`}
-                    </div>
-                  )}
-                </div>
-              </VehicleCard>
-            );
-          })}
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {filteredVehicles.map(v => {
-            const isInAuction = v.status === 'in_auction';
-            const bidCount = data.bids.filter(b => b.vehicleId === v.id).length;
-            return (
-              <VehicleCard
-                key={v.id}
-                variant="list"
-                vehicle={v}
-                mileage={mileageMap[v.id] ?? null}
-                auctionCloseDate={data.auction?.closeDate}
-                badge={isInAuction ? <AuctionCountdownPill closeDate={data.auction?.closeDate} /> : undefined}
-                onClick={() => setDetailVehicle(v)}
-                actionButton={isWholesale ? null : (
-                  <button
-                    onClick={e => { e.stopPropagation(); !isInAuction && setBuyTarget(v); }}
-                    disabled={isInAuction}
-                    style={{
-                      padding: '7px 14px', fontSize: 12, fontWeight: 700,
-                      border: 'none', borderRadius: 8,
-                      cursor: isInAuction ? 'not-allowed' : 'pointer',
-                      background: isInAuction ? '#F3F4F6' : '#0d2550',
-                      color: isInAuction ? '#9ca3af' : '#fff',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {isInAuction ? 'In Auction' : 'Buy Now'}
-                  </button>
-                )}
-              >
-                {isInAuction && (
-                  <div style={{ padding: '6px 16px 10px', fontSize: 11, color: '#9ca3af' }}>
-                    {bidCount === 0 ? '0 bids' : `${bidCount} bid${bidCount !== 1 ? 's' : ''}`}
-                    {v.floor_price ? ` · floor $${parseFloat(v.floor_price).toLocaleString()}` : ''}
+      {/* Grid / List */}
+      <div style={{ paddingRight: panelVehicle ? 460 : 0, transition: 'padding-right 0.2s' }}>
+        {filteredVehicles.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9ca3af' }}>
+            <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>🚗</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: '#374151', marginBottom: 6 }}>No vehicles found</div>
+            <div style={{ fontSize: 13 }}>{search ? 'Try a different search term' : 'Check back when new inventory is added'}</div>
+          </div>
+        ) : viewMode === 'grid' ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+            {filteredVehicles.map(v => {
+              const isInAuction = v.status === 'in_auction';
+              const bidCount    = (data.bids || []).filter(b => b.vehicleId === v.id).length;
+              const isActive    = panelVehicle?.id === v.id;
+              return (
+                <VehicleCard
+                  key={v.id}
+                  variant="grid"
+                  vehicle={v}
+                  mileage={mileageMap[v.id] ?? null}
+                  highlighted={isActive}
+                  auctionCloseDate={data.auction?.closeDate}
+                  onTitleClick={() => navigate(`/acquisitions?v=${v.id}`)}
+                  pricePill={isInAuction
+                    ? <AuctionCountdownPill closeDate={data.auction?.closeDate} />
+                    : v.floor_price
+                      ? <div style={{ background: 'rgba(255,255,255,0.93)', color: '#0d2550', fontSize: 12, fontWeight: 800, padding: '2px 9px', borderRadius: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.14)' }}>${parseFloat(v.floor_price).toLocaleString()}</div>
+                      : null
+                  }
+                  actionButton={
+                    isWholesale ? (
+                      <button
+                        onClick={() => isActive ? closePanel() : openPanel(v)}
+                        style={{ width: '100%', background: isActive ? '#0d2550' : '#fff', color: isActive ? '#fff' : '#0d2550', border: '1.5px solid #0d2550', borderRadius: 7, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}>
+                        {isActive ? '← Viewing' : 'View Details'}
+                      </button>
+                    ) : (
+                      isInAuction ? (
+                        <button
+                          onClick={() => isActive ? closePanel() : openPanel(v)}
+                          style={{ width: '100%', background: '#1e40af', color: '#fff', border: 'none', borderRadius: 7, padding: '9px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                          🔨 Bidding Open · {bidCount} bid{bidCount !== 1 ? 's' : ''}
+                        </button>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            onClick={() => isActive ? closePanel() : openPanel(v)}
+                            style={{ flex: 1, background: isActive ? '#0d2550' : '#fff', color: isActive ? '#fff' : '#0d2550', border: '1.5px solid #0d2550', borderRadius: 7, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}>
+                            {isActive ? '← Viewing' : 'Details'}
+                          </button>
+                          <button
+                            onClick={e => { e.stopPropagation(); setBuyTarget(v); }}
+                            style={{ flex: 2, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 7, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                            🛒 Buy Now
+                          </button>
+                        </div>
+                      )
+                    )
+                  }
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
+                    {v.condition && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{
+                          background: CONDITION_COLOR[conditionScore(v.condition)] || '#6b7280',
+                          color: '#fff', fontWeight: 800, fontSize: 12,
+                          width: 22, height: 22, borderRadius: 6,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>{conditionScore(v.condition)}</span>
+                        <span style={{ fontSize: 11, color: '#6b7280' }}>{conditionLabel(v.condition)}</span>
+                      </div>
+                    )}
+                    {isInAuction && !isWholesale && (
+                      <div style={{ fontSize: 11, color: '#9ca3af' }}>
+                        {bidCount === 0 ? '0 bids' : `${bidCount} bid${bidCount !== 1 ? 's' : ''}`}
+                      </div>
+                    )}
                   </div>
-                )}
-              </VehicleCard>
-            );
-          })}
-        </div>
-      )}
+                </VehicleCard>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {filteredVehicles.map(v => {
+              const isInAuction = v.status === 'in_auction';
+              const bidCount    = (data.bids || []).filter(b => b.vehicleId === v.id).length;
+              const isActive    = panelVehicle?.id === v.id;
+              return (
+                <VehicleCard
+                  key={v.id}
+                  variant="list"
+                  vehicle={v}
+                  mileage={mileageMap[v.id] ?? null}
+                  highlighted={isActive}
+                  auctionCloseDate={data.auction?.closeDate}
+                  onTitleClick={() => navigate(`/acquisitions?v=${v.id}`)}
+                  badge={isInAuction ? <AuctionCountdownPill closeDate={data.auction?.closeDate} /> : undefined}
+                  onClick={() => isActive ? closePanel() : openPanel(v)}
+                  actionButton={isWholesale ? null : (
+                    <button
+                      onClick={e => { e.stopPropagation(); !isInAuction && setBuyTarget(v); }}
+                      disabled={isInAuction}
+                      style={{
+                        padding: '7px 14px', fontSize: 12, fontWeight: 700,
+                        border: 'none', borderRadius: 8,
+                        cursor: isInAuction ? 'not-allowed' : 'pointer',
+                        background: isInAuction ? '#f3f4f6' : '#0d2550',
+                        color: isInAuction ? '#9ca3af' : '#fff',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {isInAuction ? 'In Auction' : 'Buy Now'}
+                    </button>
+                  )}
+                >
+                  {isInAuction && (
+                    <div style={{ padding: '4px 16px 8px', fontSize: 11, color: '#9ca3af' }}>
+                      {bidCount === 0 ? '0 bids' : `${bidCount} bid${bidCount !== 1 ? 's' : ''}`}
+                      {v.floor_price ? ` · asking $${parseFloat(v.floor_price).toLocaleString()}` : ''}
+                    </div>
+                  )}
+                </VehicleCard>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-      {/* Vehicle detail modal */}
-      {detailVehicle && (
-        <VehicleDetailModal
-          vehicle={detailVehicle}
-          mileage={mileageMap[detailVehicle.id] ?? null}
-          onBuyNow={setBuyTarget}
-          onClose={() => setDetailVehicle(null)}
-          canBuyNow={!isWholesale}
-        />
+      {/* Slide-out panel */}
+      {pv && (
+        <div style={{
+          position: 'fixed', right: 0, top: 0, bottom: 0, width: 460,
+          background: '#fff', borderLeft: '1px solid #e5e7eb',
+          boxShadow: '-4px 0 24px rgba(0,0,0,0.08)',
+          zIndex: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column',
+        }}>
+          {/* Close */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '14px 18px 0' }}>
+            <button onClick={closePanel}
+              style={{ background: '#f1f5f9', border: 'none', borderRadius: 20, width: 30, height: 30, cursor: 'pointer', fontSize: 18, color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+          </div>
+
+          {/* Photo */}
+          <div style={{ padding: '4px 20px 0' }}>
+            <div style={{ position: 'relative', background: '#f1f5f9', borderRadius: 10, overflow: 'hidden', height: 200 }}>
+              {pvPhotos
+                ? <img src={pvPhotos[panelPhotoIdx]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: 36, fontWeight: 900, color: '#cbd5e1' }}>
+                      {[pv.make?.[0], pv.model?.[0]].filter(Boolean).join('').toUpperCase()}
+                    </span>
+                  </div>
+              }
+              {pvPhotos && pvPhotos.length > 1 && (
+                <>
+                  <button onClick={() => setPanelPhotoIdx(i => (i - 1 + pvPhotos.length) % pvPhotos.length)}
+                    style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.4)', border: 'none', color: '#fff', width: 30, height: 30, borderRadius: '50%', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+                  <button onClick={() => setPanelPhotoIdx(i => (i + 1) % pvPhotos.length)}
+                    style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.4)', border: 'none', color: '#fff', width: 30, height: 30, borderRadius: '50%', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+                  <div style={{ position: 'absolute', bottom: 8, right: 10, background: 'rgba(0,0,0,0.45)', color: '#fff', fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 8 }}>{panelPhotoIdx + 1} / {pvPhotos.length}</div>
+                </>
+              )}
+            </div>
+            {/* Thumbnails */}
+            {pvPhotos && pvPhotos.length > 1 && (
+              <div style={{ display: 'flex', gap: 5, marginTop: 6, overflowX: 'auto' }}>
+                {pvPhotos.map((p, i) => (
+                  <img key={i} src={p} alt="" onClick={() => setPanelPhotoIdx(i)}
+                    style={{ width: 48, height: 36, objectFit: 'cover', borderRadius: 4, flexShrink: 0, cursor: 'pointer', border: i === panelPhotoIdx ? '2px solid #0d2550' : '2px solid transparent', opacity: i === panelPhotoIdx ? 1 : 0.6 }} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Vehicle identity */}
+          <div style={{ padding: '14px 20px 0' }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#111827', lineHeight: 1.15 }}>
+              {[pv.year, pv.make, pv.model].filter(Boolean).join(' ')}
+            </div>
+            {pv.trim && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{pv.trim}</div>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+              {(() => {
+                const parts = [pv.color, pv.condition, pvMileage != null ? `${parseInt(pvMileage).toLocaleString()} mi` : null].filter(Boolean);
+                return parts.length > 0 ? <span style={{ fontSize: 12, color: '#6b7280' }}>{parts.join(' · ')}</span> : null;
+              })()}
+              <span style={{ background: pvIsInAuction ? '#dbeafe' : '#d1fae5', color: pvIsInAuction ? '#1e40af' : '#065f46', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>
+                {pvIsInAuction ? 'In Auction' : 'Available'}
+              </span>
+            </div>
+            {pv.vin && (
+              <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#9ca3af', marginTop: 6 }}>
+                {pv.vin}
+              </div>
+            )}
+          </div>
+
+          <div style={{ borderTop: '1px solid #f1f5f9', margin: '14px 0 0' }} />
+
+          {/* Details section */}
+          <div style={{ padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+            {/* Price / auction info */}
+            {pvIsInAuction ? (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>Auction</div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <AuctionCountdownPill closeDate={data.auction?.closeDate} />
+                  <span style={{ fontSize: 13, color: '#6b7280' }}>
+                    {pvBidCount === 0 ? 'No bids yet' : `${pvBidCount} bid${pvBidCount !== 1 ? 's' : ''} placed`}
+                  </span>
+                </div>
+              </div>
+            ) : pv.floor_price ? (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>Asking Price</div>
+                <div style={{ fontSize: 30, fontWeight: 800, color: '#0d2550', lineHeight: 1 }}>
+                  ${parseFloat(pv.floor_price).toLocaleString()}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Disclosure */}
+            {pv.disclosure_notes && (
+              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>
+                <span style={{ fontWeight: 700 }}>Disclosure: </span>{pv.disclosure_notes}
+              </div>
+            )}
+
+            {/* Notes */}
+            {pv.notes && (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>Description</div>
+                <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{pv.notes}</div>
+              </div>
+            )}
+
+            {/* Buy Now CTA (retail only, available only) */}
+            {!isWholesale && !pvIsInAuction && (
+              <button
+                onClick={() => { closePanel(); setBuyTarget(pv); }}
+                style={{ padding: '14px 0', fontSize: 15, fontWeight: 700, border: 'none', borderRadius: 9, cursor: 'pointer', background: '#0d2550', color: '#fff', marginTop: 4 }}
+              >
+                🛒 Buy Now
+              </button>
+            )}
+
+            {/* Wiki link */}
+            <button
+              onClick={() => navigate(`/acquisitions?v=${pv.id}`)}
+              style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: 12, cursor: 'pointer', padding: 0, textAlign: 'left', textDecoration: 'underline' }}
+            >
+              View full vehicle record →
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Buy Now confirmation modal */}
@@ -409,9 +455,9 @@ export default function Inventory() {
               </div>
               {buyTarget.trim && <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>{buyTarget.trim}</div>}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                <Detail label="VIN" value={buyTarget.vin || '—'} mono />
-                <Detail label="Color" value={buyTarget.color || '—'} />
-                <Detail label="Floor Price" value={buyTarget.floor_price ? `$${parseFloat(buyTarget.floor_price).toLocaleString()}` : '—'} highlight />
+                <Detail label="VIN"           value={buyTarget.vin || '—'} mono />
+                <Detail label="Color"         value={buyTarget.color || '—'} />
+                <Detail label="Asking Price"  value={buyTarget.floor_price ? `$${parseFloat(buyTarget.floor_price).toLocaleString()}` : '—'} highlight />
               </div>
               {buyTarget.disclosure_notes && (
                 <div style={{ background: '#fff8e7', border: '1px solid #f1bb25', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#92400e', marginBottom: 16 }}>
