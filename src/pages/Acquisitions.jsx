@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { supabase, uploadVehiclePhoto } from '../lib/supabase';
 import { VehicleCard } from '../components/VehicleCard';
 import RepairOrdersModal from '../components/RepairOrdersModal';
@@ -1151,6 +1151,17 @@ export default function Acquisitions() {
   };
 
   const closePanel = () => { setPanelVehicle(null); setPanelDeal(null); };
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const vehicleId = searchParams.get('v');
+    if (!vehicleId || !data.vehicles.length) return;
+    const target = data.vehicles.find(v => v.id === vehicleId);
+    if (target) {
+      openPanel(target);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, data.vehicles]);
 
   useEffect(() => {
     if (!data.vehicles.length) return;

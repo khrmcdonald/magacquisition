@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/Toast';
 import { VehicleCard } from '../components/VehicleCard';
@@ -107,6 +108,7 @@ function AddRoForm({ repairVendors, onSave, onCancel }) {
 export default function Repairs() {
   const { data, repairOrders, repairVendors, addRepairOrder, updateRepairOrder, deleteRepairOrder } = useData();
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch]             = useState('');
   const [panelVehicle, setPanelVehicle] = useState(null);
@@ -257,6 +259,7 @@ export default function Repairs() {
                   mileage={vehicle.mileage}
                   highlighted={isActive}
                   accentOverride={roAccent(ros)}
+                  onTitleClick={() => navigate(`/acquisitions?v=${vehicle.id}`)}
                   badge={
                     <span style={{ background: '#0d2550', color: '#fff', padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 700 }}>
                       {ros.length} RO{ros.length !== 1 ? 's' : ''}

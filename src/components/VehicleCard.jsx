@@ -163,6 +163,7 @@ export function VehicleCard({
   children,
 }) {
   const [hovered, setHovered] = useState(false);
+  const [titleHovered, setTitleHovered] = useState(false);
 
   const photos = Array.isArray(vehicle.photos) ? vehicle.photos : [];
   const listPrice = vehicle.list_price ? `$${parseFloat(vehicle.list_price).toLocaleString()}` : '—';
@@ -230,7 +231,12 @@ export function VehicleCard({
             }}>
               {vehicle.vin || '—'}
             </div>
-            <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', lineHeight: 1.2 }}>
+            <div
+              style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.2, color: onTitleClick && titleHovered ? '#2563eb' : '#111827', textDecoration: onTitleClick && titleHovered ? 'underline' : 'none', cursor: onTitleClick ? 'pointer' : 'default', display: 'inline-block' }}
+              onClick={onTitleClick ? (e => { e.stopPropagation(); onTitleClick(); }) : undefined}
+              onMouseEnter={onTitleClick ? () => setTitleHovered(true) : undefined}
+              onMouseLeave={onTitleClick ? () => setTitleHovered(false) : undefined}
+            >
               {vehicle.year} {vehicle.make} {vehicle.model}
               {vehicle.trim
                 ? <span style={{ fontWeight: 400, color: '#6b7280', fontSize: 13 }}> · {vehicle.trim}</span>
@@ -323,7 +329,12 @@ export function VehicleCard({
       <div style={{ padding: '10px 14px 12px', flex: 1, display: 'flex', flexDirection: 'column' }}>
 
         {/* Hero: Year Make Model */}
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#111827', lineHeight: 1.2, marginBottom: 1 }}>
+        <div
+          style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2, marginBottom: 1, color: onTitleClick && titleHovered ? '#2563eb' : '#111827', textDecoration: onTitleClick && titleHovered ? 'underline' : 'none', cursor: onTitleClick ? 'pointer' : 'default', display: 'inline-block' }}
+          onClick={onTitleClick ? (e => { e.stopPropagation(); onTitleClick(); }) : undefined}
+          onMouseEnter={onTitleClick ? () => setTitleHovered(true) : undefined}
+          onMouseLeave={onTitleClick ? () => setTitleHovered(false) : undefined}
+        >
           {vehicle.year} {vehicle.make} {vehicle.model}
         </div>
 
