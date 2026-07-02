@@ -199,7 +199,7 @@ export function DataProvider({ children }) {
         supabase.from('vehicles').select('*').eq('org_id', ORG_ID),
         supabase.from('auctions').select('*').eq('org_id', ORG_ID),
         supabase.from('bids').select('*'),
-        supabase.from('locations').select('*').eq('org_id', ORG_ID),
+        supabase.from('locations').select('*').or(`org_id.eq.${ORG_ID},org_id.is.null`),
         supabase.from('acquisition_sources').select('*').eq('org_id', ORG_ID),
         supabase.from('transport').select('*').eq('org_id', ORG_ID),
         supabase.from('repair_orders').select('*, repair_order_lines(*)').eq('org_id', ORG_ID),
@@ -904,6 +904,21 @@ export function DataProvider({ children }) {
     await updateProfile(userId, { name: existing?.name, role: existing?.role, buyerNumber });
   };
 
+  const deleteUser = async (userId) => {
+    // Nullify buyer_id on their vehicles (don't delete the vehicles)
+    await supabase.from('vehicles').update({ buyer_id: null }).eq('buyer_id', userId).eq('org_id', ORG_ID);
+    // Delete their bids
+    await supabase.from('bids').delete().eq('user_id', userId);
+    // Delete profile (removes app access; auth account remains but is blocked)
+    const { error } = await supabase.from('profiles').delete().eq('id', userId);
+    if (error) throw error;
+    // Update local state
+    setProfiles(prev => prev.filter(p => p.id !== userId));
+    setBuyers(prev => prev.filter(p => p.id !== userId));
+    setVehicles(prev => prev.map(v => v.buyerId === userId ? { ...v, buyerId: null, buyerName: null } : v));
+    setBids(prev => prev.filter(b => b.userId !== userId));
+  };
+
   const saveOrgSettings = async (settings) => {
     const { error } = await supabase.from('org_settings')
       .upsert({ org_id: ORG_ID, data: settings, updated_at: new Date().toISOString() }, { onConflict: 'org_id' });
@@ -953,6 +968,7 @@ export function DataProvider({ children }) {
       addLocation, deleteLocation,
       updateProfile,
       updateBuyerNumber,
+      deleteUser,
       saveOrgSettings,
     }}>
       {children}

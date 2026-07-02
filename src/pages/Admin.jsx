@@ -180,10 +180,23 @@ function InviteUserCard() {
 }
 
 
-function TeamMembersCard({ profiles, onUpdateProfile, roleLabel }) {
+function TeamMembersCard({ profiles, onUpdateProfile, onDeleteUser, roleLabel }) {
   const { showToast } = useToast();
   const [editing, setEditing] = useState(null); // { id, name, role, buyer_number }
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(null); // userId being deleted
+
+  const handleDelete = async (p) => {
+    if (!window.confirm(`Delete ${p.name}?\n\nThis will remove their profile, bids, and buyer assignment from all vehicles. Their login account will be blocked. This cannot be undone.`)) return;
+    setDeleting(p.id);
+    try {
+      await onDeleteUser(p.id);
+      showToast(`${p.name} removed.`, 'success');
+    } catch (err) {
+      showToast('Failed to delete user: ' + err.message, 'error');
+    }
+    setDeleting(null);
+  };
 
   const startEdit = (p) => setEditing({ id: p.id, name: p.name || '', role: p.role || 'bidder', buyer_number: p.buyer_number || '' });
 
@@ -231,6 +244,14 @@ function TeamMembersCard({ profiles, onUpdateProfile, roleLabel }) {
                 >
                   {editing?.id === p.id ? 'Cancel' : 'Edit'}
                 </button>
+                <button
+                  onClick={() => handleDelete(p)}
+                  disabled={deleting === p.id}
+                  title="Delete user"
+                  style={{ background: 'none', border: '1px solid #fecaca', borderRadius: 6, padding: '4px 8px', fontSize: 13, cursor: 'pointer', color: '#ef4444', lineHeight: 1, opacity: deleting === p.id ? 0.5 : 1 }}
+                >
+                  {deleting === p.id ? '…' : '🗑'}
+                </button>
               </div>
             </div>
             {/* Edit form */}
@@ -269,7 +290,7 @@ function TeamMembersCard({ profiles, onUpdateProfile, roleLabel }) {
 
 export default function Admin() {
   const { user } = useAuth();
-  const { data, updateStorePhoto, addAcquisitionSource, deleteAcquisitionSource, addLocation, deleteLocation, updateProfile, saveOrgSettings } = useData();
+  const { data, updateStorePhoto, addAcquisitionSource, deleteAcquisitionSource, addLocation, deleteLocation, updateProfile, deleteUser, saveOrgSettings } = useData();
   const { showToast } = useToast();
   const fileRefs = useRef({});
   const logoRef = useRef(null);
@@ -431,7 +452,7 @@ export default function Admin() {
       {activeTab === 'users' && (
         <div>
           <InviteUserCard />
-          <TeamMembersCard profiles={data.profiles || []} onUpdateProfile={updateProfile} roleLabel={roleLabel} roleBadge={roleBadge} />
+          <TeamMembersCard profiles={data.profiles || []} onUpdateProfile={updateProfile} onDeleteUser={deleteUser} roleLabel={roleLabel} roleBadge={roleBadge} />
         </div>
       )}
 
