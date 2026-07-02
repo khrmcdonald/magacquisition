@@ -366,7 +366,7 @@ export default function Inventory() {
             {pv.trim && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{pv.trim}</div>}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
               {(() => {
-                const parts = [pv.color, pv.condition, pvMileage != null ? `${parseInt(pvMileage).toLocaleString()} mi` : null].filter(Boolean);
+                const parts = [pv.color, pv.engine, pv.condition, pvMileage != null ? `${parseInt(pvMileage).toLocaleString()} mi` : null].filter(Boolean);
                 return parts.length > 0 ? <span style={{ fontSize: 12, color: '#6b7280' }}>{parts.join(' · ')}</span> : null;
               })()}
               <span style={{ background: pvIsInAuction ? '#dbeafe' : '#d1fae5', color: pvIsInAuction ? '#1e40af' : '#065f46', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>
@@ -374,7 +374,7 @@ export default function Inventory() {
               </span>
             </div>
             {pv.vin && (
-              <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#9ca3af', marginTop: 6 }}>
+              <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#6b7280', marginTop: 6 }}>
                 {pv.vin}
               </div>
             )}

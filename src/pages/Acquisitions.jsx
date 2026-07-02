@@ -447,6 +447,7 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
     photos: Array.isArray(initial.photos) ? initial.photos : [],
     source_id: initial.sourceId || sources.find(s => s.label === initial.source)?.value || '',
     interior_color: initial.interior_color || '',
+    engine: initial.engine || '',
     // deal fields default empty on edit
     seller_name: '', buyer_id: initial.buyer_id || '', purchase_amount: '',
     lienholder: '', payoff_amount: '', cashiers_check: false,
@@ -455,7 +456,7 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
     datePurchased: initial.datePurchased || '',
   } : {
     vin: '', year: '', make: '', model: '', trim: '', mileage: '', color: '',
-    interior_color: '',
+    interior_color: '', engine: '',
     source_id: '', purchasePrice: '', condition: 'Good', notes: '',
     overheadCosts: '', floorPrice: '', photos: [],
     titleStatus: 'pending', currentLocation: '',
@@ -607,6 +608,10 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
         <div className="form-group">
           <label>Trim</label>
           <input type="text" value={form.trim} onChange={e => set('trim', e.target.value)} placeholder="SLT" />
+        </div>
+        <div className="form-group">
+          <label>Engine</label>
+          <input type="text" value={form.engine || ''} onChange={e => set('engine', e.target.value)} placeholder="5.7L V8" />
         </div>
         <div className="form-group">
           <label>Mileage</label>
@@ -2030,6 +2035,7 @@ export default function Acquisitions() {
                 <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#6b7280', background: '#f3f4f6', padding: '4px 8px', borderRadius: 4, display: 'inline-block', marginBottom: 10, letterSpacing: '.04em' }}>{pv.vin || '—'}</div>
                 {row('Condition', pv.condition)}
                 {row('Color', pv.color && pv.interior_color ? `${pv.color} / ${pv.interior_color}` : (pv.color || pv.interior_color))}
+                {pv.engine && row('Engine', pv.engine)}
                 {row('Mileage', pvMileage != null ? `${parseInt(pvMileage).toLocaleString()} mi` : null)}
 
                 {/* Financials */}

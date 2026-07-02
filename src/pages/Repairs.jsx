@@ -320,11 +320,11 @@ export default function Repairs() {
             </div>
             {panelVehicle.trim && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{panelVehicle.trim}</div>}
             {(() => {
-              const parts = [panelVehicle.color, panelVehicle.condition, panelVehicle.mileage != null ? `${parseInt(panelVehicle.mileage).toLocaleString()} mi` : null].filter(Boolean);
-              return parts.length > 0 ? <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{parts.join(' · ')}</div> : null;
+              const parts = [panelVehicle.color, panelVehicle.engine, panelVehicle.condition, panelVehicle.mileage != null ? `${parseInt(panelVehicle.mileage).toLocaleString()} mi` : null].filter(Boolean);
+              return parts.length > 0 ? <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{parts.join(' · ')}</div> : null;
             })()}
             {panelVehicle.vin && (
-              <div style={{ fontSize: 10, fontFamily: 'monospace', color: '#c4c9d3', marginTop: 3 }}>···{panelVehicle.vin.slice(-6).toUpperCase()}</div>
+              <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#6b7280', marginTop: 3 }}>{panelVehicle.vin.toUpperCase()}</div>
             )}
 
             {/* Stat boxes */}

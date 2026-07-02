@@ -62,6 +62,7 @@ function mapVehicle(r) {
     buyer_name: r.buyer_name || null,
     datePurchased: r.date_purchased || null,
     sourceId: r.source_id || null,
+    engine: r.engine || null,
   };
 }
 
@@ -159,6 +160,7 @@ const VEHICLE_FIELD_MAP = {
   buyer_id: 'buyer_id',
   buyer_name: 'buyer_name',
   arbitration: 'arbitration',
+  engine: 'engine',
 };
 
 function toSnakeCase(fields) {

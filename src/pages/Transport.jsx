@@ -335,10 +335,10 @@ export default function Transport() {
             </div>
             {ptVehicle.trim && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{ptVehicle.trim}</div>}
             {(() => {
-              const parts = [ptVehicle.color, ptVehicle.condition, ptVehicle.mileage != null ? `${parseInt(ptVehicle.mileage).toLocaleString()} mi` : null].filter(Boolean);
-              return parts.length > 0 ? <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{parts.join(' · ')}</div> : null;
+              const parts = [ptVehicle.color, ptVehicle.engine, ptVehicle.condition, ptVehicle.mileage != null ? `${parseInt(ptVehicle.mileage).toLocaleString()} mi` : null].filter(Boolean);
+              return parts.length > 0 ? <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{parts.join(' · ')}</div> : null;
             })()}
-            {ptVehicle.vin && <div style={{ fontSize: 10, fontFamily: 'monospace', color: '#c4c9d3', marginTop: 3 }}>···{ptVehicle.vin.slice(-6).toUpperCase()}</div>}
+            {ptVehicle.vin && <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#6b7280', marginTop: 3 }}>{ptVehicle.vin.toUpperCase()}</div>}
 
             {/* Stat boxes */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 16 }}>

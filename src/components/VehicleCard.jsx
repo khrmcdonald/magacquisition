@@ -249,6 +249,7 @@ export function VehicleCard({
                 vehicle.color && vehicle.interior_color
                   ? `${vehicle.color} / ${vehicle.interior_color}`
                   : (vehicle.color || vehicle.interior_color || null),
+                vehicle.engine || null,
                 mileage != null ? `${parseInt(mileage).toLocaleString()} mi` : null,
               ].filter(Boolean).join(' · ')}
             </div>
@@ -290,6 +291,7 @@ export function VehicleCard({
     vehicle.color && vehicle.interior_color
       ? `${vehicle.color} / ${vehicle.interior_color}`
       : (vehicle.color || vehicle.interior_color || null),
+    vehicle.engine || null,
     vehicle.condition,
     mileage != null ? `${parseInt(mileage).toLocaleString()} mi` : null,
   ].filter(Boolean);
@@ -346,15 +348,15 @@ export function VehicleCard({
           </div>
         )}
 
-        {/* Specs: color · condition · mileage */}
+        {/* Specs: color · engine · condition · mileage */}
         {specParts.length > 0 && (
-          <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.3, marginBottom: 3 }}>
+          <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.3, marginBottom: 3 }}>
             {specParts.join(' · ')}
           </div>
         )}
 
         {/* VIN */}
-        <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#c4c9d3', letterSpacing: '.04em', marginBottom: 6 }}>
+        <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#6b7280', letterSpacing: '.04em', marginBottom: 6 }}>
           {vehicle.vin || '—'}
         </div>
 
