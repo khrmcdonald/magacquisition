@@ -1476,42 +1476,42 @@ export default function Acquisitions() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-        <div className="page-header" style={{ marginBottom: 0 }}>
-          <h1>Acquisitions {isReadOnly ? '(GM View)' : ''}</h1>
-          <p>All inventory — every vehicle TRI-STATE owns, at every stage. Cost data visible to TRI-STATE and GM only.</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0, whiteSpace: 'nowrap' }}>
+          Acquisitions {isReadOnly ? '(GM View)' : ''}
+        </h1>
+        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 14, pointerEvents: 'none' }}>🔍</span>
+          <input
+            type="text"
+            placeholder="Search by make, model, VIN, color, engine…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ width: '100%', padding: '9px 12px 9px 34px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', background: '#fff', boxSizing: 'border-box' }}
+          />
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {/* View toggle */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {user?.role === 'wholesale' && (
-              <button
-                onClick={() => setMyBuysOnly(p => !p)}
-                style={{
-                  padding: '7px 14px', borderRadius: 8, border: `1.5px solid ${myBuysOnly ? '#0d2550' : '#e5e7eb'}`,
-                  background: myBuysOnly ? '#0d2550' : '#fff',
-                  color: myBuysOnly ? '#fff' : '#6b7280',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                }}
-              >My Buys</button>
-            )}
-            <div style={{ display: 'flex', border: '1.5px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
-              {[['grid','⊞'],['list','☰']].map(([mode, icon]) => (
-                <button key={mode} onClick={() => setViewMode(mode)} style={{
-                  padding: '7px 12px', border: 'none', cursor: 'pointer', fontSize: 14,
-                  background: viewMode === mode ? '#0d2550' : '#fff',
-                  color: viewMode === mode ? '#fff' : '#6b7280',
-                  borderRight: mode === 'grid' ? '1px solid #e5e7eb' : 'none',
-                }}>{icon}</button>
-              ))}
-            </div>
-          </div>
-          {!isReadOnly && (
-            <button className="btn-navy" onClick={() => { setEditing(null); setSaveError(null); setShowForm(true); }}>
-              + Add vehicle
-            </button>
-          )}
+        {user?.role === 'wholesale' && (
+          <button onClick={() => setMyBuysOnly(p => !p)} style={{
+            padding: '8px 14px', borderRadius: 8, border: `1.5px solid ${myBuysOnly ? '#0d2550' : '#e5e7eb'}`,
+            background: myBuysOnly ? '#0d2550' : '#fff', color: myBuysOnly ? '#fff' : '#6b7280',
+            fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+          }}>My Buys</button>
+        )}
+        <div style={{ display: 'flex', border: '1.5px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+          {[['grid','⊞'],['list','☰']].map(([mode, icon]) => (
+            <button key={mode} onClick={() => setViewMode(mode)} style={{
+              padding: '7px 12px', border: 'none', cursor: 'pointer', fontSize: 14,
+              background: viewMode === mode ? '#0d2550' : '#fff',
+              color: viewMode === mode ? '#fff' : '#6b7280',
+              borderRight: mode === 'grid' ? '1px solid #e5e7eb' : 'none',
+            }}>{icon}</button>
+          ))}
         </div>
+        {!isReadOnly && (
+          <button className="btn-navy" onClick={() => { setEditing(null); setSaveError(null); setShowForm(true); }} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+            + Add vehicle
+          </button>
+        )}
       </div>
 
       {/* Filter panel */}
@@ -1617,19 +1617,8 @@ export default function Acquisitions() {
         </div>
       </div>
 
-      {/* Search + vehicle count */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-        <div style={{ position: 'relative', flex: 1 }}>
-          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 14, pointerEvents: 'none' }}>🔍</span>
-          <input
-            type="text"
-            placeholder="Search by make, model, VIN, color, engine…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ width: '100%', padding: '9px 12px 9px 34px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', background: '#fff', boxSizing: 'border-box' }}
-          />
-        </div>
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap' }}>{filtered.length} vehicles</span>
+      <div style={{ marginBottom: 10 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#6b7280' }}>{filtered.length} vehicles</span>
       </div>
 
       {/* Grid / List */}
