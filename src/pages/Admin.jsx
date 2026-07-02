@@ -109,7 +109,7 @@ function InviteUserCard() {
                 style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, background: '#fff', boxSizing: 'border-box' }}
               >
                 <option value="">Select store…</option>
-                {(data.locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                {(data.locations || []).filter(l => l.is_buyer_store).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             </div>
           )}
@@ -514,7 +514,7 @@ export default function Admin() {
             <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>Store profiles and headshots — appears throughout the app</p>
           </div>
           <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {(data.locations || []).map(loc => (
+            {(data.locations || []).filter(l => l.is_buyer_store).map(loc => (
               <div key={loc.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px', background: '#f9fafb', borderRadius: 10, border: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   <StoreAvatar locationId={loc.id} size={52} />
