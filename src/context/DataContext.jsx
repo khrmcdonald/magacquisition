@@ -641,6 +641,15 @@ export function DataProvider({ children }) {
     setTransport(prev => prev.filter(t => t.id !== id));
   };
 
+  const closeArrivedTransport = async () => {
+    const arrivedIds = transport.filter(t => ['arrived', 'titleReceived'].includes(t.status)).map(t => t.id);
+    if (!arrivedIds.length) return 0;
+    const { error } = await supabase.from('transport').delete().in('id', arrivedIds);
+    if (error) throw error;
+    setTransport(prev => prev.filter(t => !arrivedIds.includes(t.id)));
+    return arrivedIds.length;
+  };
+
   const updateTransportSchedule = async (id, scheduledDate) => {
     const { error } = await supabase.from('transport')
       .update({ scheduled_date: scheduledDate || null })
@@ -950,7 +959,7 @@ export function DataProvider({ children }) {
       placeBid, addBid,
       getHighBid, getMyBid, getAllBidsForVehicle,
       // Transport
-      updateTransport, deleteTransport, updateTransportSchedule,
+      updateTransport, deleteTransport, closeArrivedTransport, updateTransportSchedule,
       // Repair orders
       repairOrders, repairVendors,
       addRepairOrder, updateRepairOrder, deleteRepairOrder,

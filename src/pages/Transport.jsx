@@ -82,10 +82,11 @@ function StepTracker({ steps, currentStatus, onUpdate, canUpdate }) {
 
 export default function Transport() {
   const { user } = useAuth();
-  const { data, updateTransport, deleteTransport, updateTransportSchedule } = useData();
+  const { data, updateTransport, deleteTransport, closeArrivedTransport, updateTransportSchedule } = useData();
   const navigate = useNavigate();
 
-  const [filter, setFilter]               = useState('all');
+  const [filter, setFilter]               = useState('active');
+  const [closingAll, setClosingAll]       = useState(false);
   const [typeTab, setTypeTab]             = useState('all');
   const [panelTransport, setPanelTransport] = useState(null);
   const [editingSchedule, setEditingSchedule] = useState(false);
@@ -226,7 +227,7 @@ export default function Transport() {
             ))}
           </div>
         )}
-        {[['all','All'], ['active','In progress'], ['complete','Complete']].map(([key, label]) => (
+        {[['active','Active'], ['complete','Arrived'], ['all','All']].map(([key, label]) => (
           <button key={key} onClick={() => { setFilter(key); closePanel(); }} style={{
             padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
             border: '1.5px solid', borderColor: filter === key ? '#0d2550' : '#e5e7eb',
@@ -235,6 +236,20 @@ export default function Transport() {
             transition: 'all 0.12s',
           }}>{label}</button>
         ))}
+        {filter === 'complete' && isWholesale && myTransport.filter(t => ['arrived','titleReceived'].includes(t.status)).length > 0 && (
+          <button
+            disabled={closingAll}
+            onClick={async () => {
+              if (!window.confirm(`Close all ${myTransport.filter(t => ['arrived','titleReceived'].includes(t.status)).length} arrived transport records? This cannot be undone.`)) return;
+              setClosingAll(true);
+              try { await closeArrivedTransport(); closePanel(); } catch (e) { alert('Failed: ' + e.message); }
+              setClosingAll(false);
+            }}
+            style={{ padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1.5px solid #fca5a5', background: '#fef2f2', color: '#dc2626', marginLeft: 4 }}
+          >
+            {closingAll ? 'Closing…' : `Close all arrived (${myTransport.filter(t => ['arrived','titleReceived'].includes(t.status)).length})`}
+          </button>
+        )}
       </div>
 
       {/* Grid */}
@@ -473,32 +488,56 @@ export default function Transport() {
               </>
             )}
 
-            {/* Delete */}
+            {/* Close / Delete */}
             {isWholesale && (
               <>
                 <div style={{ borderTop: '1px solid #f1f5f9' }} />
-                {confirmDelete ? (
-                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ fontSize: 13, color: '#991b1b', fontWeight: 600 }}>Delete this transport record?</div>
-                    <div style={{ fontSize: 12, color: '#6b7280' }}>Vehicle status is not affected.</div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={handleDelete}
-                        style={{ flex: 1, background: '#991b1b', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                        Delete
-                      </button>
-                      <button onClick={() => setConfirmDelete(false)}
-                        style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 14px', fontSize: 13, cursor: 'pointer', color: '#6b7280' }}>
-                        Cancel
-                      </button>
+                {['arrived', 'titleReceived'].includes(pt?.status) ? (
+                  confirmDelete ? (
+                    <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ fontSize: 13, color: '#065f46', fontWeight: 600 }}>Close this transport record?</div>
+                      <div style={{ fontSize: 12, color: '#6b7280' }}>Vehicle and bid history are not affected.</div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={handleDelete}
+                          style={{ flex: 1, background: '#059669', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                          Close Transport
+                        </button>
+                        <button onClick={() => setConfirmDelete(false)}
+                          style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 14px', fontSize: 13, cursor: 'pointer', color: '#6b7280' }}>
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <button onClick={() => setConfirmDelete(true)}
+                      style={{ width: '100%', background: '#f0fdf4', border: '1.5px solid #86efac', color: '#059669', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                      ✓ Close Transport
+                    </button>
+                  )
                 ) : (
-                  <button onClick={() => setConfirmDelete(true)}
-                    style={{ background: 'none', border: 'none', color: '#d1d5db', fontSize: 12, cursor: 'pointer', padding: 0, textAlign: 'left', fontWeight: 600 }}
-                    onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-                    onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}>
-                    Delete record
-                  </button>
+                  confirmDelete ? (
+                    <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ fontSize: 13, color: '#991b1b', fontWeight: 600 }}>Delete this transport record?</div>
+                      <div style={{ fontSize: 12, color: '#6b7280' }}>Vehicle status is not affected.</div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={handleDelete}
+                          style={{ flex: 1, background: '#991b1b', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                          Delete
+                        </button>
+                        <button onClick={() => setConfirmDelete(false)}
+                          style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 14px', fontSize: 13, cursor: 'pointer', color: '#6b7280' }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setConfirmDelete(true)}
+                      style={{ background: 'none', border: 'none', color: '#d1d5db', fontSize: 12, cursor: 'pointer', padding: 0, textAlign: 'left', fontWeight: 600 }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                      onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}>
+                      Delete record
+                    </button>
+                  )
                 )}
               </>
             )}
