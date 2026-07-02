@@ -160,6 +160,7 @@ export function VehicleCard({
   onDetails,
   actionButton,
   accentOverride,
+  onTitleClick,
   children,
 }) {
   const [hovered, setHovered] = useState(false);
