@@ -193,15 +193,15 @@ export default function Transport() {
       <div style={{ marginBottom: 16 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>Transport</h1>
         <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 2, marginBottom: 0 }}>
-          {isWholesale ? 'Intake pickups and auction deliveries' : `Incoming vehicles for ${user.name}`}
+          {isWholesale ? 'Intake pickups from sellers · Deliveries to winning dealers' : `Incoming vehicles for ${user.name}`}
         </p>
       </div>
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
         {[
-          { label: isWholesale ? 'Auction deliveries' : 'Total vehicles', value: isWholesale ? deliveries.length : allTransport.length, accent: '#0d2550', color: '#0d2550' },
-          { label: isWholesale ? 'Intake pickups' : 'In transit',        value: isWholesale ? intakes.length : allTransport.filter(t => ['dispatched','inTransit'].includes(t.status)).length, accent: '#f59e0b', color: '#92400e' },
+          { label: isWholesale ? 'Deliveries' : 'Total vehicles', value: isWholesale ? deliveries.length : allTransport.length, accent: '#0d2550', color: '#0d2550' },
+          { label: isWholesale ? 'Intake' : 'In transit',        value: isWholesale ? intakes.length : allTransport.filter(t => ['dispatched','inTransit'].includes(t.status)).length, accent: '#f59e0b', color: '#92400e' },
           { label: 'In transit', value: allTransport.filter(t => ['dispatched','inTransit'].includes(t.status)).length, accent: '#3b82f6', color: '#1e40af' },
         ].map(({ label, value, accent, color }) => (
           <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 10, padding: '10px 14px' }}>
@@ -215,8 +215,8 @@ export default function Transport() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         {isWholesale && (
           <div style={{ display: 'flex', background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: 10, overflow: 'hidden', marginRight: 6 }}>
-            {[['all','All'], ['deliveries','Auction'], ['intake','Private']].map(([key, label]) => (
-              <button key={key} onClick={() => setTypeTab(key)} style={{
+            {[['all','All'], ['deliveries','Deliveries'], ['intake','Intake']].map(([key, label]) => (
+              <button key={key} onClick={() => { setTypeTab(key); closePanel(); }} style={{
                 padding: '7px 14px', border: 'none', borderRight: key !== 'intake' ? '1px solid #e5e7eb' : 'none',
                 cursor: 'pointer', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
                 background: typeTab === key ? '#0d2550' : 'transparent',
@@ -227,7 +227,7 @@ export default function Transport() {
           </div>
         )}
         {[['all','All'], ['active','In progress'], ['complete','Complete']].map(([key, label]) => (
-          <button key={key} onClick={() => setFilter(key)} style={{
+          <button key={key} onClick={() => { setFilter(key); closePanel(); }} style={{
             padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
             border: '1.5px solid', borderColor: filter === key ? '#0d2550' : '#e5e7eb',
             background: filter === key ? '#0d2550' : '#fff',
