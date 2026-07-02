@@ -1124,6 +1124,7 @@ export default function Acquisitions() {
   const [editing, setEditing] = useState(null);
   const [viewVehicle, setViewVehicle] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [search, setSearch] = useState('');
   const [myBuysOnly, setMyBuysOnly] = useState(false);
   const [buyerFilter, setBuyerFilter] = useState('');
   const [dateRange, setDateRange] = useState('all'); // 'all' | 'week' | 'month' | 'custom'
@@ -1197,6 +1198,16 @@ export default function Acquisitions() {
   const allVehicles = data.vehicles;
   const filtered = allVehicles
     .filter(v => statusFilter === 'all' || v.status === statusFilter)
+    .filter(v => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return (v.make||'').toLowerCase().includes(q)
+        || (v.model||'').toLowerCase().includes(q)
+        || (v.vin||'').toLowerCase().includes(q)
+        || (v.color||'').toLowerCase().includes(q)
+        || (v.engine||'').toLowerCase().includes(q)
+        || (String(v.year||'')).includes(q);
+    })
     .filter(v => !myBuysOnly || v.buyer_id === user?.id)
     .filter(v => !buyerFilter || v.buyer_id === buyerFilter)
     .filter(v => !sourceFilter || v.sourceId === sourceFilter)
@@ -1609,9 +1620,19 @@ export default function Acquisitions() {
         })}
       </div>
 
-      {/* Vehicle count */}
-      <div style={{ padding: '0 0 12px 0' }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#6b7280' }}>{filtered.length} vehicles</span>
+      {/* Search + vehicle count */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+        <div style={{ position: 'relative', flex: 1 }}>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 14, pointerEvents: 'none' }}>🔍</span>
+          <input
+            type="text"
+            placeholder="Search by make, model, VIN, color, engine…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ width: '100%', padding: '9px 12px 9px 34px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', background: '#fff', boxSizing: 'border-box' }}
+          />
+        </div>
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap' }}>{filtered.length} vehicles</span>
       </div>
 
       {/* Grid / List */}
