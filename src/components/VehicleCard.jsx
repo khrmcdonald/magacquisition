@@ -159,6 +159,7 @@ export function VehicleCard({
   sourceName,
   onDetails,
   actionButton,
+  accentOverride,
   children,
 }) {
   const [hovered, setHovered] = useState(false);
@@ -276,7 +277,7 @@ export function VehicleCard({
   }
 
   // ── GRID VARIANT ────────────────────────────────────────────────────────────
-  const accentColor = STATUS_ACCENT[vehicle.status] || '#e2e8f0';
+  const accentColor = accentOverride || STATUS_ACCENT[vehicle.status] || '#e2e8f0';
 
   const specParts = [
     vehicle.color && vehicle.interior_color
