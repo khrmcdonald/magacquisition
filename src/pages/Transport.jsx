@@ -194,7 +194,7 @@ export default function Transport() {
       <div style={{ marginBottom: 16 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>Transport</h1>
         <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 2, marginBottom: 0 }}>
-          {isWholesale ? 'Intake pickups from sellers · Deliveries to winning dealers' : `Incoming vehicles for ${user.name}`}
+          {isWholesale ? 'Inbound pickups from sellers · Outbound deliveries to winning dealers' : `Incoming vehicles for ${user.name}`}
         </p>
       </div>
 
@@ -216,7 +216,7 @@ export default function Transport() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         {isWholesale && (
           <div style={{ display: 'flex', background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: 10, overflow: 'hidden', marginRight: 6 }}>
-            {[['all','All'], ['deliveries','Deliveries'], ['intake','Intake']].map(([key, label]) => (
+            {[['all','All'], ['deliveries','Outbound'], ['intake','Inbound']].map(([key, label]) => (
               <button key={key} onClick={() => { setTypeTab(key); closePanel(); }} style={{
                 padding: '7px 14px', border: 'none', borderRight: key !== 'intake' ? '1px solid #e5e7eb' : 'none',
                 cursor: 'pointer', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
@@ -256,7 +256,7 @@ export default function Transport() {
       <div style={{ paddingRight: panelTransport ? 460 : 0, transition: 'padding-right 0.2s' }}>
         {filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9ca3af', fontSize: 13 }}>
-            {typeTab === 'intake' ? 'No intake pickups.' : typeTab === 'deliveries' ? 'No auction deliveries.' : 'No transport records.'}
+            {typeTab === 'intake' ? 'No inbound pickups.' : typeTab === 'deliveries' ? 'No outbound deliveries.' : 'No transport records.'}
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
@@ -267,8 +267,8 @@ export default function Transport() {
               };
               const isActive  = panelTransport?.id === t.id;
               const legType   = isIntake(t)
-                ? { label: 'Intake', bg: '#fef3c7', color: '#92400e' }
-                : { label: 'Delivery', bg: '#eff6ff', color: '#1e40af' };
+                ? { label: 'Inbound', bg: '#fef3c7', color: '#92400e' }
+                : { label: 'Outbound', bg: '#eff6ff', color: '#1e40af' };
               const sched = t.scheduledDate
                 ? new Date(t.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                 : null;
@@ -361,7 +361,7 @@ export default function Transport() {
                 const st = STATUS_LABEL[pt.status] || STATUS_LABEL.awarded;
                 return [
                   { label: 'Status', value: st.label, color: st.color, bg: st.bg },
-                  { label: 'Type', value: ptIsIntake ? 'Intake' : 'Delivery', color: ptIsIntake ? '#92400e' : '#1e40af', bg: ptIsIntake ? '#fef3c7' : '#eff6ff' },
+                  { label: 'Type', value: ptIsIntake ? 'Inbound' : 'Outbound', color: ptIsIntake ? '#92400e' : '#1e40af', bg: ptIsIntake ? '#fef3c7' : '#eff6ff' },
                   { label: pt.winningBid ? 'Winning Bid' : 'Destination', value: pt.winningBid ? `$${pt.winningBid.toLocaleString()}` : (ptIsIntake ? 'Intake' : ptStoreName), color: '#0d2550', bg: '#f8fafc' },
                 ];
               })().map(box => (

@@ -7,10 +7,10 @@ import { useToast } from '../components/Toast';
 import { VehicleCard } from '../components/VehicleCard';
 
 const STATUS = {
-  pending:  { label: 'Pending',  color: '#92400e', bg: '#fef3c7', border: '#fde68a' },
-  received: { label: 'Received', color: '#1e40af', bg: '#dbeafe', border: '#93c5fd' },
-  clear:    { label: 'Clear',    color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' },
-  issue:    { label: 'Issue',    color: '#991b1b', bg: '#fee2e2', border: '#fca5a5' },
+  pending:  { label: 'Waiting',    color: '#92400e', bg: '#fef3c7', border: '#fde68a' },
+  received: { label: 'In Process', color: '#1e40af', bg: '#dbeafe', border: '#93c5fd' },
+  clear:    { label: 'In Hand',    color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' },
+  issue:    { label: 'Issue',      color: '#991b1b', bg: '#fee2e2', border: '#fca5a5' },
 };
 
 const TITLE_ACCENT = {
@@ -21,7 +21,7 @@ const TITLE_ACCENT = {
 };
 
 const NEXT = { pending: 'received', received: 'clear' };
-const NEXT_LABEL = { pending: 'Mark Received', received: 'Mark Clear' };
+const NEXT_LABEL = { pending: 'Mark In Process', received: 'Mark In Hand' };
 
 function daysSince(v) {
   const ref = v.datePurchased ? new Date(v.datePurchased + 'T12:00:00') : v.createdAt ? new Date(v.createdAt) : null;
@@ -64,12 +64,12 @@ export default function Titles() {
   };
 
   const FILTER_TABS = [
-    { key: 'active',   label: 'Active',   count: counts.active },
-    { key: 'pending',  label: 'Pending',  count: counts.pending },
-    { key: 'received', label: 'Received', count: counts.received },
-    { key: 'issue',    label: 'Issues',   count: counts.issue },
-    { key: 'clear',    label: 'Clear',    count: counts.clear },
-    { key: 'all',      label: 'All',      count: allVehicles.length },
+    { key: 'active',   label: 'Active',     count: counts.active },
+    { key: 'pending',  label: 'Waiting',    count: counts.pending },
+    { key: 'received', label: 'In Process', count: counts.received },
+    { key: 'issue',    label: 'Issues',     count: counts.issue },
+    { key: 'clear',    label: 'In Hand',    count: counts.clear },
+    { key: 'all',      label: 'All',        count: allVehicles.length },
   ];
 
   const openPanel = (v) => { setPanelVehicle(v); setShowIssueForm(false); setIssueNote(''); };
@@ -91,7 +91,7 @@ export default function Titles() {
       showToast(`Failed: ${error.message}`, 'error');
     } else {
       setVehicles(prev => prev.map(vv => vv.id === v.id ? { ...vv, titleStatus: next } : vv));
-      showToast(`Title marked ${STATUS[next].label.toLowerCase()}`, 'success');
+      showToast(`Title: ${STATUS[next].label}`, 'success');
     }
     setSaving(null);
   };
@@ -143,10 +143,10 @@ export default function Titles() {
       {isWholesale && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
           {[
-            { label: 'Pending',  value: counts.pending,  accent: TITLE_ACCENT.pending,  color: '#92400e' },
-            { label: 'Received', value: counts.received, accent: TITLE_ACCENT.received, color: '#1e40af' },
-            { label: 'Issues',   value: counts.issue,    accent: TITLE_ACCENT.issue,    color: '#991b1b' },
-            { label: 'Clear',    value: counts.clear,    accent: TITLE_ACCENT.clear,    color: '#065f46' },
+            { label: 'Waiting',    value: counts.pending,  accent: TITLE_ACCENT.pending,  color: '#92400e' },
+            { label: 'In Process', value: counts.received, accent: TITLE_ACCENT.received, color: '#1e40af' },
+            { label: 'Issues',     value: counts.issue,    accent: TITLE_ACCENT.issue,    color: '#991b1b' },
+            { label: 'In Hand',    value: counts.clear,    accent: TITLE_ACCENT.clear,    color: '#065f46' },
           ].map(({ label, value, accent, color }) => (
             <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 10, padding: '12px 16px' }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{label}</div>

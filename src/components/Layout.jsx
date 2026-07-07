@@ -138,7 +138,6 @@ export default function Layout() {
       label: 'Operations',
       items: [
         { to: '/acquisitions', label: 'Acquisitions',  Icon: Car,      roles: MGRS, badge: pendingAcq || null },
-        { to: '/repairs',      label: 'Repairs',        Icon: Wrench,   roles: MGRS },
         { to: '/transport',    label: 'Transport',      Icon: Truck,       roles: ALL },
         { to: '/titles',       label: 'Titles',         Icon: ScrollText,  roles: ALL },
         { to: '/manage',       label: 'Manage auction', Icon: SlidersHorizontal, roles: MGRS },
