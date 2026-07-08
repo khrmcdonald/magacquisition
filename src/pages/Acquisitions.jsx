@@ -1315,9 +1315,12 @@ export default function Acquisitions() {
     const saveFields = { ...vehicleFields };
     saveFields.buyer_id = formBuyerId || null;
     saveFields.buyer_name = formBuyerId ? (selectedBuyer?.name || null) : null;
+    // Null-coerce empty-string UUID fields — Supabase rejects '' for uuid columns
+    if (!saveFields.currentLocation) saveFields.currentLocation = null;
+    if (!saveFields.winnerId) saveFields.winnerId = null;
 
     if (editing) {
-      try { await updateVehicle(editing.id, { ...saveFields, source_id, status: editing.status }); }
+      try { await updateVehicle(editing.id, { ...saveFields, source_id: source_id || null, status: editing.status }); }
       catch (err) { showToast(`Update failed: ${fmtErr(err)}`, 'error'); setSaveError(`Update failed: ${fmtErr(err)}`); return; }
       if (vehicleData.mileage) {
         try {
