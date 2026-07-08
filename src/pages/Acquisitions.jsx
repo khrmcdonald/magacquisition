@@ -217,6 +217,7 @@ function ExcelUploadModal({ onClose, onImport }) {
     'overhead costs': 'overheadCosts', 'recon costs': 'reconCosts',
     'floor price': 'floorPrice', 'title status': 'titleStatus',
     'title notes': 'titleNotes', 'notes': 'notes',
+    'purchase date': 'datePurchased', 'date purchased': 'datePurchased',
   };
 
   const handleFile = async (e) => {
@@ -294,8 +295,8 @@ function ExcelUploadModal({ onClose, onImport }) {
                   onClick={() => {
                     const XLSX = window.XLSX;
                     if (!XLSX) return;
-                    const headers = ['VIN','Year','Make','Model','Trim','Mileage','Color','Condition','Purchase Price','Overhead Costs','Floor Price','Title Status','Title Notes','Notes'];
-                    const sample = ['1HGBH41JXMN109186','2022','Honda','Accord','Sport','34000','Silver','Good','18500','350','21000','pending','',''];
+                    const headers = ['VIN','Year','Make','Model','Trim','Mileage','Color','Condition','Source','Purchase Date','Purchase Price','Overhead Costs','Floor Price','Title Status','Title Notes','Notes'];
+                    const sample = ['1HGBH41JXMN109186','2022','Honda','Accord','Sport','34000','Silver','Good','Private Seller','2024-06-15','18500','350','21000','pending','',''];
                     const ws = XLSX.utils.aoa_to_sheet([headers, sample]);
                     ws['!cols'] = headers.map(() => ({ wch: 16 }));
                     const wb = XLSX.utils.book_new();
