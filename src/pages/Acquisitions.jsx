@@ -288,8 +288,24 @@ function ExcelUploadModal({ onClose, onImport }) {
             </div>
           ) : (
             <>
-              <div className="alert alert-info" style={{ marginBottom: 20 }}>
-                Use the <strong>MAG Inventory Template</strong> for best results. Download it from the Acquisitions page. VIN, Make, and Model are required for each row.
+              <div className="alert alert-info" style={{ marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <span>Use the template for best results. VIN, Make, and Model are required.</span>
+                <button
+                  onClick={() => {
+                    const XLSX = window.XLSX;
+                    if (!XLSX) return;
+                    const headers = ['VIN','Year','Make','Model','Trim','Mileage','Color','Condition','Purchase Price','Overhead Costs','Floor Price','Title Status','Title Notes','Notes'];
+                    const sample = ['1HGBH41JXMN109186','2022','Honda','Accord','Sport','34000','Silver','Good','18500','350','21000','pending','',''];
+                    const ws = XLSX.utils.aoa_to_sheet([headers, sample]);
+                    ws['!cols'] = headers.map(() => ({ wch: 16 }));
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, 'Vehicles');
+                    XLSX.writeFile(wb, 'MAG_Inventory_Template.xlsx');
+                  }}
+                  style={{ whiteSpace: 'nowrap', flexShrink: 0, padding: '6px 12px', borderRadius: 7, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  ⬇ Download Template
+                </button>
               </div>
 
               <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFile} style={{ display: 'none' }} />
@@ -1578,9 +1594,14 @@ export default function Acquisitions() {
           ))}
         </div>
         {!isReadOnly && (
-          <button className="btn-navy" onClick={() => { setEditing(null); setSaveError(null); setShowForm(true); }} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-            + Add vehicle
-          </button>
+          <>
+            <button onClick={() => setShowUpload(true)} style={{ whiteSpace: 'nowrap', flexShrink: 0, padding: '8px 14px', borderRadius: 8, border: '1.5px solid #e5e7eb', background: '#fff', color: '#374151', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              ⬆ Import
+            </button>
+            <button className="btn-navy" onClick={() => { setEditing(null); setSaveError(null); setShowForm(true); }} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+              + Add vehicle
+            </button>
+          </>
         )}
       </div>
 
