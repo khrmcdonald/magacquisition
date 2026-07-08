@@ -248,7 +248,15 @@ function ExcelUploadModal({ onClose, onImport }) {
           const obj = {};
           headers.forEach((h, i) => {
             const key = FIELD_MAP[h];
-            if (key) obj[key] = String(row[i] || '').trim();
+            if (!key) return;
+            const raw = row[i];
+            if (key === 'datePurchased' && typeof raw === 'number') {
+              // Excel stores dates as serial numbers (days since Jan 1, 1900)
+              const d = new Date((raw - 25569) * 86400 * 1000);
+              obj[key] = isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+            } else {
+              obj[key] = String(raw || '').trim();
+            }
           });
           // Normalize types
           if (obj.year) obj.year = parseInt(obj.year) || null;
