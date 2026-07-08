@@ -1396,13 +1396,16 @@ export default function Acquisitions() {
   const handleSellConfirm = async () => {
     if (!sellPrice || !sellDate || !sellTo.trim()) return;
     setSellSaving(true);
+    const price = parseFloat(sellPrice);
+    const cost = sellModal.totalCost ? parseFloat(sellModal.totalCost) : null;
+    const gross = cost != null ? price - cost : null;
     try {
       await updateVehicle(sellModal.id, {
         status: 'sold',
-        soldPrice: parseFloat(sellPrice),
+        soldPrice: price,
         soldDate: sellDate,
         soldTo: sellTo.trim(),
-        soldGross: sellGross ? parseFloat(sellGross) : null,
+        soldGross: gross,
       });
       showToast('Vehicle marked as sold.', 'success');
       const soldId = sellModal.id;
@@ -2251,13 +2254,18 @@ export default function Acquisitions() {
                 <label>Sold To * <span style={{ fontWeight: 400, color: '#9ca3af' }}>(store name or auction)</span></label>
                 <input type="text" value={sellTo} onChange={e => setSellTo(e.target.value)} placeholder="e.g. Cherry Hill CDJR or ADESA Detroit" style={{ width: '100%', boxSizing: 'border-box' }} />
               </div>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label>Gross <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span></label>
-                <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontWeight: 700, color: '#374151' }}>$</span>
-                  <input type="number" value={sellGross} onChange={e => setSellGross(e.target.value)} placeholder="e.g. 2100" style={{ paddingLeft: 26, width: '100%', boxSizing: 'border-box' }} />
-                </div>
-              </div>
+              {(() => {
+                const price = parseFloat(sellPrice);
+                const cost = sellModal?.totalCost ? parseFloat(sellModal.totalCost) : null;
+                const gross = (!isNaN(price) && cost != null) ? price - cost : null;
+                if (gross == null) return null;
+                return (
+                  <div style={{ background: gross >= 0 ? '#f0fdf4' : '#fef2f2', border: `1px solid ${gross >= 0 ? '#86efac' : '#fecaca'}`, borderRadius: 8, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 12, color: '#6b7280' }}>Gross (auto-calculated)</span>
+                    <span style={{ fontSize: 16, fontWeight: 800, color: gross >= 0 ? '#15803d' : '#b91c1c' }}>{gross >= 0 ? '+' : ''}${gross.toLocaleString()}</span>
+                  </div>
+                );
+              })()}
             </div>
             <div className="modal-footer">
               <button className="btn-secondary" onClick={() => setSellModal(null)}>Cancel</button>
