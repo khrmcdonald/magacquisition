@@ -41,7 +41,7 @@ export default function Preview() {
       {/* Header */}
       <div style={{ background: '#0d2550', padding: '20px 32px', display: 'flex', alignItems: 'center', gap: 16 }}>
         <div>
-          <div style={{ color: '#f1bb25', fontWeight: 900, fontSize: 22, letterSpacing: '.04em' }}>STOCKYARD</div>
+          <div style={{ color: '#f1bb25', fontWeight: 900, fontSize: 22, letterSpacing: '.04em' }}>TRI-STATE AUTO</div>
           <div style={{ color: 'rgba(255,255,255,.55)', fontSize: 13, marginTop: 2 }}>Available Inventory — Ready to List</div>
         </div>
       </div>
