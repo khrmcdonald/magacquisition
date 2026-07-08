@@ -643,6 +643,27 @@ export function DataProvider({ children }) {
     if (error) console.error('updateTransport error:', error);
   };
 
+  const addTransport = async (vehicle, { type, storeName, scheduledDate, notes }) => {
+    const row = {
+      id: crypto.randomUUID(),
+      org_id: ORG_ID,
+      vehicle_id: vehicle.id,
+      vehicle_name: `${vehicle.year || ''} ${vehicle.make || ''} ${vehicle.model || ''}`.trim(),
+      store_id: null,
+      store_name: type === 'inbound' ? 'Intake' : (storeName || ''),
+      winning_bid: null,
+      status: 'awarded',
+      notes: notes || null,
+      scheduled_date: scheduledDate ? new Date(scheduledDate).toISOString() : null,
+      steps: { awarded: new Date().toISOString() },
+    };
+    const { data: inserted, error } = await supabase.from('transport').insert(row).select().single();
+    if (error) throw error;
+    const mapped = mapTransport(inserted);
+    setTransport(prev => [...prev, mapped]);
+    return mapped;
+  };
+
   const deleteTransport = async (id) => {
     const { error } = await supabase.from('transport').delete().eq('id', id);
     if (error) throw error;
@@ -967,7 +988,7 @@ export function DataProvider({ children }) {
       placeBid, addBid,
       getHighBid, getMyBid, getAllBidsForVehicle,
       // Transport
-      updateTransport, deleteTransport, closeArrivedTransport, updateTransportSchedule,
+      addTransport, updateTransport, deleteTransport, closeArrivedTransport, updateTransportSchedule,
       // Repair orders
       repairOrders, repairVendors,
       addRepairOrder, updateRepairOrder, deleteRepairOrder,

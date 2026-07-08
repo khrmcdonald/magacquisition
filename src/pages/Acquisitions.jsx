@@ -1114,7 +1114,7 @@ function InspectionModal({ vehicle, inspectors, addInspector, onSave, onClose })
 
 export default function Acquisitions() {
   const { user } = useAuth();
-  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, addLocation, addInspector, addRepairOrder, addPickupAddress, logMileage } = useData();
+  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, addLocation, addInspector, addRepairOrder, addPickupAddress, logMileage, addTransport } = useData();
   const buyers = (data.profiles || []).filter(p => p.buyer_number);
   const { showToast } = useToast();
   const [resolveModal, setResolveModal] = useState(null);
@@ -1146,6 +1146,14 @@ export default function Acquisitions() {
   const [sellTo, setSellTo] = useState('');
   const [sellGross, setSellGross] = useState('');
   const [sellSaving, setSellSaving] = useState(false);
+
+  // ── Add transport modal ──────────────────────────────────────────────────────
+  const [addTransportModal, setAddTransportModal] = useState(null);
+  const [tType, setTType] = useState('inbound');
+  const [tStore, setTStore] = useState('');
+  const [tDate, setTDate] = useState('');
+  const [tNotes, setTNotes] = useState('');
+  const [tSaving, setTSaving] = useState(false);
 
   // ── Detail panel ────────────────────────────────────────────────────────────
   const [panelVehicle, setPanelVehicle] = useState(null);
@@ -1404,6 +1412,27 @@ export default function Acquisitions() {
       showToast('Failed to save: ' + err.message, 'error');
     }
     setSellSaving(false);
+  };
+
+  const openAddTransport = (v) => {
+    setAddTransportModal(v);
+    setTType('inbound');
+    setTStore('');
+    setTDate('');
+    setTNotes('');
+  };
+
+  const handleAddTransportConfirm = async () => {
+    if (tType === 'outbound' && !tStore.trim()) return;
+    setTSaving(true);
+    try {
+      await addTransport(addTransportModal, { type: tType, storeName: tStore.trim(), scheduledDate: tDate, notes: tNotes.trim() });
+      showToast('Transport record created.', 'success');
+      setAddTransportModal(null);
+    } catch (err) {
+      showToast('Failed: ' + err.message, 'error');
+    }
+    setTSaving(false);
   };
 
   const handleInspectionSave = async (vehicleId, inspectionData, nextStatus) => {
@@ -2095,14 +2124,23 @@ export default function Acquisitions() {
                 )}
 
                 {/* Transport */}
-                {pvTransport && (
+                {sectionHdr('Transport')}
+                {pvTransport ? (
                   <>
-                    {sectionHdr('Transport')}
                     {row('Status', pvTransport.status.charAt(0).toUpperCase() + pvTransport.status.slice(1))}
-                    {row('Type', pvTransport.storeName === 'Intake' ? 'Intake Pickup' : 'Auction Delivery')}
+                    {row('Type', pvTransport.storeName === 'Intake' ? 'Inbound Pickup' : 'Outbound Delivery')}
                     {pvTransport.scheduledDate && row('Scheduled', new Date(pvTransport.scheduledDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}
                     {pvTransport.storeName !== 'Intake' && row('Destination', pvTransport.storeName)}
                   </>
+                ) : (
+                  !isReadOnly && (
+                    <button
+                      onClick={() => openAddTransport(pv)}
+                      style={{ background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', width: '100%', textAlign: 'left' }}
+                    >
+                      + Add Transport Record
+                    </button>
+                  )
                 )}
 
                 {/* Notes */}
@@ -2140,6 +2178,49 @@ export default function Acquisitions() {
           </div>
         );
       })()}
+
+      {/* Add Transport modal */}
+      {addTransportModal && (
+        <div className="modal-overlay" onClick={() => setAddTransportModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
+            <div className="modal-header">
+              <h2>Add Transport Record</h2>
+              <button onClick={() => setAddTransportModal(null)} style={{ background: 'none', border: 'none', fontSize: 22, color: '#9ca3af', cursor: 'pointer' }}>×</button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ fontSize: 13, color: '#6b7280' }}>{addTransportModal.year} {addTransportModal.make} {addTransportModal.model}</div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>Type</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[['inbound','Inbound (Pickup)'],['outbound','Outbound (Delivery)']].map(([val, lbl]) => (
+                    <button key={val} onClick={() => setTType(val)} style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: `2px solid ${tType === val ? '#0d2550' : '#e5e7eb'}`, background: tType === val ? '#0d2550' : '#fff', color: tType === val ? '#fff' : '#374151', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{lbl}</button>
+                  ))}
+                </div>
+              </div>
+              {tType === 'outbound' && (
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>Destination Store *</label>
+                  <input type="text" value={tStore} onChange={e => setTStore(e.target.value)} placeholder="e.g. Cherry Hill CDJR" style={{ width: '100%', boxSizing: 'border-box' }} />
+                </div>
+              )}
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>Scheduled Date <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span></label>
+                <input type="datetime-local" value={tDate} onChange={e => setTDate(e.target.value)} style={{ width: '100%', boxSizing: 'border-box' }} />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>Notes <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span></label>
+                <input type="text" value={tNotes} onChange={e => setTNotes(e.target.value)} placeholder="Pickup address, contact, etc." style={{ width: '100%', boxSizing: 'border-box' }} />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setAddTransportModal(null)}>Cancel</button>
+              <button className="btn-navy" onClick={handleAddTransportConfirm} disabled={tSaving || (tType === 'outbound' && !tStore.trim())}>
+                {tSaving ? 'Saving…' : 'Create Transport'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mark as Sold modal */}
       {sellModal && (
