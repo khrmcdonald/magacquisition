@@ -1391,9 +1391,15 @@ export default function Acquisitions() {
 
   const handleBulkImport = async (vehicles) => {
     const results = await Promise.allSettled(vehicles.map(v => addVehicle(v)));
-    const failed = results.filter(r => r.status === 'rejected').length;
-    if (failed) showToast(`${failed} of ${vehicles.length} vehicles failed to import.`, 'error');
-    else showToast(`Imported ${vehicles.length} vehicles.`, 'success');
+    const failures = results
+      .map((r, i) => r.status === 'rejected' ? `${vehicles[i].year} ${vehicles[i].make} ${vehicles[i].model} (${vehicles[i].vin}): ${r.reason?.message || r.reason}` : null)
+      .filter(Boolean);
+    if (failures.length) {
+      console.error('Import failures:', failures);
+      showToast(`${failures.length} of ${vehicles.length} failed. First error: ${failures[0]}`, 'error');
+    } else {
+      showToast(`Imported ${vehicles.length} vehicles.`, 'success');
+    }
   };
 
   const [listModal, setListModal] = useState(null); // vehicle to list
