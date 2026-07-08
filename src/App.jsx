@@ -23,6 +23,7 @@ import Export from './pages/Export';
 import Inventory from './pages/Inventory';
 import Help from './pages/Help';
 import Titles from './pages/Titles';
+import Preview from './pages/Preview';
 
 function RequireAuth({ children }) {
   const { user } = useAuth();
@@ -36,38 +37,53 @@ function HomeRedirect() {
   return <Navigate to="/dashboard" replace />;
 }
 
+// All authenticated pages — wrapped in DataProvider so loading/error state
+// only blocks the app, not the public /preview route.
+function AuthenticatedApp() {
+  return (
+    <DataProvider>
+      <Routes>
+        <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>
+          <Route index element={<HomeRedirect />} />
+          <Route path="auction" element={<AuctionFloor />} />
+          <Route path="acquisitions" element={<Acquisitions />} />
+          <Route path="manage" element={<AuctionManage />} />
+          <Route path="transport" element={<Transport />} />
+          <Route path="titles" element={<Titles />} />
+          <Route path="repairs" element={<Repairs />} />
+          <Route path="overview" element={<GMOverview />} />
+          <Route path="wins" element={<MyWins />} />
+          <Route path="admin" element={<Admin />} />
+          <Route path="history" element={<History />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="leaderboard" element={<Leaderboard />} />
+          <Route path="export" element={<Export />} />
+          <Route path="inventory" element={<Inventory />} />
+          <Route path="help" element={<Help />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </DataProvider>
+  );
+}
+
 export default function App() {
+  // Public page — bypass auth and data loading entirely
+  if (window.location.pathname === '/preview') {
+    return <Preview />;
+  }
+
   return (
     <ToastProvider>
-    <AuthProvider>
-      <DataProvider>
+      <AuthProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>
-              <Route index element={<HomeRedirect />} />
-              <Route path="auction" element={<AuctionFloor />} />
-              <Route path="acquisitions" element={<Acquisitions />} />
-              <Route path="manage" element={<AuctionManage />} />
-              <Route path="transport" element={<Transport />} />
-              <Route path="titles" element={<Titles />} />
-              <Route path="repairs" element={<Repairs />} />
-              <Route path="overview" element={<GMOverview />} />
-              <Route path="wins" element={<MyWins />} />
-              <Route path="admin" element={<Admin />} />
-              <Route path="history" element={<History />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="leaderboard" element={<Leaderboard />} />
-              <Route path="export" element={<Export />} />
-              <Route path="inventory" element={<Inventory />} />
-              <Route path="help" element={<Help />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="/*" element={<AuthenticatedApp />} />
           </Routes>
         </BrowserRouter>
-      </DataProvider>
-    </AuthProvider>
+      </AuthProvider>
     </ToastProvider>
   );
 }

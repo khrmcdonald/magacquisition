@@ -63,6 +63,10 @@ function mapVehicle(r) {
     datePurchased: r.date_purchased || null,
     sourceId: r.source_id || null,
     engine: r.engine || null,
+    soldPrice: r.sold_price || null,
+    soldDate: r.sold_date || null,
+    soldTo: r.sold_to || null,
+    soldGross: r.sold_gross || null,
   };
 }
 
@@ -161,6 +165,10 @@ const VEHICLE_FIELD_MAP = {
   buyer_name: 'buyer_name',
   arbitration: 'arbitration',
   engine: 'engine',
+  soldPrice: 'sold_price',
+  soldDate: 'sold_date',
+  soldTo: 'sold_to',
+  soldGross: 'sold_gross',
 };
 
 function toSnakeCase(fields) {

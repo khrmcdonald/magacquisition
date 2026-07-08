@@ -893,6 +893,7 @@ const STATUS_LABELS = {
   in_auction: { label: 'Live in Auction', color: '#1e40af', bg: '#dbeafe', accent: '#3b82f6' },
   awarded:    { label: 'Awarded',         color: '#065f46', bg: '#d1fae5', accent: '#0d2550' },
   no_sale:    { label: 'No Sale',         color: '#991b1b', bg: '#fee2e2', accent: '#ef4444' },
+  sold:       { label: 'Sold',            color: '#374151', bg: '#f3f4f6', accent: '#6b7280' },
 };
 
 // ── Inspection ────────────────────────────────────────────────────────────────
@@ -1138,6 +1139,14 @@ export default function Acquisitions() {
   const [mileageMap, setMileageMap] = useState({});
   const [viewMode, setViewMode] = useState('grid');
 
+  // ── Sell modal ───────────────────────────────────────────────────────────────
+  const [sellModal, setSellModal] = useState(null);
+  const [sellPrice, setSellPrice] = useState('');
+  const [sellDate, setSellDate] = useState('');
+  const [sellTo, setSellTo] = useState('');
+  const [sellGross, setSellGross] = useState('');
+  const [sellSaving, setSellSaving] = useState(false);
+
   // ── Detail panel ────────────────────────────────────────────────────────────
   const [panelVehicle, setPanelVehicle] = useState(null);
   const [panelDeal, setPanelDeal] = useState(null);
@@ -1366,6 +1375,35 @@ export default function Acquisitions() {
   const handleStatusChange = async (v, status) => {
     try { await updateVehicle(v.id, { status }); }
     catch (err) { showToast('Status update failed: ' + err.message, 'error'); }
+  };
+
+  const openSellModal = (v) => {
+    setSellModal(v);
+    setSellPrice('');
+    setSellDate(new Date().toISOString().slice(0, 10));
+    setSellTo('');
+    setSellGross('');
+  };
+
+  const handleSellConfirm = async () => {
+    if (!sellPrice || !sellDate || !sellTo.trim()) return;
+    setSellSaving(true);
+    try {
+      await updateVehicle(sellModal.id, {
+        status: 'sold',
+        soldPrice: parseFloat(sellPrice),
+        soldDate: sellDate,
+        soldTo: sellTo.trim(),
+        soldGross: sellGross ? parseFloat(sellGross) : null,
+      });
+      showToast('Vehicle marked as sold.', 'success');
+      const soldId = sellModal.id;
+      setSellModal(null);
+      if (panelVehicle?.id === soldId) closePanel();
+    } catch (err) {
+      showToast('Failed to save: ' + err.message, 'error');
+    }
+    setSellSaving(false);
   };
 
   const handleInspectionSave = async (vehicleId, inspectionData, nextStatus) => {
@@ -1636,6 +1674,9 @@ export default function Acquisitions() {
                         )}
                         {v.status === 'in_auction' && (
                           <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { showToast('Failed: ' + err.message, 'error'); } }} style={{ width: '100%', background: '#fefce8', color: '#854d0e', border: '1.5px solid #fde047', borderRadius: 7, padding: '8px 0', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove from Auction</button>
+                        )}
+                        {['intake','inspection','recon','ready','no_sale'].includes(v.status) && (
+                          <button onClick={() => openSellModal(v)} style={{ width: '100%', background: '#f9fafb', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 7, padding: '6px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Mark as Sold</button>
                         )}
                       </>
                     )}
@@ -2084,10 +2125,13 @@ export default function Acquisitions() {
 
             {/* Panel footer actions */}
             {!isReadOnly && (
-              <div style={{ padding: '12px 16px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: 8, flexShrink: 0, background: '#fff' }}>
-                <button onClick={() => { setEditing(pv); setSaveError(null); setShowForm(true); }} style={{ flex: 1, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+              <div style={{ padding: '12px 16px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: 8, flexShrink: 0, background: '#fff', flexWrap: 'wrap' }}>
+                <button onClick={() => { setEditing(pv); setSaveError(null); setShowForm(true); }} style={{ flex: 1, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', minWidth: 60 }}>Edit</button>
                 {['intake', 'inspection', 'recon', 'ready', 'no_sale'].includes(pv.status) && (
-                  <button onClick={() => setRepairModal(pv)} style={{ flex: 1, background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>🔧 Repairs</button>
+                  <>
+                    <button onClick={() => setRepairModal(pv)} style={{ flex: 1, background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer', minWidth: 60 }}>🔧 Repairs</button>
+                    <button onClick={() => { openSellModal(pv); closePanel(); }} style={{ flex: 1, background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer', minWidth: 60 }}>Mark Sold</button>
+                  </>
                 )}
                 <button onClick={() => handlePrintBuySheet(pv)} style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: 8, padding: '9px 12px', fontSize: 13, cursor: 'pointer' }}>🧾</button>
                 <button onClick={() => { setConfirmDelete(pv); closePanel(); }} style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 8, padding: '9px 12px', fontSize: 13, cursor: 'pointer' }}>🗑️</button>
@@ -2096,6 +2140,58 @@ export default function Acquisitions() {
           </div>
         );
       })()}
+
+      {/* Mark as Sold modal */}
+      {sellModal && (
+        <div className="modal-overlay" onClick={() => setSellModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <div className="modal-header" style={{ background: '#0d2550', borderRadius: '12px 12px 0 0' }}>
+              <div>
+                <h2 style={{ color: '#fff', fontSize: 17 }}>Record Outside Sale</h2>
+                <p style={{ color: 'rgba(255,255,255,.65)', fontSize: 13, marginTop: 2 }}>
+                  {sellModal.year} {sellModal.make} {sellModal.model}
+                </p>
+              </div>
+              <button onClick={() => setSellModal(null)} style={{ background: 'rgba(255,255,255,.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 18, cursor: 'pointer' }}>×</button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>Sale Price *</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontWeight: 700, color: '#374151' }}>$</span>
+                  <input type="number" value={sellPrice} onChange={e => setSellPrice(e.target.value)} placeholder="e.g. 18500" min="0" autoFocus style={{ paddingLeft: 26, width: '100%', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>Sale Date *</label>
+                <input type="date" value={sellDate} onChange={e => setSellDate(e.target.value)} style={{ width: '100%', boxSizing: 'border-box' }} />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>Sold To * <span style={{ fontWeight: 400, color: '#9ca3af' }}>(store name or auction)</span></label>
+                <input type="text" value={sellTo} onChange={e => setSellTo(e.target.value)} placeholder="e.g. Cherry Hill CDJR or ADESA Detroit" style={{ width: '100%', boxSizing: 'border-box' }} />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>Gross <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span></label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontWeight: 700, color: '#374151' }}>$</span>
+                  <input type="number" value={sellGross} onChange={e => setSellGross(e.target.value)} placeholder="e.g. 2100" style={{ paddingLeft: 26, width: '100%', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setSellModal(null)}>Cancel</button>
+              <button
+                className="btn-navy"
+                onClick={handleSellConfirm}
+                disabled={sellSaving || !sellPrice || !sellDate || !sellTo.trim()}
+                style={{ opacity: (!sellPrice || !sellDate || !sellTo.trim()) ? 0.45 : 1 }}
+              >
+                {sellSaving ? 'Saving…' : 'Mark as Sold'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete confirm */}
       {confirmDelete && (
