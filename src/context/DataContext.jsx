@@ -720,6 +720,13 @@ export function DataProvider({ children }) {
     const updatedROs = [...repairOrders, mapped];
     setRepairOrders(updatedROs);
     await syncVehicleRepairCosts(vehicleId, updatedROs);
+    // Auto-move vehicle to recon when a repair order is added
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    const reconEligible = ['intake', 'inspection', 'ready', 'no_sale'];
+    if (vehicle && reconEligible.includes(vehicle.status)) {
+      await supabase.from('vehicles').update({ status: 'recon' }).eq('id', vehicleId);
+      setVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, status: 'recon' } : v));
+    }
     return mapped;
   };
 
