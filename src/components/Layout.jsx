@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import {
   LayoutGrid, Gavel, Car, Truck, LayoutDashboard, BarChart2,
-  Trophy, Download, HelpCircle, Settings, SlidersHorizontal, FileText, Bell, Award, Wrench, ScrollText,
+  Trophy, Download, HelpCircle, Settings, SlidersHorizontal, FileText, Bell, Award, Wrench, ScrollText, Tag,
   LogOut, User,
 } from 'lucide-react';
 
@@ -138,6 +138,7 @@ export default function Layout() {
       label: 'Operations',
       items: [
         { to: '/acquisitions', label: 'Acquisitions',  Icon: Car,      roles: MGRS, badge: pendingAcq || null },
+        { to: '/sold',         label: 'Sold',           Icon: Tag,         roles: MGRS },
         { to: '/transport',    label: 'Transport',      Icon: Truck,       roles: ALL },
         { to: '/titles',       label: 'Titles',         Icon: ScrollText,  roles: ALL },
         { to: '/manage',       label: 'Manage auction', Icon: SlidersHorizontal, roles: MGRS },

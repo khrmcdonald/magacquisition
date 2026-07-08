@@ -1212,7 +1212,7 @@ export default function Acquisitions() {
   const locationOptions = (data.locations || []).map(l => ({ value: l.id, label: l.name }));
   const pickupAddresses = data.pickupAddresses || [];
 
-  const allVehicles = data.vehicles;
+  const allVehicles = data.vehicles.filter(v => v.status !== 'sold');
   const filtered = allVehicles
     .filter(v => statusFilter === 'all' || v.status === statusFilter)
     .filter(v => {
