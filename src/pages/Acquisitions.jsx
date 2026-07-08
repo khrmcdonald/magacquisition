@@ -239,6 +239,9 @@ function ExcelUploadModal({ onClose, onImport }) {
       const headers = raw[headerRowIdx].map(h => String(h).toLowerCase().trim());
       const dataRows = raw.slice(headerRowIdx + 2);
 
+      const VALID_CONDITIONS = ['excellent','good','fair','poor','needs_repair'];
+      const VALID_TITLE_STATUSES = ['pending','received','clear','issue'];
+
       const parsed = dataRows
         .filter(row => row.some(c => c !== ''))
         .map(row => {
@@ -247,6 +250,19 @@ function ExcelUploadModal({ onClose, onImport }) {
             const key = FIELD_MAP[h];
             if (key) obj[key] = String(row[i] || '').trim();
           });
+          // Normalize types
+          if (obj.year) obj.year = parseInt(obj.year) || null;
+          // Normalize condition to lowercase; strip if not a valid value
+          if (obj.condition) {
+            const c = obj.condition.toLowerCase().replace(/\s+/g, '_');
+            obj.condition = VALID_CONDITIONS.includes(c) ? c : null;
+          }
+          // Default title status to pending if missing or unrecognized
+          if (!obj.titleStatus || !VALID_TITLE_STATUSES.includes(obj.titleStatus.toLowerCase())) {
+            obj.titleStatus = 'pending';
+          } else {
+            obj.titleStatus = obj.titleStatus.toLowerCase();
+          }
           const purchase = parseFloat(obj.purchasePrice) || 0;
           const overhead = parseFloat(obj.overheadCosts) || 0;
           const recon = parseFloat(obj.reconCosts) || 0;
@@ -257,9 +273,12 @@ function ExcelUploadModal({ onClose, onImport }) {
           obj.status = 'intake';
           return obj;
         })
-        .filter(obj => obj.vin && obj.make && obj.model);
+        .filter(obj => obj.vin && obj.vin.length === 17 && obj.make && obj.model);
 
-      if (parsed.length === 0) { setError('No valid vehicle rows found. Check that VIN, Make, and Model columns are filled in.'); return; }
+      const totalRows = dataRows.filter(row => row.some(c => c !== '')).length;
+      const skipped = totalRows - parsed.length;
+      if (parsed.length === 0) { setError('No valid vehicle rows found. VINs must be exactly 17 characters. Check that VIN, Make, and Model columns are filled in.'); return; }
+      if (skipped > 0) setError(`${skipped} row${skipped > 1 ? 's' : ''} skipped — VIN missing or not 17 characters.`);
       setRows(parsed);
     } catch (err) {
       setError('Could not read file. Make sure it is a valid .xlsx file.');
