@@ -1,11 +1,47 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
+import { useToast } from '../components/Toast';
 
 const fmt$ = (n) => n != null ? `$${parseFloat(n).toLocaleString()}` : '—';
 
 export default function Sold() {
-  const { data } = useData();
+  const { data, updateVehicle } = useData();
+  const { showToast } = useToast();
   const [search, setSearch] = useState('');
+
+  const [editModal, setEditModal] = useState(null);
+  const [editPrice, setEditPrice] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editTo, setEditTo] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
+  const openEdit = (v) => {
+    setEditModal(v);
+    setEditPrice(v.soldPrice != null ? String(v.soldPrice) : '');
+    setEditDate(v.soldDate || '');
+    setEditTo(v.soldTo || '');
+  };
+
+  const handleEditSave = async () => {
+    if (!editPrice || !editDate || !editTo.trim()) return;
+    setEditSaving(true);
+    const price = parseFloat(editPrice);
+    const cost = editModal.totalCost ? parseFloat(editModal.totalCost) : null;
+    const gross = cost != null ? price - cost : null;
+    try {
+      await updateVehicle(editModal.id, {
+        soldPrice: price,
+        soldDate: editDate,
+        soldTo: editTo.trim(),
+        soldGross: gross,
+      });
+      showToast('Sale record updated.', 'success');
+      setEditModal(null);
+    } catch (err) {
+      showToast('Failed: ' + err.message, 'error');
+    }
+    setEditSaving(false);
+  };
 
   const sold = (data.vehicles || [])
     .filter(v => v.status === 'sold')
@@ -48,7 +84,7 @@ export default function Sold() {
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 24 }}>
         {[
-          { label: 'Units Sold', value: sold.length, mono: false },
+          { label: 'Units Sold', value: sold.length },
           { label: 'Total Gross', value: fmt$(totalGross || null), color: totalGross >= 0 ? '#065f46' : '#991b1b' },
           { label: 'Avg Gross', value: avgGross != null ? fmt$(avgGross) : '—', color: avgGross != null ? (avgGross >= 0 ? '#065f46' : '#991b1b') : '#9ca3af' },
         ].map(({ label, value, color }) => (
@@ -67,14 +103,71 @@ export default function Sold() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {sold.map(v => <SoldCard key={v.id} vehicle={v} />)}
+          {sold.map(v => <SoldCard key={v.id} vehicle={v} onEdit={() => openEdit(v)} />)}
+        </div>
+      )}
+
+      {/* Edit sale record modal */}
+      {editModal && (
+        <div className="modal-overlay" onClick={() => setEditModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <div className="modal-header" style={{ background: '#0d2550', borderRadius: '12px 12px 0 0' }}>
+              <div>
+                <h2 style={{ color: '#fff', fontSize: 17 }}>Edit Sale Record</h2>
+                <p style={{ color: 'rgba(255,255,255,.65)', fontSize: 13, marginTop: 2 }}>
+                  {editModal.year} {editModal.make} {editModal.model}
+                </p>
+              </div>
+              <button onClick={() => setEditModal(null)} style={{ background: 'rgba(255,255,255,.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 18, cursor: 'pointer' }}>×</button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>Sale Price *</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontWeight: 700, color: '#374151' }}>$</span>
+                  <input type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)} autoFocus style={{ paddingLeft: 26, width: '100%', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>Sale Date *</label>
+                <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} style={{ width: '100%', boxSizing: 'border-box' }} />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>Sold To *</label>
+                <input type="text" value={editTo} onChange={e => setEditTo(e.target.value)} placeholder="Store name or auction" style={{ width: '100%', boxSizing: 'border-box' }} />
+              </div>
+              {(() => {
+                const price = parseFloat(editPrice);
+                const cost = editModal?.totalCost ? parseFloat(editModal.totalCost) : null;
+                const gross = (!isNaN(price) && cost != null) ? price - cost : null;
+                if (gross == null) return null;
+                return (
+                  <div style={{ background: gross >= 0 ? '#f0fdf4' : '#fef2f2', border: `1px solid ${gross >= 0 ? '#86efac' : '#fecaca'}`, borderRadius: 8, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 12, color: '#6b7280' }}>Gross (auto-calculated)</span>
+                    <span style={{ fontSize: 16, fontWeight: 800, color: gross >= 0 ? '#15803d' : '#b91c1c' }}>{gross >= 0 ? '+' : ''}${gross.toLocaleString()}</span>
+                  </div>
+                );
+              })()}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setEditModal(null)}>Cancel</button>
+              <button
+                className="btn-navy"
+                onClick={handleEditSave}
+                disabled={editSaving || !editPrice || !editDate || !editTo.trim()}
+                style={{ opacity: (!editPrice || !editDate || !editTo.trim()) ? 0.45 : 1 }}
+              >
+                {editSaving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function SoldCard({ vehicle: v }) {
+function SoldCard({ vehicle: v, onEdit }) {
   const photos = Array.isArray(v.photos) ? v.photos : [];
   const gross = v.soldGross != null ? parseFloat(v.soldGross) : null;
 
@@ -104,7 +197,7 @@ function SoldCard({ vehicle: v }) {
       </div>
 
       {/* Sale details */}
-      <div style={{ display: 'flex', gap: 0, alignItems: 'stretch', flexShrink: 0, borderLeft: '1px solid #f3f4f6' }}>
+      <div style={{ display: 'flex', alignItems: 'stretch', flexShrink: 0, borderLeft: '1px solid #f3f4f6' }}>
         {[
           { label: 'Sale Date', value: v.soldDate ? new Date(v.soldDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
           { label: 'Sold To', value: v.soldTo || '—' },
@@ -120,6 +213,16 @@ function SoldCard({ vehicle: v }) {
             <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', ...valueStyle }}>{value}</div>
           </div>
         ))}
+
+        {/* Edit button */}
+        <div style={{ padding: '14px 14px', display: 'flex', alignItems: 'center', borderLeft: '1px solid #f3f4f6' }}>
+          <button
+            onClick={onEdit}
+            style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, color: '#374151', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            ✏️ Edit
+          </button>
+        </div>
       </div>
     </div>
   );
