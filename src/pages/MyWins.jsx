@@ -117,7 +117,7 @@ export default function MyWins() {
   const getTransport = (vehicleId) => data.transport.find(t => t.vehicleId === vehicleId);
 
   return (
-    <div style={{ background: '#f0f2f5', minHeight: '100vh', margin: '-20px -16px', padding: '24px 20px' }}>
+    <div>
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>My Wins</h1>
@@ -128,13 +128,13 @@ export default function MyWins() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
         {[
           { label: 'Cars won',    value: myWins.length,                                                               color: '#0d2550' },
-          { label: 'Total spend', value: `$${totalSpend.toLocaleString()}`,                                            color: '#0d2550', small: true },
+          { label: 'Total spend', value: `$${totalSpend.toLocaleString()}`,                                            color: '#0d2550' },
           { label: 'Bids placed', value: bidHistory.length,                                                            color: '#374151' },
           { label: 'Incoming',    value: myWins.filter(v => { const t = getTransport(v.id); return t && !['arrived','titleReceived'].includes(t.status); }).length, color: '#065f46', sub: 'in transit' },
         ].map(({ label, value, color, small, sub }) => (
-          <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: '3px solid #0d2550', borderRadius: 10, padding: '12px 16px' }}>
+          <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: '3px solid #0d2550', borderRadius: 10, padding: '14px 18px' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{label}</div>
-            <div style={{ fontSize: small ? 18 : 22, fontWeight: 800, color, lineHeight: 1 }}>{value}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{value}</div>
             {sub && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{sub}</div>}
           </div>
         ))}

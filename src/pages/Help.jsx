@@ -247,22 +247,22 @@ export default function Help() {
   const showGlossary = !q || filteredGlossary.length > 0;
 
   return (
-    <div style={{ background: '#f0f2f5', minHeight: '100vh', padding: '32px 28px', boxSizing: 'border-box' }}>
-      <div style={{ maxWidth: 960, margin: '0 auto' }}>
+    <div>
+      <div style={{ maxWidth: 960 }}>
 
         {/* Page header */}
-        <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0d2550', margin: 0 }}>Help Center</h1>
-          <p style={{ fontSize: 14, color: '#9ca3af', marginTop: 4, marginBottom: 0 }}>
+        <div style={{ marginBottom: 20 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>Help Center</h1>
+          <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 2, marginBottom: 0 }}>
             Guides, tips, and reference for the MAG platform
           </p>
         </div>
 
         {/* Search bar */}
-        <div style={{ position: 'relative', marginBottom: 32 }}>
+        <div style={{ position: 'relative', marginBottom: 28 }}>
           <span style={{
-            position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
-            fontSize: 20, color: '#9ca3af', pointerEvents: 'none',
+            position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+            fontSize: 14, color: '#9ca3af', pointerEvents: 'none',
           }}>
             🔍
           </span>
@@ -272,8 +272,8 @@ export default function Help() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{
-              width: '100%', padding: '14px 16px 14px 48px', fontSize: 15,
-              border: '1.5px solid #e8eaed', borderRadius: 10, outline: 'none',
+              width: '100%', padding: '9px 12px 9px 34px', fontSize: 13,
+              border: '1.5px solid #e5e7eb', borderRadius: 8, outline: 'none',
               background: '#fff', boxSizing: 'border-box',
             }}
           />

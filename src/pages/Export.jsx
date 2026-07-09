@@ -216,21 +216,21 @@ export default function Export() {
         </div>
         <div className="stat-card">
           <div className="stat-label">Total cost invested</div>
-          <div className="stat-value" style={{ fontSize: 18 }}>${totalInvested.toLocaleString()}</div>
+          <div className="stat-value">${totalInvested.toLocaleString()}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Total recovered</div>
-          <div className="stat-value" style={{ fontSize: 18 }}>${totalRecovered.toLocaleString()}</div>
+          <div className="stat-value">${totalRecovered.toLocaleString()}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Gross margin</div>
-          <div className="stat-value" style={{ fontSize: 18, color: totalMargin >= 0 ? '#065f46' : '#991b1b' }}>${totalMargin.toLocaleString()}</div>
+          <div className="stat-value" style={{ color: totalMargin >= 0 ? '#065f46' : '#991b1b' }}>${totalMargin.toLocaleString()}</div>
         </div>
       </div>
 
       {/* What's included */}
       <div className="card" style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 16 }}>What's included in the export</h2>
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 16 }}>What's included in the export</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
           {[
             ['1. Current Inventory', 'All vehicles in stock — VIN, specs, cost basis, floor price, status, location, title'],
@@ -241,7 +241,7 @@ export default function Export() {
             ['6. P&L Summary', 'Total invested, recovered, margin by store, auction history'],
           ].map(([title, desc]) => (
             <div key={title} style={{ background: '#f5f6f8', borderRadius: 10, padding: '14px 16px' }}>
-              <div style={{ fontWeight: 700, fontSize: 13, color: '#1a3d76', marginBottom: 4 }}>{title}</div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#0d2550', marginBottom: 4 }}>{title}</div>
               <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>{desc}</div>
             </div>
           ))}

@@ -148,7 +148,7 @@ export default function Titles() {
             { label: 'Issues',     value: counts.issue,    accent: TITLE_ACCENT.issue,    color: '#991b1b' },
             { label: 'In Hand',    value: counts.clear,    accent: TITLE_ACCENT.clear,    color: '#065f46' },
           ].map(({ label, value, accent, color }) => (
-            <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 10, padding: '12px 16px' }}>
+            <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 10, padding: '14px 18px' }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{label}</div>
               <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{value}</div>
             </div>
@@ -162,7 +162,7 @@ export default function Titles() {
           <button key={t.key} onClick={() => setStatusFilter(t.key)} style={{
             padding: '6px 14px', borderRadius: 20,
             border: `1.5px solid ${statusFilter === t.key ? '#0d2550' : '#e5e7eb'}`,
-            background: statusFilter === t.key ? '#0d2550' : '#fff',
+            background: statusFilter === t.key ? '#0d2550' : '#f3f4f6',
             color: statusFilter === t.key ? '#fff' : '#6b7280',
             fontSize: 12, fontWeight: 700, cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 6,

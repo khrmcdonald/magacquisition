@@ -55,7 +55,7 @@ export default function AuctionManage() {
 
       {/* Auction control */}
       <div className="card" style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 16 }}>Auction window</h2>
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 16 }}>Auction window</h2>
 
         {!data.auction.isOpen ? (
           <form onSubmit={handleOpen}>

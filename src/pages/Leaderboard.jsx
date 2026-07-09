@@ -76,18 +76,19 @@ export default function Leaderboard() {
   return (
     <div>
       <div className="page-header">
-        <h1>🏆 Leaderboard</h1>
+        <h1>Leaderboard</h1>
         <p>Live standings across all MAG stores</p>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '2px solid #e5e7eb', marginBottom: 24 }}>
-        {[['board', '🏆 Standings'], ['badges', '🎖 Badges']].map(([key, label]) => (
+      <div style={{ display: 'flex', gap: 6, marginBottom: 24, flexWrap: 'wrap' }}>
+        {[['board', 'Standings'], ['badges', 'Badges']].map(([key, label]) => (
           <button key={key} onClick={() => setTab(key)} style={{
-            padding: '10px 20px', border: 'none', background: 'none', fontSize: 14, fontWeight: 600,
-            color: tab === key ? '#1a3d76' : '#6b7280',
-            borderBottom: `2px solid ${tab === key ? '#1a3d76' : 'transparent'}`,
-            marginBottom: -2, cursor: 'pointer',
+            padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
+            fontSize: 12, fontWeight: 700,
+            background: tab === key ? '#0d2550' : '#f3f4f6',
+            color: tab === key ? '#fff' : '#6b7280',
+            transition: 'all 0.15s',
           }}>{label}</button>
         ))}
       </div>
@@ -111,7 +112,7 @@ export default function Leaderboard() {
                   <div style={{ fontSize: 32, marginBottom: 8 }}>{medals[i]}</div>
                   <div style={{ margin: '0 auto 10px', display: 'flex', justifyContent: 'center' }}><StoreAvatar locationId={store.id} size={48} /></div>
                   <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{store.name}</div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: '#1a3d76', margin: '6px 0 2px' }}>{store.wins}</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: '#0d2550', margin: '6px 0 2px' }}>{store.wins}</div>
                   <div style={{ fontSize: 11, color: '#9ca3af' }}>cars won</div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginTop: 6 }}>${store.totalSpend.toLocaleString()}</div>
                 </div>
@@ -142,7 +143,7 @@ export default function Leaderboard() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
                     {store.name}
-                    {isMyStore(store.id) && <span style={{ background: '#1a3d76', color: '#f1bb25', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>YOU</span>}
+                    {isMyStore(store.id) && <span style={{ background: '#0d2550', color: '#f1bb25', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>YOU</span>}
                   </div>
                   {store.badges.length > 0 && (
                     <div style={{ marginTop: 4 }}>
@@ -154,7 +155,7 @@ export default function Leaderboard() {
                 {/* Stats */}
                 <div style={{ display: 'flex', gap: 24, flexShrink: 0 }}>
                   {[
-                    ['Cars won', store.wins, '#1a3d76'],
+                    ['Cars won', store.wins, '#0d2550'],
                     ['Total spend', `$${(store.totalSpend/1000).toFixed(0)}k`, '#374151'],
                     ['Bids', store.bids, '#6b7280'],
                     ['Win rate', `${store.winRate}%`, store.winRate >= 50 ? '#065f46' : '#6b7280'],
@@ -220,11 +221,11 @@ export default function Leaderboard() {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', marginBottom: 8 }}>
                       {store.name}
-                      {isMyStore(store.id) && <span style={{ background: '#1a3d76', color: '#f1bb25', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, marginLeft: 8 }}>YOU</span>}
+                      {isMyStore(store.id) && <span style={{ background: '#0d2550', color: '#f1bb25', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, marginLeft: 8 }}>YOU</span>}
                     </div>
                     <BadgeShelf badges={allBadges} badgeDefs={BADGE_DEFS} highlight={isMyStore(store.id)} />
                   </div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: '#1a3d76', flexShrink: 0 }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: '#0d2550', flexShrink: 0 }}>
                     {allBadges.length} <span style={{ fontSize: 12, fontWeight: 500, color: '#9ca3af' }}>badges</span>
                   </div>
                 </div>

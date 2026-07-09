@@ -53,17 +53,17 @@ export default function GMOverview() {
         </div>
         <div className="stat-card">
           <div className="stat-label">Bid volume</div>
-          <div className="stat-value" style={{ fontSize: 18 }}>${totalBidVolume.toLocaleString()}</div>
+          <div className="stat-value">${totalBidVolume.toLocaleString()}</div>
         </div>
         {(user.role === 'gm' || user.role === 'admin') && (
           <>
             <div className="stat-card">
               <div className="stat-label">Total cost basis</div>
-              <div className="stat-value" style={{ fontSize: 18 }}>${totalCostBasis.toLocaleString()}</div>
+              <div className="stat-value">${totalCostBasis.toLocaleString()}</div>
             </div>
             <div className="stat-card">
               <div className="stat-label">Group margin</div>
-              <div className="stat-value" style={{ fontSize: 18, color: totalMargin >= 0 ? '#065f46' : '#991b1b' }}>
+              <div className="stat-value" style={{ color: totalMargin >= 0 ? '#065f46' : '#991b1b' }}>
                 ${totalMargin.toLocaleString()}
               </div>
             </div>
@@ -76,21 +76,17 @@ export default function GMOverview() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '2px solid #e5e7eb' }}>
-        {[['results', 'Auction results'], ['stores', 'By store'], ['vehicles', 'All vehicles']].map(([key, label]) => (
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+        {[['results', 'Auction Results'], ['stores', 'By Store'], ['vehicles', 'All Vehicles']].map(([key, label]) => (
           <button
             key={key}
             onClick={() => setTab(key)}
             style={{
-              padding: '10px 20px',
-              border: 'none',
-              background: 'none',
-              fontSize: 14,
-              fontWeight: 600,
-              color: tab === key ? '#1a3d76' : '#6b7280',
-              borderBottom: `2px solid ${tab === key ? '#1a3d76' : 'transparent'}`,
-              marginBottom: -2,
-              cursor: 'pointer',
+              padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
+              fontSize: 12, fontWeight: 700,
+              background: tab === key ? '#0d2550' : '#f3f4f6',
+              color: tab === key ? '#fff' : '#6b7280',
+              transition: 'all 0.15s',
             }}
           >
             {label}

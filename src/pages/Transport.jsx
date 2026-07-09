@@ -205,7 +205,7 @@ export default function Transport() {
           { label: isWholesale ? 'Intake' : 'In transit',        value: isWholesale ? intakes.length : allTransport.filter(t => ['dispatched','inTransit'].includes(t.status)).length, accent: '#f59e0b', color: '#92400e' },
           { label: 'In transit', value: allTransport.filter(t => ['dispatched','inTransit'].includes(t.status)).length, accent: '#3b82f6', color: '#1e40af' },
         ].map(({ label, value, accent, color }) => (
-          <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 10, padding: '10px 14px' }}>
+          <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 10, padding: '14px 18px' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 3 }}>{label}</div>
             <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{value}</div>
           </div>
@@ -220,8 +220,8 @@ export default function Transport() {
               <button key={key} onClick={() => { setTypeTab(key); closePanel(); }} style={{
                 padding: '7px 14px', border: 'none', borderRight: key !== 'intake' ? '1px solid #e5e7eb' : 'none',
                 cursor: 'pointer', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
-                background: typeTab === key ? '#0d2550' : 'transparent',
-                color: typeTab === key ? '#fff' : '#374151',
+                background: typeTab === key ? '#0d2550' : '#f3f4f6',
+                color: typeTab === key ? '#fff' : '#6b7280',
                 transition: 'all 0.12s',
               }}>{label}</button>
             ))}
@@ -231,8 +231,8 @@ export default function Transport() {
           <button key={key} onClick={() => { setFilter(key); closePanel(); }} style={{
             padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
             border: '1.5px solid', borderColor: filter === key ? '#0d2550' : '#e5e7eb',
-            background: filter === key ? '#0d2550' : '#fff',
-            color: filter === key ? '#fff' : '#374151',
+            background: filter === key ? '#0d2550' : '#f3f4f6',
+            color: filter === key ? '#fff' : '#6b7280',
             transition: 'all 0.12s',
           }}>{label}</button>
         ))}

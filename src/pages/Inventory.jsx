@@ -177,9 +177,9 @@ export default function Inventory() {
           { label: 'Avg Ask',       value: avgAsk    ? `$${avgAsk.toLocaleString()}`    : '—', color: '#0d2550', accent: '#0d2550' },
           { label: 'Lowest Ask',    value: lowestAsk ? `$${lowestAsk.toLocaleString()}` : '—', color: '#92400e', accent: '#e8b84b' },
         ].map(({ label, value, color, accent, suffix }) => (
-          <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 8, padding: '10px 14px' }}>
+          <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${accent}`, borderRadius: 10, padding: '14px 18px' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>{label}</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color, lineHeight: 1 }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>
               {value}{typeof value === 'number' && suffix ? <span style={{ fontSize: 11, fontWeight: 500, color: '#9ca3af', marginLeft: 2 }}>{suffix}</span> : null}
             </div>
           </div>

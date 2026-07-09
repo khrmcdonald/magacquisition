@@ -55,7 +55,7 @@ function StatCard({ label, value, sub, color, onClick }) {
       style={{
         background: '#fff', border: '1px solid #e5e7eb',
         borderTop: `3px solid ${accent}`,
-        borderRadius: 10, padding: '12px 16px',
+        borderRadius: 10, padding: '14px 18px',
         cursor: onClick ? 'pointer' : 'default',
         transition: 'box-shadow 0.15s',
       }}
@@ -164,7 +164,7 @@ function BidderDashboard({ user, data, navigate, role }) {
       {/* Active bids on live vehicles */}
       {data.auction.isOpen && activeVehicles.length > 0 && (
         <div style={{ marginBottom: 24 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 12 }}>Live auction — {activeVehicles.length} cars</div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', marginBottom: 12 }}>Live auction — {activeVehicles.length} cars</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
             {activeVehicles.slice(0, 6).map(v => {
               const myBid = data.bids.find(b => b.vehicleId === v.id && b.storeId === user.id);
@@ -195,7 +195,7 @@ function BidderDashboard({ user, data, navigate, role }) {
       {/* Incoming vehicles */}
       {myTransport.length > 0 && (
         <div>
-          <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 12 }}>Your vehicles</div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', marginBottom: 12 }}>Your vehicles</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {myTransport.slice(0, 4).map(t => {
               const v = data.vehicles.find(vv => vv.id === t.vehicleId);
@@ -292,7 +292,7 @@ function TodaysTasks({ data, navigate }) {
 
   return (
     <div style={{ marginBottom: 28 }}>
-      <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 14 }}>Needs Attention</div>
+      <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', marginBottom: 14 }}>Needs Attention</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
         {CARDS.map(card => (
           <div key={card.key} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -369,7 +369,7 @@ function TriStateDashboard({ data, navigate, role }) {
       )}
 
       {/* Recent inventory */}
-      <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 12 }}>Recent inventory</div>
+      <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', marginBottom: 12 }}>Recent inventory</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {recentVehicles.length === 0 ? (
           <div style={{ color: '#9ca3af', fontSize: 14, padding: '20px 0' }}>No vehicles yet — <span style={{ color: '#0d2550', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => navigate('/acquisitions')}>add your first vehicle</span></div>
@@ -423,7 +423,7 @@ function GMDashboard({ data, navigate, role }) {
       <AuctionBanner auction={data.auction} navigate={navigate} role={role} />
       <AgedInventorySummary vehicles={data.vehicles} navigate={navigate} />
 
-      <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 12 }}>Store performance</div>
+      <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', marginBottom: 12 }}>Store performance</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
         {storeSummary.map(store => (
           <div key={store.id} style={{
@@ -441,7 +441,7 @@ function GMDashboard({ data, navigate, role }) {
             <div style={{ padding: '16px 20px', flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                 <StoreAvatar locationId={store.id} size={36} />
-                <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{store.name}</div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{store.name}</div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                 {[['Cars won', store.wins, '#0d2550'], ['Spend', `$${(store.spend/1000).toFixed(0)}k`, '#065f46'], ['Bids', store.bids, '#1e40af']].map(([l, v, c]) => (

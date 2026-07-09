@@ -115,12 +115,12 @@ export default function History() {
         <div className="stat-grid" style={{ marginBottom: 24 }}>
           <div className="stat-card">
             <div className="stat-label">Cars won</div>
-            <div className="stat-value" style={{ color: '#1a3d76' }}>{myStore.won}</div>
+            <div className="stat-value">{myStore.won}</div>
             <div className="stat-sub">all time</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Total spend</div>
-            <div className="stat-value" style={{ fontSize: 18 }}>{fmt(myStore.totalSpend)}</div>
+            <div className="stat-value">{fmt(myStore.totalSpend)}</div>
             <div className="stat-sub">winning bids</div>
           </div>
           <div className="stat-card">
@@ -198,13 +198,14 @@ export default function History() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '2px solid #e5e7eb', marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
         {tabs.map(([key, label]) => (
           <button key={key} onClick={() => setTab(key)} style={{
-            padding: '10px 20px', border: 'none', background: 'none', fontSize: 14, fontWeight: 600,
-            color: tab === key ? '#1a3d76' : '#6b7280',
-            borderBottom: `2px solid ${tab === key ? '#1a3d76' : 'transparent'}`,
-            marginBottom: -2, cursor: 'pointer',
+            padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
+            fontSize: 12, fontWeight: 700,
+            background: tab === key ? '#0d2550' : '#f3f4f6',
+            color: tab === key ? '#fff' : '#6b7280',
+            transition: 'all 0.15s',
           }}>
             {label}
           </button>

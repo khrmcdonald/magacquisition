@@ -221,7 +221,7 @@ export default function Repairs() {
           <div key={k.id} onClick={() => setStatusFilter(statusFilter === k.id ? 'all' : k.id)}
             style={{
               background: '#fff', border: `1px solid ${statusFilter === k.id ? k.accent : '#e5e7eb'}`,
-              borderTop: `3px solid ${k.accent}`, borderRadius: 10, padding: '12px 16px', cursor: 'pointer',
+              borderTop: `3px solid ${k.accent}`, borderRadius: 10, padding: '14px 18px', cursor: 'pointer',
               boxShadow: statusFilter === k.id ? `0 0 0 2px ${k.accent}33` : 'none',
               transition: 'border-color 0.15s',
             }}>
@@ -232,10 +232,11 @@ export default function Repairs() {
       </div>
 
       {/* Search */}
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ position: 'relative', marginBottom: 16, maxWidth: 360 }}>
+        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 14, pointerEvents: 'none' }}>🔍</span>
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search vehicle, description, vendor…"
-          style={{ width: 320, padding: '7px 14px', borderRadius: 20, border: '1px solid #e5e7eb', fontSize: 13, background: '#fff' }} />
+          style={{ width: '100%', padding: '9px 12px 9px 34px', borderRadius: 8, border: '1.5px solid #e5e7eb', fontSize: 13, background: '#fff', outline: 'none', boxSizing: 'border-box' }} />
       </div>
 
       {/* Grid */}

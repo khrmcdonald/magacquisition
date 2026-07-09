@@ -82,7 +82,7 @@ function InviteUserCard() {
   return (
     <div className="card" style={{ padding: 0, marginBottom: 24 }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>Invite User</h2>
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>Invite User</h2>
         <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>
           Generate a single-use invite link. The recipient registers with their own name, email, and password.
         </p>
@@ -218,7 +218,7 @@ function TeamMembersCard({ profiles, onUpdateProfile, onDeleteUser, roleLabel })
   return (
     <div className="card" style={{ padding: 0, marginBottom: 24 }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>Team Members</h2>
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>Team Members</h2>
         <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>All users with access to this organization</p>
       </div>
       <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -462,7 +462,7 @@ export default function Admin() {
         <div>
           <div className="card" style={{ padding: 0, marginBottom: 24 }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>Acquisition Sources</h2>
+              <h2 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>Acquisition Sources</h2>
               <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>Where vehicles come from — shown in the New Vehicle form</p>
             </div>
             <div style={{ padding: '16px 20px' }}>
@@ -484,7 +484,7 @@ export default function Admin() {
 
           <div className="card" style={{ padding: 0 }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>Locations</h2>
+              <h2 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>Locations</h2>
               <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>Lots and storage sites — shown in New Vehicle and inventory views</p>
             </div>
             <div style={{ padding: '16px 20px' }}>
@@ -510,7 +510,7 @@ export default function Admin() {
       {activeTab === 'stores' && (
         <div className="card" style={{ padding: 0 }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>Retail Stores</h2>
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>Retail Stores</h2>
             <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>Store profiles and headshots — appears throughout the app</p>
           </div>
           <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -542,7 +542,7 @@ export default function Admin() {
       {activeTab === 'org' && (
         <div className="card" style={{ padding: 0 }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>Organization Settings</h2>
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>Organization Settings</h2>
             <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>Dealer information and branding — saved to this browser</p>
           </div>
           <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
