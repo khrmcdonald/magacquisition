@@ -13,9 +13,10 @@ const CONDITIONS = ['Excellent', 'Good', 'Fair', 'Poor'];
 
 
 const AUCTION_STATUSES = [
-  { value: 'intake', label: 'Intake', bg: '#f3f4f6', color: '#6b7280' },
-  { value: 'recon', label: 'In Recon', bg: '#fef3c7', color: '#92400e' },
-  { value: 'ready', label: 'Ready to List', bg: '#d1fae5', color: '#065f46' },
+  { value: 'intake',       label: 'Intake',          bg: '#f3f4f6', color: '#6b7280' },
+  { value: 'arbitration',  label: 'Arbitration',     bg: '#fff7ed', color: '#c2410c' },
+  { value: 'recon',        label: 'In Recon',        bg: '#fef3c7', color: '#92400e' },
+  { value: 'ready',        label: 'Ready to List',   bg: '#d1fae5', color: '#065f46' },
 ];
 
 function InlineSelect({ options, current, onChange, minWidth, label }) {
@@ -945,9 +946,10 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
 }
 
 const STATUS_LABELS = {
-  intake:      { label: 'Intake',      color: '#6b7280', bg: '#f3f4f6', accent: '#9ca3af' },
-  inspection:  { label: 'Inspection',  color: '#92400e', bg: '#fef3c7', accent: '#f59e0b' },
-  recon:       { label: 'In Recon',    color: '#92400e', bg: '#fef3c7', accent: '#e8b84b' },
+  intake:       { label: 'Intake',       color: '#6b7280', bg: '#f3f4f6', accent: '#9ca3af' },
+  arbitration:  { label: 'Arbitration',  color: '#c2410c', bg: '#fff7ed', accent: '#f97316' },
+  inspection:   { label: 'Inspection',   color: '#92400e', bg: '#fef3c7', accent: '#f59e0b' },
+  recon:        { label: 'In Recon',     color: '#92400e', bg: '#fef3c7', accent: '#e8b84b' },
   ready:      { label: 'Ready to List',   color: '#065f46', bg: '#d1fae5', accent: '#10b981' },
   in_auction: { label: 'Live in Auction', color: '#1e40af', bg: '#dbeafe', accent: '#3b82f6' },
   awarded:    { label: 'Awarded',         color: '#065f46', bg: '#d1fae5', accent: '#0d2550' },
