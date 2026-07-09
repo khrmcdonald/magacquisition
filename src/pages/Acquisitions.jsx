@@ -1757,6 +1757,9 @@ export default function Acquisitions() {
                 actionButton={
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {!isReadOnly && (
+                      <VehicleStatusDropdown vehicle={v} onChange={async (val) => { try { await updateVehicle(v.id, { status: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
+                    )}
+                    {!isReadOnly && (
                       <>
                         {(v.status === 'intake' || v.status === 'no_sale') && (
                           <>
@@ -2122,7 +2125,10 @@ export default function Acquisitions() {
                 </div>
                 <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, marginTop: 1 }}>{pv.trim || pv.vin || ''}</div>
               </div>
-              <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{st.label}</span>
+              {!isReadOnly
+                ? <VehicleStatusDropdown vehicle={pv} onChange={async (val) => { try { await updateVehicle(pv.id, { status: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
+                : <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{st.label}</span>
+              }
             </div>
 
             {/* Scrollable body */}
