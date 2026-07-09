@@ -8,6 +8,9 @@ export default function Sold() {
   const { data, updateVehicle } = useData();
   const { showToast } = useToast();
   const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [buyerFilter, setBuyerFilter] = useState('');
 
   const [editModal, setEditModal] = useState(null);
   const [editPrice, setEditPrice] = useState('');
@@ -43,8 +46,10 @@ export default function Sold() {
     setEditSaving(false);
   };
 
-  const sold = (data.vehicles || [])
-    .filter(v => v.status === 'sold')
+  const allSold = (data.vehicles || []).filter(v => v.status === 'sold');
+  const buyers = [...new Set(allSold.map(v => v.soldTo).filter(Boolean))].sort();
+
+  const sold = allSold
     .filter(v => {
       if (!search) return true;
       const q = search.toLowerCase();
@@ -54,6 +59,12 @@ export default function Sold() {
         || (v.soldTo||'').toLowerCase().includes(q)
         || (v.buyer_name||'').toLowerCase().includes(q);
     })
+    .filter(v => {
+      if (dateFrom && v.soldDate && v.soldDate < dateFrom) return false;
+      if (dateTo && v.soldDate && v.soldDate > dateTo) return false;
+      return true;
+    })
+    .filter(v => !buyerFilter || v.soldTo === buyerFilter)
     .sort((a, b) => {
       if (!a.soldDate && !b.soldDate) return 0;
       if (!a.soldDate) return 1;
@@ -64,21 +75,68 @@ export default function Sold() {
   const totalGross = sold.reduce((sum, v) => sum + (parseFloat(v.soldGross) || 0), 0);
   const avgGross = sold.length ? totalGross / sold.length : null;
 
+  const hasFilters = search || dateFrom || dateTo || buyerFilter;
+
+  const clearFilters = () => {
+    setSearch('');
+    setDateFrom('');
+    setDateTo('');
+    setBuyerFilter('');
+  };
+
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>Sold Units</h1>
         <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
           <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 14, pointerEvents: 'none' }}>🔍</span>
           <input
             type="text"
-            placeholder="Search by vehicle, VIN, buyer, or sold-to…"
+            placeholder="Search by vehicle, VIN, or buyer…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{ width: '100%', padding: '9px 12px 9px 34px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', background: '#fff', boxSizing: 'border-box' }}
           />
         </div>
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap' }}>Date:</span>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+            style={{ padding: '7px 10px', border: '1.5px solid #e5e7eb', borderRadius: 7, fontSize: 12, outline: 'none', background: '#fff', color: dateFrom ? '#111827' : '#9ca3af' }}
+          />
+          <span style={{ fontSize: 12, color: '#9ca3af' }}>–</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+            style={{ padding: '7px 10px', border: '1.5px solid #e5e7eb', borderRadius: 7, fontSize: 12, outline: 'none', background: '#fff', color: dateTo ? '#111827' : '#9ca3af' }}
+          />
+        </div>
+
+        <select
+          value={buyerFilter}
+          onChange={e => setBuyerFilter(e.target.value)}
+          style={{ padding: '7px 28px 7px 10px', border: '1.5px solid #e5e7eb', borderRadius: 7, fontSize: 12, outline: 'none', background: '#fff', color: buyerFilter ? '#111827' : '#9ca3af', cursor: 'pointer', appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'8\' viewBox=\'0 0 12 8\'%3E%3Cpath d=\'M1 1l5 5 5-5\' stroke=\'%239ca3af\' stroke-width=\'1.5\' fill=\'none\' stroke-linecap=\'round\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+        >
+          <option value="">All Buyers</option>
+          {buyers.map(b => <option key={b} value={b}>{b}</option>)}
+        </select>
+
+        {hasFilters && (
+          <button
+            onClick={clearFilters}
+            style={{ padding: '7px 12px', border: '1.5px solid #e5e7eb', borderRadius: 7, fontSize: 12, fontWeight: 600, color: '#6b7280', background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       {/* Stats */}
@@ -98,8 +156,12 @@ export default function Sold() {
       {sold.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: '#9ca3af' }}>
           <div style={{ fontSize: 40, marginBottom: 10 }}>🏷️</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#374151', marginBottom: 4 }}>No sold vehicles yet</div>
-          <div style={{ fontSize: 13 }}>Units marked as sold will appear here.</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#374151', marginBottom: 4 }}>
+            {hasFilters ? 'No results for these filters' : 'No sold vehicles yet'}
+          </div>
+          <div style={{ fontSize: 13 }}>
+            {hasFilters ? 'Try adjusting the date range or buyer filter.' : 'Units marked as sold will appear here.'}
+          </div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -133,7 +195,7 @@ export default function Sold() {
                 <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} style={{ width: '100%', boxSizing: 'border-box' }} />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label>Sold To *</label>
+                <label>Buyer *</label>
                 <input type="text" value={editTo} onChange={e => setEditTo(e.target.value)} placeholder="Store name or auction" style={{ width: '100%', boxSizing: 'border-box' }} />
               </div>
               {(() => {
@@ -191,7 +253,7 @@ function SoldCard({ vehicle: v, onEdit }) {
         </div>
         <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#6b7280', letterSpacing: '.04em' }}>{v.vin || '—'}</div>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 2 }}>
-          {v.buyer_name && <span style={{ fontSize: 12, color: '#6b7280' }}>Buyer: <strong style={{ color: '#111827' }}>{v.buyer_name}</strong></span>}
+          {v.buyer_name && <span style={{ fontSize: 12, color: '#6b7280' }}>Buyer Rep: <strong style={{ color: '#111827' }}>{v.buyer_name}</strong></span>}
           {v.color && <span style={{ fontSize: 12, color: '#6b7280' }}>{v.color}</span>}
         </div>
       </div>
@@ -200,7 +262,7 @@ function SoldCard({ vehicle: v, onEdit }) {
       <div style={{ display: 'flex', alignItems: 'stretch', flexShrink: 0, borderLeft: '1px solid #f3f4f6' }}>
         {[
           { label: 'Sale Date', value: v.soldDate ? new Date(v.soldDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
-          { label: 'Sold To', value: v.soldTo || '—' },
+          { label: 'Buyer', value: v.soldTo || '—' },
           { label: 'Sale Price', value: fmt$(v.soldPrice) },
           {
             label: 'Gross',
