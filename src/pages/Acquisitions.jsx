@@ -19,7 +19,7 @@ const AUCTION_STATUSES = [
   { value: 'ready',        label: 'Ready to List',   bg: '#d1fae5', color: '#065f46' },
 ];
 
-function InlineSelect({ options, current, onChange, minWidth, label }) {
+function InlineSelect({ options, current, onChange, minWidth, label, compact }) {
   const [open, setOpen] = React.useState(false);
   const cur = options.find(o => o.value === current) || options[0];
 
@@ -36,14 +36,20 @@ function InlineSelect({ options, current, onChange, minWidth, label }) {
           onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
           style={{
             background: cur.bg, color: cur.color,
-            border: `2px solid ${cur.color}66`,
-            padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-            minWidth: minWidth || 150, whiteSpace: 'nowrap',
+            border: compact ? `1.5px solid ${cur.color}99` : `2px solid ${cur.color}66`,
+            padding: compact ? '2px 8px' : '7px 14px',
+            borderRadius: compact ? 20 : 8,
+            fontSize: compact ? 10 : 13,
+            fontWeight: 700,
+            cursor: 'pointer', display: 'flex', alignItems: 'center',
+            gap: compact ? 4 : 8,
+            minWidth: compact ? 'auto' : (minWidth || 150),
+            whiteSpace: 'nowrap',
+            letterSpacing: compact ? '.02em' : undefined,
           }}
         >
-          <span style={{ flex: 1, textAlign: 'left' }}>{cur.label}</span>
-          <span style={{ fontSize: 11 }}>{open ? '▲' : '▼'}</span>
+          <span style={compact ? undefined : { flex: 1, textAlign: 'left' }}>{cur.label}</span>
+          <span style={{ fontSize: compact ? 8 : 11 }}>{open ? '▲' : '▼'}</span>
         </button>
 
         {open && (
@@ -104,7 +110,7 @@ function InlineSelect({ options, current, onChange, minWidth, label }) {
   );
 }
 
-function VehicleStatusDropdown({ vehicle, onChange }) {
+function VehicleStatusDropdown({ vehicle, onChange, compact }) {
   const isLocked = ['in_auction', 'awarded', 'no_sale'].includes(vehicle.status);
   if (isLocked) {
     const lockedMap = {
@@ -113,9 +119,10 @@ function VehicleStatusDropdown({ vehicle, onChange }) {
       no_sale: { label: 'No Sale', bg: '#fee2e2', color: '#991b1b' },
     };
     const s = lockedMap[vehicle.status];
+    if (compact) return <span style={{ background: s.bg, color: s.color, padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, letterSpacing: '.02em' }}>{s.label}</span>;
     return <span style={{ background: s.bg, color: s.color, padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>{s.label}</span>;
   }
-  return <InlineSelect options={AUCTION_STATUSES} current={vehicle.status} onChange={onChange} minWidth={150} label="Vehicle status" />;
+  return <InlineSelect options={AUCTION_STATUSES} current={vehicle.status} onChange={onChange} minWidth={150} label="Vehicle status" compact={compact} />;
 }
 
 
@@ -1748,17 +1755,14 @@ export default function Acquisitions() {
                 showCostBasis={!!v.totalCost}
                 costBasis={v.totalCost}
                 badge={
-                  <span style={{ background: st.bg, color: st.color, padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 700, letterSpacing: '.02em' }}>
-                    {st.label}
-                  </span>
+                  !isReadOnly
+                    ? <VehicleStatusDropdown vehicle={v} compact onChange={async (val) => { try { await updateVehicle(v.id, { status: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
+                    : <span style={{ background: st.bg, color: st.color, padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 700, letterSpacing: '.02em' }}>{st.label}</span>
                 }
                 pricePill={null}
                 highlighted={panelVehicle?.id === v.id}
                 actionButton={
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {!isReadOnly && (
-                      <VehicleStatusDropdown vehicle={v} onChange={async (val) => { try { await updateVehicle(v.id, { status: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
-                    )}
                     {!isReadOnly && (
                       <>
                         {(v.status === 'intake' || v.status === 'no_sale') && (
