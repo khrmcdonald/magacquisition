@@ -4,6 +4,34 @@ import { useToast } from '../components/Toast';
 
 const fmt$ = (n) => n != null ? `$${parseFloat(n).toLocaleString()}` : '—';
 
+function csvCell(val) {
+  const s = val == null ? '' : String(val);
+  return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function exportCSV(rows, dateFrom, dateTo) {
+  const headers = ['Year', 'Make', 'Model', 'Trim', 'VIN', 'Color', 'Sale Date', 'Buyer', 'Sale Price', 'Gross', 'Buyer Rep'];
+  const lines = [
+    headers.join(','),
+    ...rows.map(v => [
+      v.year, v.make, v.model, v.trim, v.vin, v.color,
+      v.soldDate || '',
+      v.soldTo || '',
+      v.soldPrice != null ? v.soldPrice : '',
+      v.soldGross != null ? v.soldGross : '',
+      v.buyer_name || '',
+    ].map(csvCell).join(',')),
+  ];
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const suffix = dateFrom && dateTo ? `${dateFrom}-to-${dateTo}` : dateFrom ? `from-${dateFrom}` : dateTo ? `to-${dateTo}` : 'all';
+  a.href = url;
+  a.download = `sold-${suffix}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function Sold() {
   const { data, updateVehicle } = useData();
   const { showToast } = useToast();
@@ -137,6 +165,14 @@ export default function Sold() {
             Clear
           </button>
         )}
+
+        <button
+          onClick={() => exportCSV(sold, dateFrom, dateTo)}
+          disabled={sold.length === 0}
+          style={{ marginLeft: 'auto', padding: '7px 14px', border: '1.5px solid #0d2550', borderRadius: 7, fontSize: 12, fontWeight: 700, color: '#0d2550', background: '#fff', cursor: sold.length ? 'pointer' : 'not-allowed', opacity: sold.length ? 1 : 0.4, whiteSpace: 'nowrap' }}
+        >
+          Export CSV ({sold.length})
+        </button>
       </div>
 
       {/* Stats */}
