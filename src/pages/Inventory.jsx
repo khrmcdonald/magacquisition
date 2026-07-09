@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { useToast } from '../components/Toast';
 import { VehicleCard, AuctionCountdownPill } from '../components/VehicleCard';
 
 function Detail({ label, value, mono, highlight }) {
@@ -18,19 +19,21 @@ function Detail({ label, value, mono, highlight }) {
 
 export default function Inventory() {
   const { user } = useAuth();
-  const { data } = useData();
+  const { data, updateVehicle } = useData();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
-  const [vehicles, setVehicles]       = useState([]);
-  const [mileageMap, setMileageMap]   = useState({});
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState(null);
-  const [buyTarget, setBuyTarget]     = useState(null);
+  const [vehicles, setVehicles]         = useState([]);
+  const [mileageMap, setMileageMap]     = useState({});
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState(null);
+  const [buyTarget, setBuyTarget]       = useState(null);
+  const [buyConfirming, setBuyConfirming] = useState(false);
   const [panelVehicle, setPanelVehicle] = useState(null);
   const [panelPhotoIdx, setPanelPhotoIdx] = useState(0);
-  const [search, setSearch]           = useState('');
+  const [search, setSearch]             = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [viewMode, setViewMode]       = useState('grid');
+  const [viewMode, setViewMode]         = useState('grid');
 
   const orgId      = user?.org_id;
   const isWholesale = user?.role === 'wholesale' || user?.role === 'admin';
@@ -39,6 +42,9 @@ export default function Inventory() {
   const CONDITION_COLOR = { 5: '#065f46', 4: '#1e40af', 3: '#92400e', 2: '#991b1b' };
   const conditionScore = (c) => c ? (CONDITION_SCORE[c.toLowerCase()] ?? null) : null;
   const conditionLabel = (c) => c ? (c.charAt(0).toUpperCase() + c.slice(1).toLowerCase()) : null;
+
+  // list_price is the retail/Buy Now price; floor_price is the auction floor
+  const askPrice = (v) => parseFloat(v.list_price || v.floor_price) || null;
 
   useEffect(() => {
     if (!orgId) return;
@@ -81,11 +87,11 @@ export default function Inventory() {
     return () => supabase.removeChannel(channel);
   }, [orgId]);
 
-  const listed    = vehicles.filter(v => v.status === 'ready');
-  const inAuction = vehicles.filter(v => v.status === 'in_auction');
-  const availablePrices = listed.map(v => parseFloat(v.floor_price)).filter(p => p > 0);
-  const avgAsk    = availablePrices.length ? Math.round(availablePrices.reduce((s, p) => s + p, 0) / availablePrices.length) : null;
-  const lowestAsk = availablePrices.length ? Math.min(...availablePrices) : null;
+  const listed     = vehicles.filter(v => v.status === 'ready');
+  const inAuction  = vehicles.filter(v => v.status === 'in_auction');
+  const availablePrices = listed.map(askPrice).filter(p => p > 0);
+  const avgAsk     = availablePrices.length ? Math.round(availablePrices.reduce((s, p) => s + p, 0) / availablePrices.length) : null;
+  const lowestAsk  = availablePrices.length ? Math.min(...availablePrices) : null;
 
   const filteredVehicles = vehicles.filter(v => {
     if (statusFilter !== 'all' && v.status !== statusFilter) return false;
@@ -99,11 +105,36 @@ export default function Inventory() {
     return true;
   });
 
-  // Keep panel in sync with live data
   const pv = panelVehicle ? vehicles.find(v => v.id === panelVehicle.id) || panelVehicle : null;
 
-  const openPanel = (v) => { setPanelVehicle(v); setPanelPhotoIdx(0); };
+  const openPanel  = (v) => { setPanelVehicle(v); setPanelPhotoIdx(0); };
   const closePanel = () => { setPanelVehicle(null); };
+
+  const handleBuyNow = async () => {
+    if (!buyTarget || buyConfirming) return;
+    setBuyConfirming(true);
+    try {
+      const price = askPrice(buyTarget);
+      const today = new Date().toISOString().split('T')[0];
+      const buyer = data.profiles?.find(p => p.id === user?.id);
+      const buyerName = buyer?.name || user?.email || 'Online Purchase';
+      const cost = (parseFloat(buyTarget.purchase_price) || 0) + (parseFloat(buyTarget.overhead_costs) || 0) + (parseFloat(buyTarget.total_repair_costs) || 0);
+      const gross = price != null && cost > 0 ? price - cost : null;
+      await updateVehicle(buyTarget.id, {
+        status: 'sold',
+        soldPrice: price,
+        soldDate: today,
+        soldTo: buyerName,
+        soldGross: gross,
+      });
+      showToast('Purchase confirmed! Vehicle moved to Sold.', 'success');
+      setBuyTarget(null);
+      closePanel();
+    } catch (err) {
+      showToast('Purchase failed: ' + err.message, 'error');
+    }
+    setBuyConfirming(false);
+  };
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 0', color: '#9ca3af' }}>
@@ -121,6 +152,13 @@ export default function Inventory() {
   const pvPhotos      = pv && Array.isArray(pv.photos) && pv.photos.length > 0 ? pv.photos : null;
   const pvBidCount    = pv ? (data.bids || []).filter(b => b.vehicleId === pv.id).length : 0;
   const pvMileage     = pv ? mileageMap[pv.id] ?? null : null;
+  const pvAskPrice    = pv ? askPrice(pv) : null;
+
+  const STATUS_FILTERS = [
+    { val: 'all',        label: 'All',        count: vehicles.length },
+    { val: 'ready',      label: 'Available',  count: listed.length },
+    { val: 'in_auction', label: 'In Auction', count: inAuction.length },
+  ];
 
   return (
     <div style={{ position: 'relative' }}>
@@ -160,17 +198,31 @@ export default function Inventory() {
             style={{ width: '100%', padding: '9px 12px 9px 34px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', background: '#fff', boxSizing: 'border-box' }}
           />
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {[['all','All'], ['ready','Available'], ['in_auction','In Auction']].map(([val, label]) => (
-            <button key={val} onClick={() => { setStatusFilter(val); closePanel(); }} style={{
-              padding: '7px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: '1.5px solid',
-              borderColor: statusFilter === val ? '#0d2550' : '#e5e7eb',
-              background: statusFilter === val ? '#0d2550' : '#fff',
-              color: statusFilter === val ? '#fff' : '#6b7280',
-              transition: 'all 0.12s',
-            }}>{label}</button>
+
+        {/* Status filter tabs — styled to match Acquisitions page */}
+        <div style={{ display: 'flex', background: '#f3f4f6', borderRadius: 10, padding: 3, gap: 2 }}>
+          {STATUS_FILTERS.map(({ val, label, count }) => (
+            <button
+              key={val}
+              onClick={() => { setStatusFilter(val); closePanel(); }}
+              style={{
+                padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none',
+                background: statusFilter === val ? '#0d2550' : 'transparent',
+                color: statusFilter === val ? '#fff' : '#6b7280',
+                transition: 'all 0.12s',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              {label}
+              <span style={{
+                background: statusFilter === val ? 'rgba(255,255,255,0.25)' : '#e5e7eb',
+                color: statusFilter === val ? '#fff' : '#9ca3af',
+                fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10,
+              }}>{count}</span>
+            </button>
           ))}
         </div>
+
         <div style={{ display: 'flex', border: '1.5px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
           {[['grid','⊞'],['list','☰']].map(([mode, icon]) => (
             <button key={mode} onClick={() => { setViewMode(mode); closePanel(); }} style={{
@@ -197,6 +249,7 @@ export default function Inventory() {
               const isInAuction = v.status === 'in_auction';
               const bidCount    = (data.bids || []).filter(b => b.vehicleId === v.id).length;
               const isActive    = panelVehicle?.id === v.id;
+              const vAsk        = askPrice(v);
               return (
                 <VehicleCard
                   key={v.id}
@@ -208,7 +261,7 @@ export default function Inventory() {
                   onTitleClick={() => navigate(`/acquisitions?v=${v.id}`)}
                   pricePill={isInAuction
                     ? <AuctionCountdownPill closeDate={data.auction?.closeDate} />
-                    : null
+                    : vAsk ? <span style={{ background: '#f0f4fb', color: '#0d2550', fontWeight: 800, fontSize: 13, padding: '3px 10px', borderRadius: 20 }}>${vAsk.toLocaleString()}</span> : null
                   }
                   actionButton={
                     isWholesale ? (
@@ -318,13 +371,11 @@ export default function Inventory() {
           boxShadow: '-4px 0 24px rgba(0,0,0,0.08)',
           zIndex: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column',
         }}>
-          {/* Close */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '14px 18px 0' }}>
             <button onClick={closePanel}
               style={{ background: '#f1f5f9', border: 'none', borderRadius: 20, width: 30, height: 30, cursor: 'pointer', fontSize: 18, color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
           </div>
 
-          {/* Photo */}
           <div style={{ padding: '4px 20px 0' }}>
             <div style={{ position: 'relative', background: '#f1f5f9', borderRadius: 10, overflow: 'hidden', height: 200 }}>
               {pvPhotos
@@ -345,7 +396,6 @@ export default function Inventory() {
                 </>
               )}
             </div>
-            {/* Thumbnails */}
             {pvPhotos && pvPhotos.length > 1 && (
               <div style={{ display: 'flex', gap: 5, marginTop: 6, overflowX: 'auto' }}>
                 {pvPhotos.map((p, i) => (
@@ -356,7 +406,6 @@ export default function Inventory() {
             )}
           </div>
 
-          {/* Vehicle identity */}
           <div style={{ padding: '14px 20px 0' }}>
             <div style={{ fontSize: 18, fontWeight: 800, color: '#111827', lineHeight: 1.15 }}>
               {[pv.year, pv.make, pv.model].filter(Boolean).join(' ')}
@@ -380,10 +429,7 @@ export default function Inventory() {
 
           <div style={{ borderTop: '1px solid #f1f5f9', margin: '14px 0 0' }} />
 
-          {/* Details section */}
           <div style={{ padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-            {/* Price / auction info */}
             {pvIsInAuction ? (
               <div>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>Auction</div>
@@ -394,23 +440,21 @@ export default function Inventory() {
                   </span>
                 </div>
               </div>
-            ) : pv.floor_price ? (
+            ) : pvAskPrice ? (
               <div>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>Asking Price</div>
                 <div style={{ fontSize: 30, fontWeight: 800, color: '#0d2550', lineHeight: 1 }}>
-                  ${parseFloat(pv.floor_price).toLocaleString()}
+                  ${pvAskPrice.toLocaleString()}
                 </div>
               </div>
             ) : null}
 
-            {/* Disclosure */}
             {pv.disclosure_notes && (
               <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>
                 <span style={{ fontWeight: 700 }}>Disclosure: </span>{pv.disclosure_notes}
               </div>
             )}
 
-            {/* Notes */}
             {pv.notes && (
               <div>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>Description</div>
@@ -418,17 +462,15 @@ export default function Inventory() {
               </div>
             )}
 
-            {/* Buy Now CTA (retail only, available only) */}
             {!isWholesale && !pvIsInAuction && (
               <button
                 onClick={() => { closePanel(); setBuyTarget(pv); }}
                 style={{ padding: '14px 0', fontSize: 15, fontWeight: 700, border: 'none', borderRadius: 9, cursor: 'pointer', background: '#0d2550', color: '#fff', marginTop: 4 }}
               >
-                🛒 Buy Now
+                🛒 Buy Now{pvAskPrice ? ` — $${pvAskPrice.toLocaleString()}` : ''}
               </button>
             )}
 
-            {/* Wiki link */}
             <button
               onClick={() => navigate(`/acquisitions?v=${pv.id}`)}
               style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: 12, cursor: 'pointer', padding: 0, textAlign: 'left', textDecoration: 'underline' }}
@@ -441,35 +483,46 @@ export default function Inventory() {
 
       {/* Buy Now confirmation modal */}
       {buyTarget && (
-        <div className="modal-overlay" onClick={() => setBuyTarget(null)}>
+        <div className="modal-overlay" onClick={() => { if (!buyConfirming) setBuyTarget(null); }}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
-            <div className="modal-header">
-              <h2>Confirm Purchase</h2>
-              <button onClick={() => setBuyTarget(null)} style={{ background: 'none', border: 'none', fontSize: 22, color: '#9ca3af', cursor: 'pointer' }}>×</button>
+            <div className="modal-header" style={{ background: '#0d2550', borderRadius: '12px 12px 0 0' }}>
+              <div>
+                <h2 style={{ color: '#fff', fontSize: 17 }}>Confirm Purchase</h2>
+                <p style={{ color: 'rgba(255,255,255,.65)', fontSize: 13, marginTop: 2 }}>
+                  {buyTarget.year} {buyTarget.make} {buyTarget.model}
+                </p>
+              </div>
+              <button onClick={() => setBuyTarget(null)} disabled={buyConfirming} style={{ background: 'rgba(255,255,255,.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 18, cursor: 'pointer' }}>×</button>
             </div>
             <div className="modal-body">
-              <div style={{ fontWeight: 700, fontSize: 16, color: '#111827', marginBottom: 4 }}>
-                {buyTarget.year} {buyTarget.make} {buyTarget.model}
-              </div>
-              {buyTarget.trim && <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>{buyTarget.trim}</div>}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                <Detail label="VIN"           value={buyTarget.vin || '—'} mono />
-                <Detail label="Color"         value={buyTarget.color || '—'} />
-                <Detail label="Asking Price"  value={buyTarget.floor_price ? `$${parseFloat(buyTarget.floor_price).toLocaleString()}` : '—'} highlight />
+                <Detail label="VIN"          value={buyTarget.vin || '—'} mono />
+                <Detail label="Color"        value={buyTarget.color || '—'} />
+                <Detail label="Mileage"      value={mileageMap[buyTarget.id] != null ? `${parseInt(mileageMap[buyTarget.id]).toLocaleString()} mi` : '—'} />
+                <Detail label="Condition"    value={buyTarget.condition ? buyTarget.condition.charAt(0).toUpperCase() + buyTarget.condition.slice(1) : '—'} />
               </div>
+              {(() => {
+                const p = askPrice(buyTarget);
+                return p ? (
+                  <div style={{ background: '#f0f4fb', border: '1px solid #c7d6ef', borderRadius: 8, padding: '12px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, color: '#6b7280' }}>Purchase Price</span>
+                    <span style={{ fontSize: 22, fontWeight: 800, color: '#0d2550' }}>${p.toLocaleString()}</span>
+                  </div>
+                ) : null;
+              })()}
               {buyTarget.disclosure_notes && (
                 <div style={{ background: '#fff8e7', border: '1px solid #f1bb25', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#92400e', marginBottom: 16 }}>
                   <strong>Disclosure:</strong> {buyTarget.disclosure_notes}
                 </div>
               )}
               <div className="alert alert-info">
-                By clicking confirm, you are committing to purchase this vehicle at the listed price.
+                By confirming, you commit to purchase this vehicle at the listed price.
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn-secondary" onClick={() => setBuyTarget(null)}>Cancel</button>
-              <button className="btn-navy" onClick={() => { console.log('Buy Now confirmed:', buyTarget.id); setBuyTarget(null); }}>
-                Confirm Purchase
+              <button className="btn-secondary" onClick={() => setBuyTarget(null)} disabled={buyConfirming}>Cancel</button>
+              <button className="btn-navy" onClick={handleBuyNow} disabled={buyConfirming}>
+                {buyConfirming ? 'Processing…' : 'Confirm Purchase'}
               </button>
             </div>
           </div>

@@ -91,6 +91,10 @@ function mapAuction(r) {
     closeDate: r.close_at,
     label: r.label,
     closedDate: r.closed_at,
+    vehicleCount: r.vehicle_count ?? null,
+    awardedCount: r.awarded_count ?? null,
+    noSaleCount: r.no_sale_count ?? null,
+    totalVolume: r.total_volume ?? null,
   };
 }
 
@@ -453,8 +457,19 @@ export function DataProvider({ children }) {
     }
 
     await Promise.all(vehicleUpdates);
-    await updateAuction(currentAuction.id, { status: 'closed', closed_at: now });
-    setAuctions(prev => prev.map(a => a.id === currentAuction.id ? { ...a, isOpen: false, closedDate: now } : a));
+    await updateAuction(currentAuction.id, {
+      status: 'closed',
+      closed_at: now,
+      vehicle_count: activeVehicles.length,
+      awarded_count: awardedCount,
+      no_sale_count: noSaleCount,
+      total_volume: totalVolume,
+    });
+    setAuctions(prev => prev.map(a => a.id === currentAuction.id ? {
+      ...a, isOpen: false, closedDate: now,
+      vehicleCount: activeVehicles.length,
+      awardedCount, noSaleCount, totalVolume,
+    } : a));
 
     // Update vehicle statuses in local state
     setVehicles(prev => prev.map(v => {

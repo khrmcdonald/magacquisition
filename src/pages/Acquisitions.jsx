@@ -502,7 +502,7 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
     vin: '', year: '', make: '', model: '', trim: '', mileage: '', color: '',
     interior_color: '', engine: '',
     source_id: '', purchasePrice: '', condition: 'Good', notes: '',
-    overheadCosts: '', floorPrice: '', photos: [],
+    overheadCosts: '', floorPrice: '', listPrice: '', photos: [],
     titleStatus: 'pending', currentLocation: '',
     datePurchased: '',
     // deal record fields
@@ -702,11 +702,20 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
         </div>
       </div>
 
-      <div className="form-group">
-        <label>Suggested floor price for auction</label>
-        <div style={{ position: 'relative' }}>
-          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }}>$</span>
-          <input type="number" value={form.floorPrice} onChange={e => set('floorPrice', e.target.value)} placeholder="0" style={{ paddingLeft: 24 }} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="form-group">
+          <label>Floor price (auction minimum)</label>
+          <div style={{ position: 'relative' }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }}>$</span>
+            <input type="number" value={form.floorPrice} onChange={e => set('floorPrice', e.target.value)} placeholder="0" style={{ paddingLeft: 24 }} />
+          </div>
+        </div>
+        <div className="form-group">
+          <label>List price (retail / Buy Now)</label>
+          <div style={{ position: 'relative' }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }}>$</span>
+            <input type="number" value={form.listPrice || ''} onChange={e => set('listPrice', e.target.value)} placeholder="0" style={{ paddingLeft: 24 }} />
+          </div>
         </div>
       </div>
 
@@ -731,6 +740,12 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: totalCost() < parseFloat(form.floorPrice) ? '#065f46' : '#991b1b', marginTop: 6 }}>
               <span>Margin at floor</span>
               <span>${(parseFloat(form.floorPrice) - totalCost()).toLocaleString()}</span>
+            </div>
+          )}
+          {form.listPrice && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: totalCost() < parseFloat(form.listPrice) ? '#065f46' : '#991b1b', marginTop: 4 }}>
+              <span>Margin at list</span>
+              <span>${(parseFloat(form.listPrice) - totalCost()).toLocaleString()}</span>
             </div>
           )}
         </div>
