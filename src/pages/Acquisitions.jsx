@@ -250,7 +250,6 @@ function ExcelUploadModal({ onClose, onImport }) {
       const dataRows = raw.slice(headerRowIdx + 2);
 
       const VALID_CONDITIONS = ['excellent','good','fair','poor','needs_repair'];
-      const VALID_TITLE_STATUSES = ['in','out'];
 
       const parsed = dataRows
         .filter(row => row.some(c => c !== ''))
@@ -275,12 +274,9 @@ function ExcelUploadModal({ onClose, onImport }) {
             const c = obj.condition.toLowerCase().replace(/\s+/g, '_');
             obj.condition = VALID_CONDITIONS.includes(c) ? c : null;
           }
-          // Default title status to pending if missing or unrecognized
-          if (!obj.titleStatus || !VALID_TITLE_STATUSES.includes(obj.titleStatus.toLowerCase())) {
-            obj.titleStatus = 'out';
-          } else {
-            obj.titleStatus = obj.titleStatus.toLowerCase();
-          }
+          // Default title status to pending if missing or unrecognized; map human-readable in/out to DB values
+          const tsRaw = obj.titleStatus ? obj.titleStatus.toLowerCase() : '';
+          obj.titleStatus = tsRaw === 'in' ? 'clear' : 'pending';
           const purchase = parseFloat(obj.purchasePrice) || 0;
           const overhead = parseFloat(obj.overheadCosts) || 0;
           const recon = parseFloat(obj.reconCosts) || 0;
@@ -513,7 +509,7 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
     interior_color: '', engine: '',
     source_id: '', purchasePrice: '', condition: 'Good', notes: '',
     overheadCosts: '', floorPrice: '', listPrice: '', photos: [],
-    titleStatus: 'out', currentLocation: '',
+    titleStatus: 'pending', currentLocation: '',
     datePurchased: '',
     // deal record fields
     seller_name: '', buyer_id: '', purchase_amount: '',
