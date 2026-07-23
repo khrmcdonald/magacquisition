@@ -61,6 +61,11 @@ export default function BulkEdit() {
   const [rows, setRows] = useState(() =>
     (data.vehicles || []).filter(v => v.status !== 'sold').map(v => ({ ...v }))
   );
+  // Snapshot of original values at load time, used to diff on save so we only
+  // write fields actually changed here — not the whole row, which could
+  // clobber a concurrent change (e.g. someone else toggling title status)
+  // made after this page loaded.
+  const originalRows = useMemo(() => new Map(rows.map(r => [r.id, r])), []); // eslint-disable-line
   const [dirty, setDirty] = useState(new Set());
   const [selected, setSelected] = useState(new Set());
   const [saving, setSaving] = useState(false);
@@ -138,13 +143,16 @@ export default function BulkEdit() {
     showToast(`Applied to ${selected.size} vehicles`, 'success');
   };
 
+  const valuesEqual = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
   const handleSave = async () => {
     if (dirty.size === 0) return;
     setSaving(true);
     const dirtyRows = rows.filter(r => dirty.has(r.id));
     const results = await Promise.allSettled(
-      dirtyRows.map(r =>
-        updateVehicle(r.id, {
+      dirtyRows.map(r => {
+        const original = originalRows.get(r.id) || {};
+        const full = {
           status: r.status,
           buyer_id: r.buyer_id || null,
           buyer_name: r.buyer_name || null,
@@ -153,8 +161,12 @@ export default function BulkEdit() {
           titleStatus: r.titleStatus || null,
           condition: r.condition || null,
           keys: r.keys || null,
-        })
-      )
+        };
+        const changed = Object.fromEntries(
+          Object.entries(full).filter(([k, v]) => !valuesEqual(v, original[k]))
+        );
+        return Object.keys(changed).length > 0 ? updateVehicle(r.id, changed) : Promise.resolve();
+      })
     );
     const failed = results.filter(r => r.status === 'rejected').length;
     setSaving(false);

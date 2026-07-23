@@ -1421,8 +1421,20 @@ export default function Acquisitions() {
     if (!saveFields.winnerId) saveFields.winnerId = null;
 
     if (editing) {
-      try { await updateVehicle(editing.id, { ...saveFields, source_id: source_id || null, status: editing.status }); }
-      catch (err) { showToast(`Update failed: ${fmtErr(err)}`, 'error'); setSaveError(`Update failed: ${fmtErr(err)}`); return; }
+      // Only write fields this edit session actually changed. Sending the
+      // full form snapshot would clobber concurrent edits (e.g. another user
+      // adjusting key count or photo order) with whatever stale values this
+      // form loaded when it was opened.
+      const fullFields = { ...saveFields, source_id: source_id || null };
+      const valuesEqual = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+      const editingSnapshot = { ...editing, source_id: editing.sourceId ?? null };
+      const changedFields = Object.fromEntries(
+        Object.entries(fullFields).filter(([k, v]) => !valuesEqual(v, editingSnapshot[k]))
+      );
+      if (Object.keys(changedFields).length > 0) {
+        try { await updateVehicle(editing.id, changedFields); }
+        catch (err) { showToast(`Update failed: ${fmtErr(err)}`, 'error'); setSaveError(`Update failed: ${fmtErr(err)}`); return; }
+      }
       if (vehicleData.mileage) {
         try {
           await logMileage(editing.id, vehicleData.mileage, (vehicleData.vin || editing.vin || '').slice(-6), 'edit');
