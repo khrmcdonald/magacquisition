@@ -520,6 +520,7 @@ export function DataProvider({ children }) {
       trim:                vehicle.trim             || null,
       color:               vehicle.color            || null,
       interior_color:      vehicle.interior_color   || null,
+      engine:              vehicle.engine           || null,
       condition:           vehicle.condition        || null,
       current_location_id: vehicle.currentLocation  || null,
       purchase_price:      vehicle.purchasePrice    ? parseFloat(vehicle.purchasePrice)  : null,
@@ -793,6 +794,15 @@ export function DataProvider({ children }) {
     return mapped;
   };
 
+  const getMileageHistory = async (vehicleId) => {
+    const { data } = await supabase
+      .from('mileage_log')
+      .select('reading, reason, logged_at')
+      .eq('vehicle_id', vehicleId)
+      .order('logged_at', { ascending: false });
+    return data || [];
+  };
+
   const deleteRepairOrderLine = async (lineId, repairOrderId) => {
     const { error } = await supabase.from('repair_order_lines').delete().eq('id', lineId);
     if (error) throw error;
@@ -1014,6 +1024,7 @@ export function DataProvider({ children }) {
       // Repair orders
       repairOrders, repairVendors,
       addRepairOrder, updateRepairOrder, deleteRepairOrder,
+      addRepairOrderLine, deleteRepairOrderLine, getMileageHistory,
       addRepairVendor,
       // Arbitration
       fileArbitration, resolveArbitration,

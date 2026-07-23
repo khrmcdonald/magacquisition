@@ -225,11 +225,7 @@ const TRANSPORT_STATUS_LABEL = {
   dispatched: { label: 'Dispatched',       color: '#1e40af', bg: '#dbeafe' },
   inTransit:  { label: 'In Transit',       color: '#0369a1', bg: '#e0f2fe' },
 };
-const TITLE_STATUS_LABEL = {
-  pending:  { label: 'Pending',  color: '#92400e', bg: '#fef3c7' },
-  received: { label: 'Received', color: '#1e40af', bg: '#dbeafe' },
-  issue:    { label: 'Issue',    color: '#991b1b', bg: '#fee2e2' },
-};
+const TITLE_OUT_BADGE = { label: 'Title OUT', color: '#991b1b', bg: '#fee2e2' };
 
 // ── NEEDS ATTENTION ──
 function TodaysTasks({ data, navigate }) {
@@ -258,17 +254,16 @@ function TodaysTasks({ data, navigate }) {
     .map(t => ({ id: t.id, primary: t.vehicleName || 'Unknown', secondary: t.notes || 'Pickup pending', badge: 'Intake pickup', badgeColor: { color: '#92400e', bg: '#fef3c7' }, route: '/transport' }));
 
   const titleItems = vehicles
-    .filter(v => ['pending','received','issue'].includes(v.titleStatus))
+    .filter(v => v.titleStatus !== 'in' && v.titleStatus !== 'clear' && v.status !== 'sold')
     .sort((a, b) => {
       const da = a.datePurchased ? new Date(a.datePurchased + 'T12:00:00') : new Date(a.createdAt);
       const db = b.datePurchased ? new Date(b.datePurchased + 'T12:00:00') : new Date(b.createdAt);
       return da - db;
     })
     .map(v => {
-      const st = TITLE_STATUS_LABEL[v.titleStatus] || TITLE_STATUS_LABEL.pending;
       const days = v.datePurchased ? Math.floor((Date.now() - new Date(v.datePurchased + 'T12:00:00')) / 86400000) : null;
       const dest = v.status === 'awarded' ? `→ ${v.winnerName}` : null;
-      return { id: v.id, primary: `${v.year} ${v.make} ${v.model}`, secondary: dest || (days !== null ? `${days}d waiting` : null), badge: v.titleStatus === 'issue' ? '⚠ Issue' : st.label, badgeColor: st, route: '/titles' };
+      return { id: v.id, primary: `${v.year} ${v.make} ${v.model}`, secondary: dest || (days !== null ? `${days}d waiting` : null), badge: 'Title OUT', badgeColor: TITLE_OUT_BADGE, route: '/titles' };
     });
 
   const inspectionItems = vehicles
@@ -347,7 +342,7 @@ function TriStateDashboard({ data, navigate, role }) {
   const live = data.vehicles.filter(v => v.status === 'in_auction').length;
   const awarded = data.vehicles.filter(v => v.status === 'awarded').length;
   const openArbitrations = data.vehicles.filter(v => v.arbitration?.status === 'open');
-  const pendingTitles = data.vehicles.filter(v => ['pending','received','issue'].includes(v.titleStatus));
+  const pendingTitles = data.vehicles.filter(v => v.titleStatus !== 'in' && v.titleStatus !== 'clear' && v.status !== 'sold');
   const totalVolume = data.vehicles.filter(v => v.status === 'awarded').reduce((s, v) => s + (v.winningBid || 0), 0);
   const recentVehicles = [...data.vehicles].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
 

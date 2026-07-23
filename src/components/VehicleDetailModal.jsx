@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from './Toast';
+import { isTitleIn } from './VehicleCard';
 
 const TRANSPORT_STEPS = [
   { key: 'awarded',       label: 'Awarded' },
@@ -36,14 +37,6 @@ const STATUS_LABELS = {
   no_sale:    'No Sale',
 };
 
-const TITLE_STATUS = {
-  pending:  { label: 'Waiting',    color: '#92400e', bg: '#fef3c7' },
-  received: { label: 'In Process', color: '#1e40af', bg: '#dbeafe' },
-  clear:    { label: 'In Hand',    color: '#065f46', bg: '#d1fae5' },
-  issue:    { label: 'Issue',      color: '#991b1b', bg: '#fee2e2' },
-};
-const TITLE_NEXT = { pending: 'received', received: 'clear' };
-const TITLE_NEXT_LABEL = { pending: 'Mark In Process', received: 'Mark In Hand' };
 
 const RO_STATUS = {
   draft:            { bg: '#fef3c7', color: '#92400e', label: 'Pending' },
@@ -58,7 +51,7 @@ const RO_STATUS = {
 const INP = { padding: '7px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13, width: '100%', boxSizing: 'border-box' };
 
 export default function VehicleDetailModal({ vehicle, onClose }) {
-  const { data, updateVehicle, addRepairOrder, updateRepairOrder, deleteRepairOrder, repairOrders, repairVendors } = useData();
+  const { data, updateVehicle, addRepairOrder, updateRepairOrder, deleteRepairOrder, repairOrders, repairVendors, addRepairOrderLine, deleteRepairOrderLine, getMileageHistory } = useData();
   const { user } = useAuth();
   const { showToast } = useToast();
   const isBidder = user?.role === 'bidder';
@@ -66,13 +59,19 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
 
   const [photoIdx, setPhotoIdx] = useState(0);
   const [titleSaving, setTitleSaving] = useState(false);
-  const [showTitleIssueForm, setShowTitleIssueForm] = useState(false);
-  const [titleIssueNote, setTitleIssueNote] = useState('');
   const [addingRo, setAddingRo] = useState(false);
   const [newRoDesc, setNewRoDesc] = useState('');
   const [newRoCost, setNewRoCost] = useState('');
   const [editingRo, setEditingRo] = useState(null);
   const [editRoFields, setEditRoFields] = useState({});
+  const [addingLine, setAddingLine] = useState(null);
+  const [newLineDesc, setNewLineDesc] = useState('');
+  const [newLineCost, setNewLineCost] = useState('');
+  const [mileageHistory, setMileageHistory] = useState([]);
+
+  useEffect(() => {
+    if (isWholesale) getMileageHistory(vehicle.id).then(setMileageHistory);
+  }, [vehicle.id]); // eslint-disable-line
 
   // Always read from live state so mutations reflect immediately
   const lv = (data.vehicles || []).find(v => v.id === vehicle.id) || vehicle;
@@ -102,37 +101,13 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
     return () => window.removeEventListener('keydown', handler);
   }, [prev, next, onClose, photos.length]);
 
-  const titleSt = TITLE_STATUS[lv.titleStatus] || TITLE_STATUS.pending;
-
-  const advanceTitleStatus = async () => {
-    const nextStatus = TITLE_NEXT[lv.titleStatus];
-    if (!nextStatus) return;
+  const toggleTitle = async () => {
+    const newStatus = isTitleIn(lv.titleStatus) ? 'pending' : 'clear';
     setTitleSaving(true);
     try {
-      await updateVehicle(lv.id, { titleStatus: nextStatus });
-      showToast(`Title: ${TITLE_STATUS[nextStatus].label}`, 'success');
+      await updateVehicle(lv.id, { titleStatus: newStatus });
+      showToast(newStatus === 'clear' ? '✓ Title marked IN' : 'Title marked OUT', 'success');
     } catch (e) { showToast('Failed to update title', 'error'); }
-    setTitleSaving(false);
-  };
-
-  const flagTitleIssue = async () => {
-    if (!titleIssueNote.trim()) return;
-    setTitleSaving(true);
-    try {
-      await updateVehicle(lv.id, { titleStatus: 'issue', titleNotes: titleIssueNote.trim() });
-      setShowTitleIssueForm(false);
-      setTitleIssueNote('');
-      showToast('Title issue flagged', 'success');
-    } catch (e) { showToast('Failed', 'error'); }
-    setTitleSaving(false);
-  };
-
-  const resolveTitleIssue = async () => {
-    setTitleSaving(true);
-    try {
-      await updateVehicle(lv.id, { titleStatus: 'received', titleNotes: null });
-      showToast('Issue resolved — title In Process', 'success');
-    } catch (e) { showToast('Failed', 'error'); }
     setTitleSaving(false);
   };
 
@@ -166,6 +141,22 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
     } catch (e) { showToast('Failed', 'error'); }
   };
 
+  const handleAddLine = async (roId) => {
+    if (!newLineDesc.trim()) return;
+    try {
+      await addRepairOrderLine(roId, newLineDesc.trim(), parseFloat(newLineCost) || 0, null);
+      setAddingLine(null); setNewLineDesc(''); setNewLineCost('');
+      showToast('Line item added', 'success');
+    } catch (e) { showToast('Failed: ' + e.message, 'error'); }
+  };
+
+  const handleDeleteLine = async (lineId, roId) => {
+    try {
+      await deleteRepairOrderLine(lineId, roId);
+      showToast('Removed', 'success');
+    } catch (e) { showToast('Failed', 'error'); }
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 700, maxHeight: '92vh', overflowY: 'auto', padding: 0 }}>
@@ -188,7 +179,7 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
             {[
               { label: 'Status', value: STATUS_LABELS[lv.status] || lv.status },
               !isBidder && lv.buyer_name ? { label: 'Buyer', value: lv.buyer_name } : null,
-              lv.titleStatus ? { label: 'Title', value: lv.titleStatus === 'issue' ? '⚠ Issue' : titleSt.label } : null,
+              { label: 'Title', value: isTitleIn(lv.titleStatus) ? 'IN' : 'OUT' },
             ].filter(Boolean).map(({ label, value }) => (
               <div key={label} style={{ background: 'rgba(255,255,255,.1)', borderRadius: 8, padding: '5px 12px', minWidth: 80 }}>
                 <div style={{ fontSize: 9, fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</div>
@@ -272,56 +263,35 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
             </div>
           )}
 
-          {/* Title — wholesale can manage */}
+          {/* Title — wholesale can toggle */}
           {isWholesale && (
             <div style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: 18, marginBottom: 18 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, marginBottom: 12 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em' }}>Title</div>
-                <span style={{ background: titleSt.bg, color: titleSt.color, padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
-                  {titleSt.label}
+                <span style={{
+                  background: isTitleIn(lv.titleStatus) ? '#d1fae5' : '#fee2e2',
+                  color: isTitleIn(lv.titleStatus) ? '#065f46' : '#991b1b',
+                  padding: '3px 12px', borderRadius: 20, fontSize: 12, fontWeight: 800,
+                }}>
+                  {isTitleIn(lv.titleStatus) ? 'Title IN' : 'Title OUT'}
                 </span>
               </div>
-              {lv.titleStatus === 'issue' && lv.titleNotes && (
-                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#991b1b', marginBottom: 10 }}>
-                  <span style={{ fontWeight: 700 }}>Issue: </span>{lv.titleNotes}
-                </div>
-              )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {lv.titleStatus === 'issue' ? (
-                  <button onClick={resolveTitleIssue} disabled={titleSaving}
-                    style={{ background: '#d1fae5', color: '#065f46', border: '1px solid #6ee7b7', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: titleSaving ? 0.6 : 1 }}>
-                    {titleSaving ? '…' : '✓ Resolve Issue'}
-                  </button>
-                ) : TITLE_NEXT[lv.titleStatus] ? (
-                  <button onClick={advanceTitleStatus} disabled={titleSaving}
-                    style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: titleSaving ? 0.6 : 1 }}>
-                    {titleSaving ? '…' : TITLE_NEXT_LABEL[lv.titleStatus]}
-                  </button>
-                ) : null}
-                {lv.titleStatus !== 'issue' && lv.titleStatus !== 'clear' && !showTitleIssueForm && (
-                  <button onClick={() => setShowTitleIssueForm(true)}
-                    style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                    ⚠ Flag Issue
-                  </button>
-                )}
-                {showTitleIssueForm && (
-                  <div style={{ border: '1px solid #fecaca', borderRadius: 8, padding: '12px 14px', background: '#fef2f2', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <textarea autoFocus value={titleIssueNote} onChange={e => setTitleIssueNote(e.target.value)}
-                      placeholder="e.g. Wrong mileage on title, needs seller signature…" rows={2}
-                      style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', border: '1.5px solid #fecaca', borderRadius: 6, fontSize: 13, resize: 'none', fontFamily: 'inherit', background: '#fff' }} />
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={flagTitleIssue} disabled={!titleIssueNote.trim() || titleSaving}
-                        style={{ flex: 1, background: '#991b1b', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: !titleIssueNote.trim() || titleSaving ? 0.6 : 1 }}>
-                        {titleSaving ? '…' : 'Flag Issue'}
-                      </button>
-                      <button onClick={() => { setShowTitleIssueForm(false); setTitleIssueNote(''); }}
-                        style={{ background: 'none', border: '1px solid #fecaca', borderRadius: 6, padding: '8px 14px', fontSize: 13, cursor: 'pointer', color: '#991b1b' }}>
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <button
+                onClick={toggleTitle}
+                disabled={titleSaving}
+                style={{
+                  width: '100%',
+                  background: isTitleIn(lv.titleStatus) ? '#fee2e2' : '#d1fae5',
+                  color: isTitleIn(lv.titleStatus) ? '#991b1b' : '#065f46',
+                  border: `1.5px solid ${isTitleIn(lv.titleStatus) ? '#fca5a5' : '#6ee7b7'}`,
+                  borderRadius: 8, padding: '10px 0',
+                  fontSize: 13, fontWeight: 700,
+                  cursor: titleSaving ? 'not-allowed' : 'pointer',
+                  opacity: titleSaving ? 0.6 : 1,
+                }}
+              >
+                {titleSaving ? '…' : isTitleIn(lv.titleStatus) ? 'Mark Title OUT' : 'Mark Title IN'}
+              </button>
             </div>
           )}
 
@@ -392,6 +362,25 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
                           >×</button>
                         </div>
                       </div>
+                      {/* Line items — always visible when present */}
+                      {ro.lines && ro.lines.length > 0 && (
+                        <div style={{ background: '#f9fafb', borderTop: '1px solid #f3f4f6', padding: '6px 14px' }}>
+                          {ro.lines.map(line => (
+                            <div key={line.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #f3f4f6' }}>
+                              <span style={{ fontSize: 12, color: '#374151' }}>{line.description}</span>
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: '#0d2550' }}>${(line.cost || 0).toLocaleString()}</span>
+                                {isEditing && (
+                                  <button onClick={() => handleDeleteLine(line.id, ro.id)}
+                                    style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }}
+                                    onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                                    onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}>×</button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {isEditing && (
                         <div style={{ padding: '10px 14px', borderTop: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', gap: 8, background: '#f8faff' }}>
                           <input value={editRoFields.notes} onChange={e => setEditRoFields(f => ({ ...f, notes: e.target.value }))} placeholder="Description" style={INP} />
@@ -402,14 +391,34 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
                               <option value="complete">Complete</option>
                               <option value="cancelled">Cancelled</option>
                             </select>
-                            <input type="number" value={editRoFields.cost} onChange={e => setEditRoFields(f => ({ ...f, cost: e.target.value }))} placeholder="Cost $0" min="0" step="0.01" style={INP} />
+                            <input type="number" value={editRoFields.cost} onChange={e => setEditRoFields(f => ({ ...f, cost: e.target.value }))} placeholder="Total cost $0" min="0" step="0.01" style={INP} />
                           </div>
+                          {/* Add line item */}
+                          {addingLine === ro.id ? (
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <input autoFocus value={newLineDesc} onChange={e => setNewLineDesc(e.target.value)} placeholder="Line item description" style={{ ...INP, flex: 2 }} />
+                              <input type="number" value={newLineCost} onChange={e => setNewLineCost(e.target.value)} placeholder="$0" min="0" step="0.01" style={{ ...INP, flex: 1 }} />
+                              <button onClick={() => handleAddLine(ro.id)} disabled={!newLineDesc.trim()}
+                                style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                Add
+                              </button>
+                              <button onClick={() => { setAddingLine(null); setNewLineDesc(''); setNewLineCost(''); }}
+                                style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '6px 10px', fontSize: 12, cursor: 'pointer', color: '#6b7280' }}>
+                                ×
+                              </button>
+                            </div>
+                          ) : (
+                            <button onClick={() => { setAddingLine(ro.id); setNewLineDesc(''); setNewLineCost(''); }}
+                              style={{ background: 'none', border: '1px dashed #cbd5e1', borderRadius: 6, padding: '6px 0', fontSize: 12, color: '#6b7280', cursor: 'pointer', textAlign: 'center' }}>
+                              + Add line item
+                            </button>
+                          )}
                           <div style={{ display: 'flex', gap: 8 }}>
                             <button onClick={() => handleSaveRo(ro.id)}
                               style={{ flex: 1, background: '#0d2550', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                               Save
                             </button>
-                            <button onClick={() => setEditingRo(null)}
+                            <button onClick={() => { setEditingRo(null); setAddingLine(null); }}
                               style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 14px', fontSize: 13, cursor: 'pointer', color: '#6b7280' }}>
                               Cancel
                             </button>
@@ -419,6 +428,25 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Mileage History — wholesale only */}
+          {isWholesale && mileageHistory.length > 0 && (
+            <div style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: 18, marginBottom: 18 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 18, marginBottom: 10 }}>Mileage History</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {mileageHistory.map((m, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: '#f9fafb', borderRadius: 6, border: '1px solid #f3f4f6' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{parseInt(m.reading).toLocaleString()} mi</span>
+                    <span style={{ fontSize: 11, color: '#6b7280' }}>
+                      {m.reason === 'intake' ? 'Intake' : m.reason === 'edit' ? 'Updated' : m.reason}
+                      {' · '}
+                      {new Date(m.logged_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}

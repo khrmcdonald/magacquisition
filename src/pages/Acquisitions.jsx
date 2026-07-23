@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase, uploadVehiclePhoto } from '../lib/supabase';
-import { VehicleCard } from '../components/VehicleCard';
+import { VehicleCard, isTitleIn } from '../components/VehicleCard';
 import RepairOrdersModal from '../components/RepairOrdersModal';
 import ArbitrationResolveModal from '../components/ArbitrationResolveModal';
 import VehicleDetailModal from '../components/VehicleDetailModal';
@@ -220,7 +220,9 @@ function ExcelUploadModal({ onClose, onImport }) {
 
   const FIELD_MAP = {
     'vin': 'vin', 'year': 'year', 'make': 'make', 'model': 'model',
-    'trim': 'trim', 'mileage': 'mileage', 'color': 'color', 'source': 'source',
+    'trim': 'trim', 'engine': 'engine', 'mileage': 'mileage',
+    'color': 'color', 'interior color': 'interior_color',
+    'source': 'source', 'buyer': 'buyer', 'buyer name': 'buyer',
     'condition': 'condition', 'purchase price': 'purchasePrice',
     'overhead costs': 'overheadCosts', 'recon costs': 'reconCosts',
     'floor price': 'floorPrice', 'title status': 'titleStatus',
@@ -248,7 +250,7 @@ function ExcelUploadModal({ onClose, onImport }) {
       const dataRows = raw.slice(headerRowIdx + 2);
 
       const VALID_CONDITIONS = ['excellent','good','fair','poor','needs_repair'];
-      const VALID_TITLE_STATUSES = ['pending','received','clear','issue'];
+      const VALID_TITLE_STATUSES = ['in','out'];
 
       const parsed = dataRows
         .filter(row => row.some(c => c !== ''))
@@ -275,7 +277,7 @@ function ExcelUploadModal({ onClose, onImport }) {
           }
           // Default title status to pending if missing or unrecognized
           if (!obj.titleStatus || !VALID_TITLE_STATUSES.includes(obj.titleStatus.toLowerCase())) {
-            obj.titleStatus = 'pending';
+            obj.titleStatus = 'out';
           } else {
             obj.titleStatus = obj.titleStatus.toLowerCase();
           }
@@ -330,8 +332,8 @@ function ExcelUploadModal({ onClose, onImport }) {
                   onClick={() => {
                     const XLSX = window.XLSX;
                     if (!XLSX) return;
-                    const headers = ['VIN','Year','Make','Model','Trim','Mileage','Color','Condition','Source','Purchase Date','Purchase Price','Overhead Costs','Floor Price','Title Status','Title Notes','Notes'];
-                    const sample = ['1HGBH41JXMN109186','2022','Honda','Accord','Sport','34000','Silver','Good','Private Seller','2024-06-15','18500','350','21000','pending','',''];
+                    const headers = ['VIN','Year','Make','Model','Trim','Engine','Mileage','Color','Interior Color','Condition','Source','Buyer','Purchase Date','Purchase Price','Overhead Costs','Floor Price','Title Status','Title Notes','Notes'];
+                    const sample = ['1HGBH41JXMN109186','2022','Honda','Accord','Sport','2.0L 4-Cyl','34000','Silver','Black','Good','Private Seller','','2024-06-15','18500','350','21000','pending','',''];
                     const ws = XLSX.utils.aoa_to_sheet([headers, sample]);
                     ws['!cols'] = headers.map(() => ({ wch: 16 }));
                     const wb = XLSX.utils.book_new();
@@ -384,7 +386,7 @@ function ExcelUploadModal({ onClose, onImport }) {
                             <td style={{ padding: '10px 12px', fontSize: 11, fontFamily: 'monospace', color: '#6b7280' }}>{r.vin}</td>
                             <td style={{ padding: '10px 12px', fontSize: 12 }}>{r.mileage ? parseInt(r.mileage).toLocaleString() : '—'}</td>
                             <td style={{ padding: '10px 12px', fontSize: 12, fontWeight: 600, color: '#1a3d76' }}>{r.totalCost ? `$${r.totalCost.toLocaleString()}` : '—'}</td>
-                            <td style={{ padding: '10px 12px', fontSize: 12 }}>{r.titleStatus || 'pending'}</td>
+                            <td style={{ padding: '10px 12px', fontSize: 12 }}>{r.titleStatus === 'in' ? 'Title IN' : 'Title OUT'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -511,7 +513,7 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
     interior_color: '', engine: '',
     source_id: '', purchasePrice: '', condition: 'Good', notes: '',
     overheadCosts: '', floorPrice: '', listPrice: '', photos: [],
-    titleStatus: 'pending', currentLocation: '',
+    titleStatus: 'out', currentLocation: '',
     datePurchased: '',
     // deal record fields
     seller_name: '', buyer_id: '', purchase_amount: '',
@@ -1182,9 +1184,18 @@ function InspectionModal({ vehicle, inspectors, addInspector, onSave, onClose })
 
 export default function Acquisitions() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, addLocation, addInspector, addRepairOrder, addPickupAddress, logMileage, addTransport } = useData();
   const buyers = (data.profiles || []).filter(p => p.buyer_number);
   const { showToast } = useToast();
+
+  const toggleTitleStatus = async (v) => {
+    const newStatus = isTitleIn(v.titleStatus) ? 'pending' : 'clear';
+    try {
+      await updateVehicle(v.id, { titleStatus: newStatus });
+      showToast(newStatus === 'clear' ? '✓ Title marked IN' : 'Title marked OUT', newStatus === 'clear' ? 'success' : 'info');
+    } catch (e) { showToast('Failed: ' + e.message, 'error'); }
+  };
   const [resolveModal, setResolveModal] = useState(null);
   const [repairModal, setRepairModal] = useState(null);
   const [inspectionModal, setInspectionModal] = useState(null);
@@ -1425,7 +1436,30 @@ export default function Acquisitions() {
   };
 
   const handleBulkImport = async (vehicles) => {
-    const results = await Promise.allSettled(vehicles.map(v => addVehicle(v)));
+    const sources = data.acquisition_sources || [];
+    const allBuyers = (data.profiles || []).filter(p => p.buyer_number);
+
+    const results = await Promise.allSettled(
+      vehicles.map(async (v) => {
+        let resolved = { ...v };
+        // Resolve source name → source_id
+        if (resolved.source) {
+          const match = sources.find(s => s.name.toLowerCase() === resolved.source.toLowerCase());
+          if (match) resolved.sourceId = match.id;
+        }
+        // Resolve buyer name → buyer_id + buyer_name
+        if (resolved.buyer) {
+          const match = allBuyers.find(p => p.name?.toLowerCase() === resolved.buyer.toLowerCase());
+          if (match) { resolved.buyer_id = match.id; resolved.buyer_name = match.name; }
+          else { resolved.buyer_name = resolved.buyer; }
+        }
+        const row = await addVehicle(resolved);
+        // Mileage lives in mileage_log, not vehicles — log it separately
+        if (resolved.mileage) await logMileage(row.id, resolved.mileage, resolved.vin.slice(-6), 'intake');
+        return row;
+      })
+    );
+
     const failures = results
       .map((r, i) => r.status === 'rejected' ? `${vehicles[i].year} ${vehicles[i].make} ${vehicles[i].model} (${vehicles[i].vin}): ${r.reason?.message || r.reason}` : null)
       .filter(Boolean);
@@ -1656,6 +1690,9 @@ export default function Acquisitions() {
         </div>
         {!isReadOnly && (
           <>
+            <button onClick={() => navigate('/bulk-edit')} style={{ whiteSpace: 'nowrap', flexShrink: 0, padding: '8px 14px', borderRadius: 8, border: '1.5px solid #e5e7eb', background: '#fff', color: '#374151', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              ⚡ Mass Update
+            </button>
             <button onClick={() => setShowUpload(true)} style={{ whiteSpace: 'nowrap', flexShrink: 0, padding: '8px 14px', borderRadius: 8, border: '1.5px solid #e5e7eb', background: '#fff', color: '#374151', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
               ⬆ Import
             </button>
@@ -1751,6 +1788,7 @@ export default function Acquisitions() {
                 vehicle={v}
                 showAge={['wholesale', 'gm', 'admin'].includes(user.role)}
                 showTitleStatus={true}
+                onTitleToggle={!isReadOnly ? () => toggleTitleStatus(v) : undefined}
                 mileage={v.mileage ?? mileageMap[v.id] ?? null}
                 showCostBasis={!!v.totalCost}
                 costBasis={v.totalCost}
@@ -1819,6 +1857,7 @@ export default function Acquisitions() {
                 showAge={['wholesale', 'gm', 'admin'].includes(user.role)}
                 showDatePurchased={true}
                 showTitleStatus={true}
+                onTitleToggle={!isReadOnly ? () => toggleTitleStatus(v) : undefined}
                 sourceName={sourceOptions.find(s => s.value === v.sourceId)?.label || null}
                 vehicle={v}
                 mileage={v.mileage ?? mileageMap[v.id] ?? null}
@@ -2152,6 +2191,14 @@ export default function Acquisitions() {
                   </>
                 )}
               </div>
+              {photos.length > 1 && (
+                <div style={{ display: 'flex', gap: 5, padding: '6px 8px', overflowX: 'auto', background: '#f5f7fa' }}>
+                  {photos.map((p, i) => (
+                    <img key={i} src={p} alt="" onClick={() => setPanelPhotoIdx(i)}
+                      style={{ width: 52, height: 38, objectFit: 'cover', borderRadius: 4, flexShrink: 0, cursor: 'pointer', border: i === panelPhotoIdx ? '2px solid #0d2550' : '2px solid transparent', opacity: i === panelPhotoIdx ? 1 : 0.6, transition: 'opacity .12s, border-color .12s' }} />
+                  ))}
+                </div>
+              )}
 
               <div style={{ padding: '0 18px' }}>
                 {/* Vehicle details */}
@@ -2202,14 +2249,28 @@ export default function Acquisitions() {
                 )}
 
                 {/* Title */}
-                {pv.titleStatus && (
-                  <>
-                    {sectionHdr('Title')}
-                    {row('Status', pv.titleStatus.charAt(0).toUpperCase() + pv.titleStatus.slice(1))}
-                    {row('Electronic', fmtBool(pv.titleElectronic))}
-                    {pv.titleNotes && <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>{pv.titleNotes}</div>}
-                  </>
-                )}
+                <>
+                  {sectionHdr('Title')}
+                  {!isReadOnly ? (
+                    <button
+                      onClick={() => toggleTitleStatus(pv)}
+                      style={{
+                        width: '100%', marginBottom: 8,
+                        background: isTitleIn(pv.titleStatus) ? '#fee2e2' : '#d1fae5',
+                        color: isTitleIn(pv.titleStatus) ? '#991b1b' : '#065f46',
+                        border: `1.5px solid ${isTitleIn(pv.titleStatus) ? '#fca5a5' : '#6ee7b7'}`,
+                        borderRadius: 8, padding: '9px 0',
+                        fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                      }}
+                    >
+                      {isTitleIn(pv.titleStatus) ? 'Mark Title OUT' : 'Mark Title IN'}
+                    </button>
+                  ) : (
+                    row('Status', isTitleIn(pv.titleStatus) ? 'Title IN' : 'Title OUT')
+                  )}
+                  {row('Electronic', fmtBool(pv.titleElectronic))}
+                  {pv.titleNotes && <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>{pv.titleNotes}</div>}
+                </>
 
                 {/* Transport */}
                 {sectionHdr('Transport')}

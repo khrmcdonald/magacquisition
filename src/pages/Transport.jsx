@@ -89,6 +89,7 @@ export default function Transport() {
   const [closingAll, setClosingAll]       = useState(false);
   const [typeTab, setTypeTab]             = useState('all');
   const [panelTransport, setPanelTransport] = useState(null);
+  const [panelPhotoIdx, setPanelPhotoIdx] = useState(0);
   const [editingSchedule, setEditingSchedule] = useState(false);
   const [scheduleInput, setScheduleInput] = useState('');
   const [savingSchedule, setSavingSchedule] = useState(false);
@@ -123,6 +124,7 @@ export default function Transport() {
 
   const openPanel = (t) => {
     setPanelTransport(t);
+    setPanelPhotoIdx(0);
     setEditingSchedule(false);
     setEditingNotes(false);
     setConfirmDelete(false);
@@ -280,6 +282,7 @@ export default function Transport() {
                   vehicle={vehicle}
                   mileage={vehicle.mileage}
                   highlighted={isActive}
+                  showTitleStatus={true}
                   accentOverride={TRANSPORT_ACCENT[t.status] || '#e2e8f0'}
                   onTitleClick={() => navigate(`/acquisitions?v=${vehicle.id}`)}
                   badge={
@@ -337,14 +340,37 @@ export default function Transport() {
 
           {/* Vehicle hero */}
           <div style={{ padding: '4px 20px 20px' }}>
-            {ptVehicle.photos?.[0]
-              ? <img src={ptVehicle.photos[0]} alt="" style={{ width: '100%', height: 168, objectFit: 'cover', borderRadius: 10, marginBottom: 14 }} />
-              : <div style={{ width: '100%', height: 120, background: '#f1f5f9', borderRadius: 10, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {(() => {
+              const photos = Array.isArray(ptVehicle.photos) ? ptVehicle.photos : [];
+              return photos.length > 0 ? (
+                <>
+                  <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', marginBottom: 8, height: 168 }}>
+                    <img src={photos[panelPhotoIdx]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {photos.length > 1 && (
+                      <>
+                        <button onClick={() => setPanelPhotoIdx(i => Math.max(0, i - 1))} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', color: '#fff', border: 'none', borderRadius: '50%', width: 28, height: 28, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+                        <button onClick={() => setPanelPhotoIdx(i => Math.min(photos.length - 1, i + 1))} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', color: '#fff', border: 'none', borderRadius: '50%', width: 28, height: 28, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+                        <div style={{ position: 'absolute', bottom: 7, right: 9, background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20 }}>{panelPhotoIdx + 1} / {photos.length}</div>
+                      </>
+                    )}
+                  </div>
+                  {photos.length > 1 && (
+                    <div style={{ display: 'flex', gap: 5, overflowX: 'auto', marginBottom: 14 }}>
+                      {photos.map((p, i) => (
+                        <img key={i} src={p} alt="" onClick={() => setPanelPhotoIdx(i)}
+                          style={{ width: 48, height: 36, objectFit: 'cover', borderRadius: 4, flexShrink: 0, cursor: 'pointer', border: i === panelPhotoIdx ? '2px solid #0d2550' : '2px solid transparent', opacity: i === panelPhotoIdx ? 1 : 0.6, transition: 'opacity .12s, border-color .12s' }} />
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ width: '100%', height: 120, background: '#f1f5f9', borderRadius: 10, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ fontSize: 32, fontWeight: 900, color: '#cbd5e1', letterSpacing: 2 }}>
                     {[ptVehicle.make?.[0], ptVehicle.model?.[0]].filter(Boolean).join('').toUpperCase()}
                   </span>
                 </div>
-            }
+              );
+            })()}
             <div style={{ fontSize: 18, fontWeight: 800, color: '#111827', lineHeight: 1.15 }}>
               {[ptVehicle.year, ptVehicle.make, ptVehicle.model].filter(Boolean).join(' ') || pt.vehicleName || 'Unknown Vehicle'}
             </div>

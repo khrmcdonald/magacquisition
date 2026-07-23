@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { isTitleIn } from '../components/VehicleCard';
 
 const ORG_ID = 'bf236d2b-4693-4606-bf3d-ece1767690ab';
 
@@ -14,7 +15,7 @@ export default function Preview() {
     async function load() {
       const { data: rows, error: err } = await supabase
         .from('vehicles')
-        .select('id, year, make, model, trim, color, interior_color, vin, photos, buyer_name, condition, engine')
+        .select('id, year, make, model, trim, color, interior_color, vin, photos, buyer_name, condition, engine, title_status')
         .eq('org_id', ORG_ID)
         .eq('status', 'ready')
         .order('created_at', { ascending: false });
@@ -115,20 +116,30 @@ export default function Preview() {
             {(() => {
               const photos = Array.isArray(panel.photos) ? panel.photos : [];
               return (
-                <div style={{ position: 'relative', background: '#f5f7fa', height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {photos.length > 0 ? (
-                    <img src={photos[panelPhotoIdx] || photos[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <span style={{ fontSize: 56, opacity: 0.1 }}>🚗</span>
-                  )}
+                <>
+                  <div style={{ position: 'relative', background: '#f5f7fa', height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {photos.length > 0 ? (
+                      <img src={photos[panelPhotoIdx] || photos[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <span style={{ fontSize: 56, opacity: 0.1 }}>🚗</span>
+                    )}
+                    {photos.length > 1 && (
+                      <>
+                        <button onClick={() => setPanelPhotoIdx(i => Math.max(0, i - 1))} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', color: '#fff', border: 'none', borderRadius: '50%', width: 32, height: 32, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+                        <button onClick={() => setPanelPhotoIdx(i => Math.min(photos.length - 1, i + 1))} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', color: '#fff', border: 'none', borderRadius: '50%', width: 32, height: 32, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+                        <div style={{ position: 'absolute', bottom: 8, right: 10, background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20 }}>{panelPhotoIdx + 1} / {photos.length}</div>
+                      </>
+                    )}
+                  </div>
                   {photos.length > 1 && (
-                    <>
-                      <button onClick={() => setPanelPhotoIdx(i => Math.max(0, i - 1))} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', color: '#fff', border: 'none', borderRadius: '50%', width: 32, height: 32, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-                      <button onClick={() => setPanelPhotoIdx(i => Math.min(photos.length - 1, i + 1))} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', color: '#fff', border: 'none', borderRadius: '50%', width: 32, height: 32, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
-                      <div style={{ position: 'absolute', bottom: 8, right: 10, background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20 }}>{panelPhotoIdx + 1} / {photos.length}</div>
-                    </>
+                    <div style={{ display: 'flex', gap: 5, padding: '6px 8px', overflowX: 'auto', background: '#f5f7fa' }}>
+                      {photos.map((p, i) => (
+                        <img key={i} src={p} alt="" onClick={() => setPanelPhotoIdx(i)}
+                          style={{ width: 52, height: 38, objectFit: 'cover', borderRadius: 4, flexShrink: 0, cursor: 'pointer', border: i === panelPhotoIdx ? '2px solid #0d2550' : '2px solid transparent', opacity: i === panelPhotoIdx ? 1 : 0.6, transition: 'opacity .12s, border-color .12s' }} />
+                      ))}
+                    </div>
                   )}
-                </div>
+                </>
               );
             })()}
 
@@ -136,6 +147,18 @@ export default function Preview() {
               {/* VIN */}
               <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#374151', background: '#f3f4f6', padding: '5px 10px', borderRadius: 6, letterSpacing: '.05em', display: 'inline-block', alignSelf: 'flex-start', marginBottom: 6 }}>
                 VIN: {panel.vin || '—'}
+              </div>
+
+              {/* Title badge */}
+              <div style={{ marginBottom: 10 }}>
+                <span style={{
+                  background: isTitleIn(panel.title_status) ? '#d1fae5' : '#fee2e2',
+                  color: isTitleIn(panel.title_status) ? '#065f46' : '#991b1b',
+                  border: `1px solid ${isTitleIn(panel.title_status) ? '#6ee7b7' : '#fca5a5'}`,
+                  padding: '3px 12px', borderRadius: 20, fontSize: 11, fontWeight: 800,
+                }}>
+                  {isTitleIn(panel.title_status) ? 'Title IN' : 'Title OUT'}
+                </span>
               </div>
 
               {/* Specs */}

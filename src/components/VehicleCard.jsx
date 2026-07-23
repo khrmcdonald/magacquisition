@@ -125,12 +125,11 @@ function AutoBadge({ vehicle, auctionCloseDate }) {
 //   children:       ReactNode  — extra content below standard fields (grid)
 //                               or operational strip (list)
 //
-const TITLE_STATUS_STYLE = {
-  pending:  { label: 'Title: Pending',  color: '#92400e', bg: '#fef3c7', border: '#fde68a' },
-  received: { label: 'Title: Received', color: '#1e40af', bg: '#dbeafe', border: '#93c5fd' },
-  clear:    { label: 'Title: Clear',    color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' },
-  issue:    { label: '⚠ Title Issue',   color: '#991b1b', bg: '#fee2e2', border: '#fca5a5' },
-};
+export function isTitleIn(ts) {
+  return ts === 'in' || ts === 'clear';
+}
+const TITLE_IN  = { label: 'Title IN',  color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' };
+const TITLE_OUT = { label: 'Title OUT', color: '#991b1b', bg: '#fee2e2', border: '#fca5a5' };
 
 const STATUS_ACCENT = {
   intake:     '#f59e0b',
@@ -156,6 +155,7 @@ export function VehicleCard({
   showAge = false,
   showDatePurchased = false,
   showTitleStatus = false,
+  onTitleToggle,
   sourceName,
   onDetails,
   actionButton,
@@ -260,13 +260,18 @@ export function VehicleCard({
             {vehicle.list_price && <div style={{ fontSize: 17, fontWeight: 800, color: '#0d2550' }}>{listPrice}</div>}
             {badgeContent}
             {showAge && <AgePill vehicle={vehicle} />}
-            {showTitleStatus && vehicle.titleStatus && (() => {
-              const ts = TITLE_STATUS_STYLE[vehicle.titleStatus];
-              return ts ? (
+            {showTitleStatus && (() => {
+              const ts = isTitleIn(vehicle.titleStatus) ? TITLE_IN : TITLE_OUT;
+              return onTitleToggle ? (
+                <button onClick={e => { e.stopPropagation(); onTitleToggle(); }}
+                  style={{ background: ts.bg, color: ts.color, border: `1px solid ${ts.border}`, borderRadius: 20, padding: '2px 9px', fontSize: 10, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  {ts.label} <span style={{ opacity: 0.6, fontSize: 9 }}>↕</span>
+                </button>
+              ) : (
                 <span style={{ background: ts.bg, color: ts.color, border: `1px solid ${ts.border}`, borderRadius: 20, padding: '2px 9px', fontSize: 10, fontWeight: 700 }}>
                   {ts.label}
                 </span>
-              ) : null;
+              );
             })()}
             {actionButton && (
               <div onClick={e => e.stopPropagation()}>{actionButton}</div>
@@ -363,16 +368,21 @@ export function VehicleCard({
         </div>
 
         {/* Age + Title status — compact inline row */}
-        {(showAge || (showTitleStatus && vehicle.titleStatus)) && (
+        {(showAge || showTitleStatus) && (
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 }}>
             {showAge && <AgePill vehicle={vehicle} style={{ fontSize: 10, padding: '1px 6px' }} />}
-            {showTitleStatus && vehicle.titleStatus && (() => {
-              const ts = TITLE_STATUS_STYLE[vehicle.titleStatus];
-              return ts ? (
+            {showTitleStatus && (() => {
+              const ts = isTitleIn(vehicle.titleStatus) ? TITLE_IN : TITLE_OUT;
+              return onTitleToggle ? (
+                <button onClick={e => { e.stopPropagation(); onTitleToggle(); }}
+                  style={{ background: ts.bg, color: ts.color, border: `1px solid ${ts.border}`, borderRadius: 20, padding: '1px 6px', fontSize: 10, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                  {ts.label} <span style={{ opacity: 0.6, fontSize: 9 }}>↕</span>
+                </button>
+              ) : (
                 <span style={{ background: ts.bg, color: ts.color, border: `1px solid ${ts.border}`, borderRadius: 20, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>
                   {ts.label}
                 </span>
-              ) : null;
+              );
             })()}
           </div>
         )}

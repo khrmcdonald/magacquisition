@@ -89,7 +89,7 @@ export default function Inventory() {
 
   const listed     = vehicles.filter(v => v.status === 'ready');
   const inAuction  = vehicles.filter(v => v.status === 'in_auction');
-  const availablePrices = listed.map(askPrice).filter(p => p > 0);
+  const availablePrices = vehicles.map(askPrice).filter(p => p > 0);
   const avgAsk     = availablePrices.length ? Math.round(availablePrices.reduce((s, p) => s + p, 0) / availablePrices.length) : null;
   const lowestAsk  = availablePrices.length ? Math.min(...availablePrices) : null;
 

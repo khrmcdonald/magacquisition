@@ -25,6 +25,7 @@ import Help from './pages/Help';
 import Titles from './pages/Titles';
 import Sold from './pages/Sold';
 import Preview from './pages/Preview';
+import BulkEdit from './pages/BulkEdit';
 
 function RequireAuth({ children }) {
   const { user } = useAuth();
@@ -62,6 +63,7 @@ function AuthenticatedApp() {
           <Route path="inventory" element={<Inventory />} />
           <Route path="help" element={<Help />} />
           <Route path="sold" element={<Sold />} />
+          <Route path="bulk-edit" element={<BulkEdit />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

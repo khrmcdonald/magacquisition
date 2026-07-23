@@ -240,7 +240,7 @@ export default function History() {
                 </thead>
                 <tbody>
                   {filteredVehicles.map(v => {
-                    const titleMap = { pending: 'Pending', in_transit: 'In Transit', on_hand: 'On Hand', lien: 'Lien', missing: 'Missing', transferred: 'Transferred' };
+                    const titleMap = { in: 'Title IN', out: 'Title OUT', clear: 'Title IN', pending: 'Title OUT', received: 'Title OUT', issue: 'Title OUT' };
                     const statusMap = {
                       intake: { label: 'Intake', bg: '#f3f4f6', color: '#6b7280' },
                       recon: { label: 'In Recon', bg: '#fef3c7', color: '#92400e' },
