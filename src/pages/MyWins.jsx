@@ -177,6 +177,7 @@ export default function MyWins() {
                         badge={<span style={{ background: '#0d2550', color: '#e8b84b', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>WON</span>}
                         pricePill={null}
                         showTitleStatus={true}
+                        showKeys={true}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
                           <div style={{ fontSize: 11, color: '#9ca3af' }}>{data.bids.filter(b => b.vehicleId === v.id).length} bids total</div>
@@ -228,6 +229,7 @@ export default function MyWins() {
                     badge={<span style={{ background: '#0d2550', color: '#e8b84b', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>WON</span>}
                     pricePill={null}
                     showTitleStatus={true}
+                    showKeys={true}
                     actionButton={
                       <button onClick={() => setDetailModal(v)} title="View details" style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14 }}>🔍</button>
                     }

@@ -131,6 +131,34 @@ export function isTitleIn(ts) {
 const TITLE_IN  = { label: 'Title IN',  color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' };
 const TITLE_OUT = { label: 'Title OUT', color: '#991b1b', bg: '#fee2e2', border: '#fca5a5' };
 
+// ── Key fobs ──────────────────────────────────────────────────────────────────
+// vehicle.keys is a JSONB object: { available: number, total: number }. Total
+// defaults to 2 (industry standard) until set explicitly on the vehicle.
+export function getKeysCount(vehicle) {
+  const total = vehicle.keys?.total ?? 2;
+  const available = vehicle.keys?.available ?? 0;
+  return { available, total };
+}
+
+export function KeysPill({ vehicle, style }) {
+  const { available, total } = getKeysCount(vehicle);
+  const complete = available >= total;
+  const color = complete ? '#065f46' : available === 0 ? '#991b1b' : '#b45309';
+  const bg = complete ? '#d1fae5' : available === 0 ? '#fee2e2' : '#fef3c7';
+  const border = complete ? '#6ee7b7' : available === 0 ? '#fca5a5' : '#fcd34d';
+  return (
+    <span style={{
+      background: bg, color, border: `1px solid ${border}`,
+      padding: '2px 9px', borderRadius: 20,
+      fontSize: 11, fontWeight: 700,
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      ...style,
+    }}>
+      🔑 {available}/{total}
+    </span>
+  );
+}
+
 const STATUS_ACCENT = {
   intake:     '#f59e0b',
   no_sale:    '#94a3b8',
@@ -155,6 +183,7 @@ export function VehicleCard({
   showAge = false,
   showDatePurchased = false,
   showTitleStatus = false,
+  showKeys = false,
   onTitleToggle,
   sourceName,
   onDetails,
@@ -273,6 +302,7 @@ export function VehicleCard({
                 </span>
               );
             })()}
+            {showKeys && <KeysPill vehicle={vehicle} />}
             {actionButton && (
               <div onClick={e => e.stopPropagation()}>{actionButton}</div>
             )}
@@ -367,8 +397,8 @@ export function VehicleCard({
           {vehicle.vin || '—'}
         </div>
 
-        {/* Age + Title status — compact inline row */}
-        {(showAge || showTitleStatus) && (
+        {/* Age + Title status + Keys — compact inline row */}
+        {(showAge || showTitleStatus || showKeys) && (
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 }}>
             {showAge && <AgePill vehicle={vehicle} style={{ fontSize: 10, padding: '1px 6px' }} />}
             {showTitleStatus && (() => {
@@ -384,6 +414,7 @@ export function VehicleCard({
                 </span>
               );
             })()}
+            {showKeys && <KeysPill vehicle={vehicle} style={{ fontSize: 10, padding: '1px 6px' }} />}
           </div>
         )}
 

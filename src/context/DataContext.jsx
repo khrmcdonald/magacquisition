@@ -50,6 +50,7 @@ function mapVehicle(r) {
     titleElectronic: r.title_electronic,
     title_tracker: r.title_tracker || null,
     inspection: r.inspection || null,
+    keys: r.keys || null,
     canListBeforeTitle: r.can_list_before_title,
     winnerId: r.winner_id,
     winnerName: r.winner_name,
@@ -161,6 +162,7 @@ const VEHICLE_FIELD_MAP = {
   titleStatus: 'title_status', titleElectronic: 'title_electronic',
   titleNotes: 'title_notes',
   inspection: 'inspection',
+  keys: 'keys',
   canListBeforeTitle: 'can_list_before_title',
   winnerId: 'winner_id', winnerName: 'winner_name', winningBid: 'winning_bid',
   awardedAt: 'awarded_at',
@@ -534,6 +536,7 @@ export function DataProvider({ children }) {
       buyer_name:          vehicle.buyer_name       || null,
       disclosure_notes:    vehicle.notes            || null,
       photos:              Array.isArray(vehicle.photos) ? vehicle.photos : [],
+      keys:                vehicle.keys             || null,
     });
 
     const { data: row, error } = await supabase

@@ -283,6 +283,7 @@ export default function Transport() {
                   mileage={vehicle.mileage}
                   highlighted={isActive}
                   showTitleStatus={true}
+                  showKeys={true}
                   accentOverride={TRANSPORT_ACCENT[t.status] || '#e2e8f0'}
                   onTitleClick={() => navigate(`/acquisitions?v=${vehicle.id}`)}
                   badge={

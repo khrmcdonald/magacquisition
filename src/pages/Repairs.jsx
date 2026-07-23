@@ -263,6 +263,7 @@ export default function Repairs() {
                   mileage={vehicle.mileage}
                   highlighted={isActive}
                   showTitleStatus={true}
+                  showKeys={true}
                   accentOverride={roAccent(ros)}
                   onTitleClick={() => navigate(`/acquisitions?v=${vehicle.id}`)}
                   badge={

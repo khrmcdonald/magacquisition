@@ -510,6 +510,7 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
     source_id: '', purchasePrice: '', condition: 'Good', notes: '',
     overheadCosts: '', floorPrice: '', listPrice: '', photos: [],
     titleStatus: 'pending', currentLocation: '',
+    keys: { available: 0, total: 2 },
     datePurchased: '',
     // deal record fields
     seller_name: '', buyer_id: '', purchase_amount: '',
@@ -524,6 +525,8 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
   const [addingLocation, setAddingLocation] = useState(false);
   const [newLocationName, setNewLocationName] = useState('');
   const [savingLocation, setSavingLocation] = useState(false);
+  const [dragPhotoIdx, setDragPhotoIdx] = useState(null);
+  const [dragOverIdx, setDragOverIdx] = useState(null);
 
   const handleAddLocation = async () => {
     if (!newLocationName.trim() || !addLocation) return;
@@ -599,6 +602,16 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
 
   const removePhoto = (idx) => {
     setForm(f => ({ ...f, photos: f.photos.filter((_, i) => i !== idx) }));
+  };
+
+  const reorderPhoto = (fromIdx, toIdx) => {
+    if (fromIdx === toIdx) return;
+    setForm(f => {
+      const photos = [...f.photos];
+      const [moved] = photos.splice(fromIdx, 1);
+      photos.splice(toIdx, 0, moved);
+      return { ...f, photos };
+    });
   };
 
   const handleSubmit = (e) => {
@@ -687,6 +700,24 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
           <select value={form.condition} onChange={e => set('condition', e.target.value)}>
             {CONDITIONS.map(c => <option key={c}>{c}</option>)}
           </select>
+        </div>
+        <div className="form-group">
+          <label>Key fobs (available / total)</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="number" min={0}
+              value={form.keys?.available ?? ''}
+              onChange={e => set('keys', { ...form.keys, total: form.keys?.total ?? 2, available: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+              placeholder="0" style={{ width: 70 }}
+            />
+            <span style={{ color: '#6b7280' }}>/</span>
+            <input
+              type="number" min={0}
+              value={form.keys?.total ?? 2}
+              onChange={e => set('keys', { ...form.keys, available: form.keys?.available ?? 0, total: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+              placeholder="2" style={{ width: 70 }}
+            />
+          </div>
         </div>
         <div className="form-group">
           <label>Purchase price</label>
@@ -927,18 +958,45 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
           <div style={{ fontSize: 12, color: '#92400e', marginBottom: 8 }}>Max 6 photos per vehicle</div>
         )}
         {form.photos && form.photos.length > 0 && (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {form.photos.map((p, i) => (
-              <div key={i} style={{ position: 'relative' }}>
-                <img src={p} alt="" style={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb' }} />
-                <button
-                  type="button"
-                  onClick={() => removePhoto(i)}
-                  style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >×</button>
-              </div>
-            ))}
-          </div>
+          <>
+            <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 6 }}>Drag to reorder — first photo is the cover image.</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {form.photos.map((p, i) => (
+                <div
+                  key={p}
+                  draggable
+                  onDragStart={() => setDragPhotoIdx(i)}
+                  onDragEnter={() => setDragOverIdx(i)}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={e => {
+                    e.preventDefault();
+                    if (dragPhotoIdx !== null) reorderPhoto(dragPhotoIdx, i);
+                    setDragPhotoIdx(null);
+                    setDragOverIdx(null);
+                  }}
+                  onDragEnd={() => { setDragPhotoIdx(null); setDragOverIdx(null); }}
+                  style={{
+                    position: 'relative', cursor: 'grab',
+                    opacity: dragPhotoIdx === i ? 0.4 : 1,
+                    outline: dragOverIdx === i && dragPhotoIdx !== null && dragPhotoIdx !== i ? '2px solid #0d2550' : 'none',
+                    outlineOffset: 2, borderRadius: 6,
+                  }}
+                >
+                  <img src={p} alt="" draggable={false} style={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb', pointerEvents: 'none' }} />
+                  {i === 0 && (
+                    <span style={{ position: 'absolute', bottom: 2, left: 2, background: 'rgba(13,37,80,0.85)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4 }}>
+                      Cover
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(i)}
+                    style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >×</button>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
@@ -1784,6 +1842,7 @@ export default function Acquisitions() {
                 vehicle={v}
                 showAge={['wholesale', 'gm', 'admin'].includes(user.role)}
                 showTitleStatus={true}
+                showKeys={true}
                 onTitleToggle={!isReadOnly ? () => toggleTitleStatus(v) : undefined}
                 mileage={v.mileage ?? mileageMap[v.id] ?? null}
                 showCostBasis={!!v.totalCost}
@@ -1853,6 +1912,7 @@ export default function Acquisitions() {
                 showAge={['wholesale', 'gm', 'admin'].includes(user.role)}
                 showDatePurchased={true}
                 showTitleStatus={true}
+                showKeys={true}
                 onTitleToggle={!isReadOnly ? () => toggleTitleStatus(v) : undefined}
                 sourceName={sourceOptions.find(s => s.value === v.sourceId)?.label || null}
                 vehicle={v}

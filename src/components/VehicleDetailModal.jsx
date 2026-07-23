@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from './Toast';
-import { isTitleIn } from './VehicleCard';
+import { isTitleIn, getKeysCount } from './VehicleCard';
 
 const TRANSPORT_STEPS = [
   { key: 'awarded',       label: 'Awarded' },
@@ -59,6 +59,7 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
 
   const [photoIdx, setPhotoIdx] = useState(0);
   const [titleSaving, setTitleSaving] = useState(false);
+  const [keysSaving, setKeysSaving] = useState(false);
   const [addingRo, setAddingRo] = useState(false);
   const [newRoDesc, setNewRoDesc] = useState('');
   const [newRoCost, setNewRoCost] = useState('');
@@ -109,6 +110,17 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
       showToast(newStatus === 'clear' ? '✓ Title marked IN' : 'Title marked OUT', 'success');
     } catch (e) { showToast('Failed to update title', 'error'); }
     setTitleSaving(false);
+  };
+
+  const adjustKeys = async (delta) => {
+    const { available, total } = getKeysCount(lv);
+    const next = Math.max(0, Math.min(total, available + delta));
+    if (next === available) return;
+    setKeysSaving(true);
+    try {
+      await updateVehicle(lv.id, { keys: { available: next, total } });
+    } catch (e) { showToast('Failed to update keys', 'error'); }
+    setKeysSaving(false);
   };
 
   const handleAddRo = async () => {
@@ -180,6 +192,7 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
               { label: 'Status', value: STATUS_LABELS[lv.status] || lv.status },
               !isBidder && lv.buyer_name ? { label: 'Buyer', value: lv.buyer_name } : null,
               { label: 'Title', value: isTitleIn(lv.titleStatus) ? 'IN' : 'OUT' },
+              { label: 'Keys', value: `${getKeysCount(lv).available}/${getKeysCount(lv).total}` },
             ].filter(Boolean).map(({ label, value }) => (
               <div key={label} style={{ background: 'rgba(255,255,255,.1)', borderRadius: 8, padding: '5px 12px', minWidth: 80 }}>
                 <div style={{ fontSize: 9, fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</div>
@@ -294,6 +307,42 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
               </button>
             </div>
           )}
+
+          {/* Keys — wholesale can adjust count */}
+          {isWholesale && (() => {
+            const { available, total } = getKeysCount(lv);
+            const complete = available >= total;
+            return (
+              <div style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: 18, marginBottom: 18 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em' }}>Key Fobs</div>
+                  <span style={{
+                    background: complete ? '#d1fae5' : available === 0 ? '#fee2e2' : '#fef3c7',
+                    color: complete ? '#065f46' : available === 0 ? '#991b1b' : '#b45309',
+                    padding: '3px 12px', borderRadius: 20, fontSize: 12, fontWeight: 800,
+                  }}>
+                    🔑 {available}/{total}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => adjustKeys(-1)}
+                    disabled={keysSaving || available <= 0}
+                    style={{ flex: 1, background: '#fee2e2', color: '#991b1b', border: '1.5px solid #fca5a5', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: keysSaving || available <= 0 ? 'not-allowed' : 'pointer', opacity: keysSaving || available <= 0 ? 0.5 : 1 }}
+                  >
+                    − Missing a key
+                  </button>
+                  <button
+                    onClick={() => adjustKeys(1)}
+                    disabled={keysSaving || available >= total}
+                    style={{ flex: 1, background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: keysSaving || available >= total ? 'not-allowed' : 'pointer', opacity: keysSaving || available >= total ? 0.5 : 1 }}
+                  >
+                    + Key received
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Repairs — wholesale can manage */}
           {isWholesale && (

@@ -19,6 +19,14 @@ const TITLE_STATUSES = [
   { value: 'pending', label: 'Title OUT' },
 ];
 
+const KEYS_OPTIONS = [
+  { value: '2/2', label: '2/2 — Both keys' },
+  { value: '1/2', label: '1/2 — One key' },
+  { value: '0/2', label: '0/2 — No keys' },
+  { value: '1/1', label: '1/1 — Single key' },
+  { value: '0/1', label: '0/1 — No key' },
+];
+
 const CONDITIONS = [
   { value: '',          label: '—'        },
   { value: 'Excellent', label: 'Excellent' },
@@ -33,6 +41,7 @@ const BULK_FIELDS = [
   { value: 'sourceId',  label: 'Source'    },
   { value: 'condition', label: 'Condition' },
   { value: 'titleStatus', label: 'Title'  },
+  { value: 'keys',      label: 'Key fobs' },
 ];
 
 const statusStyle = (val) => {
@@ -115,6 +124,10 @@ export default function BulkEdit() {
         const b = buyers.find(p => p.id === bulkValue);
         return { ...r, buyer_id: b?.id || null, buyer_name: b?.name || '' };
       }
+      if (bulkField === 'keys') {
+        const [available, total] = bulkValue.split('/').map(Number);
+        return { ...r, keys: { available, total } };
+      }
       return { ...r, [bulkField]: bulkValue };
     }));
     setDirty(prev => {
@@ -139,6 +152,7 @@ export default function BulkEdit() {
           floorPrice: r.floorPrice || null,
           titleStatus: r.titleStatus || null,
           condition: r.condition || null,
+          keys: r.keys || null,
         })
       )
     );
@@ -181,6 +195,7 @@ export default function BulkEdit() {
     if (bulkField === 'sourceId') return sources.map(s => ({ value: s.id, label: s.name }));
     if (bulkField === 'condition') return CONDITIONS.filter(c => c.value);
     if (bulkField === 'titleStatus') return TITLE_STATUSES;
+    if (bulkField === 'keys') return KEYS_OPTIONS;
     return [];
   };
 
@@ -299,13 +314,14 @@ export default function BulkEdit() {
               <th style={{ ...cell, minWidth: 140, fontWeight: 700, color: '#6b7280', fontSize: 11, textTransform: 'uppercase', letterSpacing: '.06em', textAlign: 'left' }}>Source</th>
               <th style={{ ...cell, minWidth: 110, fontWeight: 700, color: '#6b7280', fontSize: 11, textTransform: 'uppercase', letterSpacing: '.06em', textAlign: 'left' }}>Floor Price</th>
               <th style={{ ...cell, minWidth: 120, fontWeight: 700, color: '#6b7280', fontSize: 11, textTransform: 'uppercase', letterSpacing: '.06em', textAlign: 'left' }}>Title</th>
+              <th style={{ ...cell, minWidth: 100, fontWeight: 700, color: '#6b7280', fontSize: 11, textTransform: 'uppercase', letterSpacing: '.06em', textAlign: 'left' }}>Keys</th>
               <th style={{ ...cell, minWidth: 110, fontWeight: 700, color: '#6b7280', fontSize: 11, textTransform: 'uppercase', letterSpacing: '.06em', textAlign: 'left' }}>Condition</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: 60, color: '#9ca3af', fontSize: 14 }}>
+                <td colSpan={10} style={{ textAlign: 'center', padding: 60, color: '#9ca3af', fontSize: 14 }}>
                   No vehicles match your filter
                 </td>
               </tr>
@@ -413,6 +429,25 @@ export default function BulkEdit() {
                     >
                       {TITLE_STATUSES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
+                  </td>
+
+                  {/* Keys */}
+                  <td style={{ ...cell, minWidth: 100, padding: '0 10px' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <input
+                        type="number" min={0}
+                        value={row.keys?.available ?? ''}
+                        onChange={e => changeRow(row.id, 'keys', { total: row.keys?.total ?? 2, available: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                        placeholder="0" style={{ ...inputStyle, width: 40, minWidth: 40, padding: '4px 4px', textAlign: 'center' }}
+                      />
+                      <span style={{ color: '#9ca3af' }}>/</span>
+                      <input
+                        type="number" min={0}
+                        value={row.keys?.total ?? 2}
+                        onChange={e => changeRow(row.id, 'keys', { available: row.keys?.available ?? 0, total: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                        placeholder="2" style={{ ...inputStyle, width: 40, minWidth: 40, padding: '4px 4px', textAlign: 'center' }}
+                      />
+                    </div>
                   </td>
 
                   {/* Condition */}
