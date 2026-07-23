@@ -788,6 +788,18 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
         </div>
       )}
 
+      {/* Notes */}
+      <div className="form-group">
+        <label>Notes <span style={{ fontWeight: 400, color: '#9ca3af' }}>(shown on vehicle cards & preview)</span></label>
+        <textarea
+          value={form.notes || ''}
+          onChange={e => set('notes', e.target.value)}
+          placeholder="Anything buyers or other stores should know — condition callouts, missing parts, etc."
+          rows={3}
+          style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
+        />
+      </div>
+
       {/* Location */}
       <div className="form-group">
         <label>Current location</label>

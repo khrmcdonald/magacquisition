@@ -142,15 +142,9 @@ export function getKeysCount(vehicle) {
 
 export function KeysPill({ vehicle, style }) {
   const { available, total } = getKeysCount(vehicle);
-  const complete = available >= total;
-  const color = complete ? '#065f46' : available === 0 ? '#991b1b' : '#b45309';
-  const bg = complete ? '#d1fae5' : available === 0 ? '#fee2e2' : '#fef3c7';
-  const border = complete ? '#6ee7b7' : available === 0 ? '#fca5a5' : '#fcd34d';
   return (
     <span style={{
-      background: bg, color, border: `1px solid ${border}`,
-      padding: '2px 9px', borderRadius: 20,
-      fontSize: 11, fontWeight: 700,
+      color: '#6b7280', fontSize: 11, fontWeight: 600,
       display: 'inline-flex', alignItems: 'center', gap: 4,
       ...style,
     }}>
@@ -282,6 +276,11 @@ export function VehicleCard({
                 mileage != null ? `${parseInt(mileage).toLocaleString()} mi` : null,
               ].filter(Boolean).join(' · ')}
             </div>
+            {vehicle.disclosure_notes && (
+              <div style={{ fontSize: 11, color: '#b45309', marginTop: 3, maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={vehicle.disclosure_notes}>
+                ⚠ {vehicle.disclosure_notes}
+              </div>
+            )}
           </div>
 
           {/* Right: price + badge + age + title status + action */}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { isTitleIn } from '../components/VehicleCard';
+import { isTitleIn, getKeysCount } from '../components/VehicleCard';
 
 const ORG_ID = 'bf236d2b-4693-4606-bf3d-ece1767690ab';
 
@@ -15,7 +15,7 @@ export default function Preview() {
     async function load() {
       const { data: rows, error: err } = await supabase
         .from('vehicles')
-        .select('id, year, make, model, trim, color, interior_color, vin, photos, buyer_name, condition, engine, title_status')
+        .select('id, year, make, model, trim, color, interior_color, vin, photos, buyer_name, condition, engine, title_status, disclosure_notes, keys')
         .eq('org_id', ORG_ID)
         .eq('status', 'ready')
         .order('created_at', { ascending: false });
@@ -159,6 +159,9 @@ export default function Preview() {
                 }}>
                   {isTitleIn(panel.title_status) ? 'Title IN' : 'Title OUT'}
                 </span>
+                <span style={{ marginLeft: 10, fontSize: 12, color: '#6b7280', fontWeight: 600 }}>
+                  🔑 {getKeysCount(panel).available}/{getKeysCount(panel).total} keys
+                </span>
               </div>
 
               {/* Specs */}
@@ -175,6 +178,12 @@ export default function Preview() {
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{value}</span>
                 </div>
               ))}
+
+              {panel.disclosure_notes && (
+                <div style={{ marginTop: 10, fontSize: 12, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '8px 10px', lineHeight: 1.5 }}>
+                  ⚠ {panel.disclosure_notes}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -211,7 +220,21 @@ function VehiclePreviewCard({ vehicle: v, active, onView }) {
         <div style={{ fontWeight: 800, fontSize: 16, color: '#111827', marginBottom: 2, lineHeight: 1.2 }}>
           {v.year} {v.make} {v.model}
         </div>
-        {v.trim && <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 8 }}>{v.trim}</div>}
+        {v.trim && <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 6 }}>{v.trim}</div>}
+
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+          <span style={{
+            background: isTitleIn(v.title_status) ? '#d1fae5' : '#fee2e2',
+            color: isTitleIn(v.title_status) ? '#065f46' : '#991b1b',
+            border: `1px solid ${isTitleIn(v.title_status) ? '#6ee7b7' : '#fca5a5'}`,
+            padding: '1px 7px', borderRadius: 20, fontSize: 10, fontWeight: 700,
+          }}>
+            {isTitleIn(v.title_status) ? 'Title IN' : 'Title OUT'}
+          </span>
+          <span style={{ color: '#6b7280', fontSize: 11, fontWeight: 600 }}>
+            🔑 {getKeysCount(v).available}/{getKeysCount(v).total}
+          </span>
+        </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, marginBottom: 12 }}>
           <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#374151', background: '#f3f4f6', padding: '3px 7px', borderRadius: 4, display: 'inline-block', letterSpacing: '.05em', alignSelf: 'flex-start' }}>
@@ -226,7 +249,19 @@ function VehiclePreviewCard({ vehicle: v, active, onView }) {
           {v.color && (
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#6b7280' }}>Color</span>
-              <span style={{ fontWeight: 600 }}>{v.color}</span>
+              <span style={{ fontWeight: 600 }}>{v.color}{v.interior_color ? ` / ${v.interior_color}` : ''}</span>
+            </div>
+          )}
+          {v.condition && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#6b7280' }}>Condition</span>
+              <span style={{ fontWeight: 600 }}>{v.condition}</span>
+            </div>
+          )}
+          {v.engine && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#6b7280' }}>Engine</span>
+              <span style={{ fontWeight: 600 }}>{v.engine}</span>
             </div>
           )}
           {v.buyer_name && (
@@ -236,6 +271,12 @@ function VehiclePreviewCard({ vehicle: v, active, onView }) {
             </div>
           )}
         </div>
+
+        {v.disclosure_notes && (
+          <div style={{ fontSize: 11, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '6px 8px', marginBottom: 12, lineHeight: 1.4 }}>
+            ⚠ {v.disclosure_notes}
+          </div>
+        )}
 
         <button
           onClick={onView}

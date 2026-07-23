@@ -317,8 +317,8 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, marginBottom: 12 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em' }}>Key Fobs</div>
                   <span style={{
-                    background: complete ? '#d1fae5' : available === 0 ? '#fee2e2' : '#fef3c7',
-                    color: complete ? '#065f46' : available === 0 ? '#991b1b' : '#b45309',
+                    background: complete ? '#d1fae5' : '#f3f4f6',
+                    color: complete ? '#065f46' : '#6b7280',
                     padding: '3px 12px', borderRadius: 20, fontSize: 12, fontWeight: 800,
                   }}>
                     🔑 {available}/{total}
