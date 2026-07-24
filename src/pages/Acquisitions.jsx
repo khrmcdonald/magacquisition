@@ -8,6 +8,7 @@ import RepairOrdersModal from '../components/RepairOrdersModal';
 import ArbitrationResolveModal from '../components/ArbitrationResolveModal';
 import VehicleDetailModal from '../components/VehicleDetailModal';
 import { useToast } from '../components/Toast';
+import { printTransportOrder } from '../lib/transportOrder';
 
 const CONDITIONS = ['Excellent', 'Good', 'Fair', 'Poor'];
 
@@ -1251,8 +1252,9 @@ function InspectionModal({ vehicle, inspectors, addInspector, onSave, onClose })
 export default function Acquisitions() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, addLocation, addInspector, addRepairOrder, addPickupAddress, logMileage, addTransport } = useData();
+  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, addLocation, addInspector, addRepairOrder, addPickupAddress, logMileage, addTransport, addDestination } = useData();
   const buyers = (data.profiles || []).filter(p => p.buyer_number);
+  const destinations = data.destinations || [];
   const { showToast } = useToast();
 
   const toggleTitleStatus = async (v) => {
@@ -1289,8 +1291,14 @@ export default function Acquisitions() {
   const [sellPrice, setSellPrice] = useState('');
   const [sellDate, setSellDate] = useState('');
   const [sellTo, setSellTo] = useState('');
+  const [sellToAddress, setSellToAddress] = useState('');
+  const [sellDriver, setSellDriver] = useState('');
   const [sellGross, setSellGross] = useState('');
   const [sellSaving, setSellSaving] = useState(false);
+  const [addingDestination, setAddingDestination] = useState(false);
+  const [newDestName, setNewDestName] = useState('');
+  const [newDestAddress, setNewDestAddress] = useState('');
+  const [savingDestination, setSavingDestination] = useState(false);
 
   // ── Add transport modal ──────────────────────────────────────────────────────
   const [addTransportModal, setAddTransportModal] = useState(null);
@@ -1579,7 +1587,26 @@ export default function Acquisitions() {
     setSellPrice('');
     setSellDate(new Date().toISOString().slice(0, 10));
     setSellTo('');
+    setSellToAddress('');
+    setSellDriver('');
     setSellGross('');
+    setAddingDestination(false);
+    setNewDestName('');
+    setNewDestAddress('');
+  };
+
+  const handleAddDestination = async () => {
+    if (!newDestName.trim() || !addDestination) return;
+    setSavingDestination(true);
+    try {
+      const row = await addDestination(newDestName.trim(), newDestAddress.trim());
+      setSellTo(row.name);
+      setSellToAddress(row.address || '');
+      setAddingDestination(false);
+      setNewDestName('');
+      setNewDestAddress('');
+    } catch (_) {}
+    setSavingDestination(false);
   };
 
   const handleSellConfirm = async () => {
@@ -1594,9 +1621,18 @@ export default function Acquisitions() {
         soldPrice: price,
         soldDate: sellDate,
         soldTo: sellTo.trim(),
+        soldToAddress: sellToAddress.trim() || null,
+        transportDriver: sellDriver.trim() || null,
         soldGross: gross,
       });
       showToast('Vehicle marked as sold.', 'success');
+      printTransportOrder({
+        vehicle: sellModal,
+        mileage: mileageMap[sellModal.id],
+        destName: sellTo.trim(),
+        destAddress: sellToAddress.trim(),
+        driver: sellDriver.trim(),
+      });
       const soldId = sellModal.id;
       setSellModal(null);
       if (panelVehicle?.id === soldId) closePanel();
@@ -2477,8 +2513,56 @@ export default function Acquisitions() {
                 <input type="date" value={sellDate} onChange={e => setSellDate(e.target.value)} style={{ width: '100%', boxSizing: 'border-box' }} />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label>Sold To * <span style={{ fontWeight: 400, color: '#9ca3af' }}>(store name or auction)</span></label>
-                <input type="text" value={sellTo} onChange={e => setSellTo(e.target.value)} placeholder="e.g. Cherry Hill CDJR or ADESA Detroit" style={{ width: '100%', boxSizing: 'border-box' }} />
+                <label>Destination * <span style={{ fontWeight: 400, color: '#9ca3af' }}>(store name or auction)</span></label>
+                {addingDestination ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <input
+                      autoFocus
+                      value={newDestName}
+                      onChange={e => setNewDestName(e.target.value)}
+                      placeholder="Name — e.g. Cherry Hill CDJR"
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    />
+                    <input
+                      value={newDestAddress}
+                      onChange={e => setNewDestAddress(e.target.value)}
+                      placeholder="Address — e.g. 123 Main St, Cherry Hill, NJ"
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button type="button" onClick={handleAddDestination} disabled={!newDestName.trim() || savingDestination}
+                        style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        {savingDestination ? '…' : 'Save destination'}
+                      </button>
+                      <button type="button" onClick={() => { setAddingDestination(false); setNewDestName(''); setNewDestAddress(''); }}
+                        style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, cursor: 'pointer', color: '#6b7280' }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    value={sellTo}
+                    onChange={e => {
+                      if (e.target.value === '__add_new__') { setAddingDestination(true); return; }
+                      const dest = destinations.find(d => d.name === e.target.value);
+                      setSellTo(e.target.value);
+                      setSellToAddress(dest?.address || '');
+                    }}
+                    style={{ width: '100%', boxSizing: 'border-box' }}
+                  >
+                    <option value="">Select destination…</option>
+                    {destinations.map(d => <option key={d.id} value={d.name}>{d.name}{d.address ? ` — ${d.address}` : ''}</option>)}
+                    <option value="__add_new__">+ Add new destination…</option>
+                  </select>
+                )}
+                {!addingDestination && sellToAddress && (
+                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{sellToAddress}</div>
+                )}
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>Driver <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span></label>
+                <input type="text" value={sellDriver} onChange={e => setSellDriver(e.target.value)} placeholder="Who's driving this one" style={{ width: '100%', boxSizing: 'border-box' }} />
               </div>
               {(() => {
                 const price = parseFloat(sellPrice);
@@ -2501,7 +2585,7 @@ export default function Acquisitions() {
                 disabled={sellSaving || !sellPrice || !sellDate || !sellTo.trim()}
                 style={{ opacity: (!sellPrice || !sellDate || !sellTo.trim()) ? 0.45 : 1 }}
               >
-                {sellSaving ? 'Saving…' : 'Mark as Sold'}
+                {sellSaving ? 'Saving…' : 'Mark as Sold & Print Transport Order'}
               </button>
             </div>
           </div>

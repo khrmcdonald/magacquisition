@@ -67,6 +67,8 @@ function mapVehicle(r) {
     soldPrice: r.sold_price || null,
     soldDate: r.sold_date || null,
     soldTo: r.sold_to || null,
+    soldToAddress: r.sold_to_address || null,
+    transportDriver: r.transport_driver || null,
     soldGross: r.sold_gross || null,
   };
 }
@@ -174,6 +176,8 @@ const VEHICLE_FIELD_MAP = {
   soldPrice: 'sold_price',
   soldDate: 'sold_date',
   soldTo: 'sold_to',
+  soldToAddress: 'sold_to_address',
+  transportDriver: 'transport_driver',
   soldGross: 'sold_gross',
 };
 
@@ -201,6 +205,7 @@ export function DataProvider({ children }) {
   const [repairVendors, setRepairVendors] = useState([]);
   const [inspectors, setInspectors] = useState([]);
   const [pickupAddresses, setPickupAddresses] = useState([]);
+  const [destinations, setDestinations] = useState([]);
   const [badges, setBadges] = useState({});
   const [storePhotos, setStorePhotos] = useState({});
   const [orgSettings, setOrgSettings] = useState({});
@@ -209,7 +214,7 @@ export function DataProvider({ children }) {
   // ── Initial data fetch ───────────────────────────────────────────────────
   useEffect(() => {
     async function fetchAll() {
-      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes, repairOrdersRes, repairVendorsRes, buyersRes, inspectorsRes, pickupAddressesRes, mileageRes, orgSettingsRes] = await Promise.all([
+      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes, repairOrdersRes, repairVendorsRes, buyersRes, inspectorsRes, pickupAddressesRes, destinationsRes, mileageRes, orgSettingsRes] = await Promise.all([
         supabase.from('vehicles').select('*').eq('org_id', ORG_ID),
         supabase.from('auctions').select('*').eq('org_id', ORG_ID),
         supabase.from('bids').select('*'),
@@ -221,6 +226,7 @@ export function DataProvider({ children }) {
         supabase.from('profiles').select('id, name, buyer_number, role').eq('org_id', ORG_ID),
         supabase.from('inspectors').select('*').eq('org_id', ORG_ID).eq('active', true).order('name'),
         supabase.from('pickup_addresses').select('*').eq('org_id', ORG_ID).eq('active', true).order('address'),
+        supabase.from('destinations').select('*').eq('org_id', ORG_ID).eq('active', true).order('name'),
         supabase.from('mileage_log').select('vehicle_id, reading, logged_at').eq('org_id', ORG_ID).order('logged_at', { ascending: false }),
         supabase.from('org_settings').select('data').eq('org_id', ORG_ID).maybeSingle(),
       ]);
@@ -238,6 +244,7 @@ export function DataProvider({ children }) {
       if (repairVendorsRes.error)    console.warn('repair_vendors fetch error:',    repairVendorsRes.error?.message);
       if (inspectorsRes.error)       console.warn('inspectors fetch error:',       inspectorsRes.error?.message);
       if (pickupAddressesRes.error)  console.warn('pickup_addresses fetch error:', pickupAddressesRes.error?.message);
+      if (destinationsRes.error)     console.warn('destinations fetch error:',    destinationsRes.error?.message);
 
       if (vehiclesRes.data) {
         const mileageMap = {};
@@ -257,6 +264,7 @@ export function DataProvider({ children }) {
       if (repairVendorsRes.data) setRepairVendors(repairVendorsRes.data.map(mapRepairVendor));
       if (inspectorsRes.data)      setInspectors(inspectorsRes.data);
       if (pickupAddressesRes.data) setPickupAddresses(pickupAddressesRes.data);
+      if (destinationsRes.data)    setDestinations(destinationsRes.data);
       if (orgSettingsRes.data?.data) setOrgSettings(orgSettingsRes.data.data);
       setLoading(false);
     }
@@ -365,6 +373,7 @@ export function DataProvider({ children }) {
     profiles,
     inspectors,
     pickupAddresses,
+    destinations,
     orgSettings,
   };
 
@@ -941,6 +950,13 @@ export function DataProvider({ children }) {
     return row;
   };
 
+  const addDestination = async (name, address) => {
+    const { data: row, error } = await supabase.from('destinations').insert({ org_id: ORG_ID, name: name.trim(), address: address?.trim() || null }).select().single();
+    if (error) throw error;
+    setDestinations(prev => [...prev, row].sort((a, b) => a.name.localeCompare(b.name)));
+    return row;
+  };
+
   const addInspector = async (name) => {
     const { data: row, error } = await supabase.from('inspectors').insert({ org_id: ORG_ID, name: name.trim() }).select().single();
     if (error) throw error;
@@ -1037,6 +1053,8 @@ export function DataProvider({ children }) {
       addInspector,
       // Pickup addresses
       addPickupAddress,
+      // Destinations (outside-sale transport orders)
+      addDestination,
       // Sources & locations
       addAcquisitionSource, deleteAcquisitionSource,
       addLocation, deleteLocation,

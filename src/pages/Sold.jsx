@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/Toast';
+import { printTransportOrder } from '../lib/transportOrder';
 
 const fmt$ = (n) => n != null ? `$${parseFloat(n).toLocaleString()}` : '—';
 
@@ -201,7 +202,20 @@ export default function Sold() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {sold.map(v => <SoldCard key={v.id} vehicle={v} onEdit={() => openEdit(v)} />)}
+          {sold.map(v => (
+            <SoldCard
+              key={v.id}
+              vehicle={v}
+              onEdit={() => openEdit(v)}
+              onPrint={() => printTransportOrder({
+                vehicle: v,
+                mileage: v.mileage,
+                destName: v.soldTo,
+                destAddress: v.soldToAddress,
+                driver: v.transportDriver,
+              })}
+            />
+          ))}
         </div>
       )}
 
@@ -265,7 +279,7 @@ export default function Sold() {
   );
 }
 
-function SoldCard({ vehicle: v, onEdit }) {
+function SoldCard({ vehicle: v, onEdit, onPrint }) {
   const photos = Array.isArray(v.photos) ? v.photos : [];
   const gross = v.soldGross != null ? parseFloat(v.soldGross) : null;
 
@@ -312,8 +326,14 @@ function SoldCard({ vehicle: v, onEdit }) {
           </div>
         ))}
 
-        {/* Edit button */}
-        <div style={{ padding: '14px 14px', display: 'flex', alignItems: 'center', borderLeft: '1px solid #f3f4f6' }}>
+        {/* Edit / Print buttons */}
+        <div style={{ padding: '14px 14px', display: 'flex', alignItems: 'center', gap: 8, borderLeft: '1px solid #f3f4f6' }}>
+          <button
+            onClick={onPrint}
+            style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, color: '#374151', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            🖨️ Transport Order
+          </button>
           <button
             onClick={onEdit}
             style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, color: '#374151', cursor: 'pointer', whiteSpace: 'nowrap' }}
