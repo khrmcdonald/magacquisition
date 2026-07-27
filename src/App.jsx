@@ -14,6 +14,9 @@ import AuctionManage from './pages/AuctionManage';
 import Transport from './pages/Transport';
 import Repairs from './pages/Repairs';
 import GMOverview from './pages/GMOverview';
+import Performance from './pages/Performance';
+import BuyerDetail from './pages/BuyerDetail';
+import HistoricalImport from './pages/HistoricalImport';
 import MyWins from './pages/MyWins';
 import Admin from './pages/Admin';
 import History from './pages/History';
@@ -54,6 +57,9 @@ function AuthenticatedApp() {
           <Route path="titles" element={<Titles />} />
           <Route path="repairs" element={<Repairs />} />
           <Route path="overview" element={<GMOverview />} />
+          <Route path="performance" element={<Performance />} />
+          <Route path="performance/buyer/:buyerId" element={<BuyerDetail />} />
+          <Route path="performance/import" element={<HistoricalImport />} />
           <Route path="wins" element={<MyWins />} />
           <Route path="admin" element={<Admin />} />
           <Route path="history" element={<History />} />

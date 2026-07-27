@@ -148,6 +148,18 @@ function mapRepairVendor(r) {
   return { id: r.id, name: r.name, phone: r.phone, type: r.type };
 }
 
+function mapReserveClaim(r) {
+  return {
+    id: r.id,
+    vehicleId: r.vehicle_id,
+    amount: parseFloat(r.amount) || 0,
+    reason: r.reason,
+    claimDate: r.claim_date,
+    createdBy: r.created_by,
+    createdAt: r.created_at,
+  };
+}
+
 // Map camelCase vehicle fields back to snake_case for Supabase writes
 // Only real, writable vehicles table columns. Verified against schema.
 const VEHICLE_FIELD_MAP = {
@@ -217,12 +229,13 @@ export function DataProvider({ children }) {
   const [badges, setBadges] = useState({});
   const [storePhotos, setStorePhotos] = useState({});
   const [orgSettings, setOrgSettings] = useState({});
+  const [reserveClaims, setReserveClaims] = useState([]);
   const [fetchError, setFetchError] = useState(null);
 
   // ── Initial data fetch ───────────────────────────────────────────────────
   useEffect(() => {
     async function fetchAll() {
-      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes, repairOrdersRes, repairVendorsRes, buyersRes, inspectorsRes, pickupAddressesRes, destinationsRes, mileageRes, orgSettingsRes] = await Promise.all([
+      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes, repairOrdersRes, repairVendorsRes, buyersRes, inspectorsRes, pickupAddressesRes, destinationsRes, mileageRes, orgSettingsRes, reserveClaimsRes] = await Promise.all([
         supabase.from('vehicles').select('*').eq('org_id', ORG_ID),
         supabase.from('auctions').select('*').eq('org_id', ORG_ID),
         supabase.from('bids').select('*'),
@@ -237,6 +250,7 @@ export function DataProvider({ children }) {
         supabase.from('destinations').select('*').eq('org_id', ORG_ID).eq('active', true).order('name'),
         supabase.from('mileage_log').select('vehicle_id, reading, logged_at').eq('org_id', ORG_ID).order('logged_at', { ascending: false }),
         supabase.from('org_settings').select('data').eq('org_id', ORG_ID).maybeSingle(),
+        supabase.from('reserve_claims').select('*').eq('org_id', ORG_ID).order('claim_date', { ascending: false }),
       ]);
       if (vehiclesRes.error) {
         setFetchError('Could not load vehicle data. Check your connection and refresh the page.');
@@ -253,6 +267,7 @@ export function DataProvider({ children }) {
       if (inspectorsRes.error)       console.warn('inspectors fetch error:',       inspectorsRes.error?.message);
       if (pickupAddressesRes.error)  console.warn('pickup_addresses fetch error:', pickupAddressesRes.error?.message);
       if (destinationsRes.error)     console.warn('destinations fetch error:',    destinationsRes.error?.message);
+      if (reserveClaimsRes.error)    console.warn('reserve_claims fetch error:',  reserveClaimsRes.error?.message);
 
       if (vehiclesRes.data) {
         const mileageMap = {};
@@ -274,6 +289,7 @@ export function DataProvider({ children }) {
       if (pickupAddressesRes.data) setPickupAddresses(pickupAddressesRes.data);
       if (destinationsRes.data)    setDestinations(destinationsRes.data);
       if (orgSettingsRes.data?.data) setOrgSettings(orgSettingsRes.data.data);
+      if (reserveClaimsRes.data)     setReserveClaims(reserveClaimsRes.data.map(mapReserveClaim));
       setLoading(false);
     }
     fetchAll();
@@ -383,6 +399,7 @@ export function DataProvider({ children }) {
     pickupAddresses,
     destinations,
     orgSettings,
+    reserveClaims,
   };
 
   // ── Auction mutations ─────────────────────────────────────────────────────
@@ -983,6 +1000,26 @@ export function DataProvider({ children }) {
     if (error) throw error;
     setAcquisitionSources(prev => prev.filter(s => s.id !== id));
   };
+
+  const addReserveClaim = async ({ amount, reason, vehicleId, claimDate, createdBy }) => {
+    const payload = {
+      org_id: ORG_ID,
+      amount: parseFloat(amount),
+      reason: reason?.trim() || null,
+      vehicle_id: vehicleId || null,
+      claim_date: claimDate || new Date().toISOString().slice(0, 10),
+      created_by: createdBy || null,
+    };
+    const { data: row, error } = await supabase.from('reserve_claims').insert(payload).select().single();
+    if (error) throw error;
+    setReserveClaims(prev => [mapReserveClaim(row), ...prev]);
+    return row;
+  };
+  const deleteReserveClaim = async (id) => {
+    const { error } = await supabase.from('reserve_claims').delete().eq('id', id);
+    if (error) throw error;
+    setReserveClaims(prev => prev.filter(c => c.id !== id));
+  };
   const updateProfile = async (userId, { name, role, buyerNumber }) => {
     const { error } = await supabase.from('profiles')
       .update({ name, role, buyer_number: buyerNumber || null })
@@ -1066,6 +1103,8 @@ export function DataProvider({ children }) {
       // Sources & locations
       addAcquisitionSource, deleteAcquisitionSource,
       addLocation, deleteLocation,
+      // Reserve fund ledger
+      addReserveClaim, deleteReserveClaim,
       updateProfile,
       updateBuyerNumber,
       deleteUser,
