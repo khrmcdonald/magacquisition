@@ -181,10 +181,18 @@ const VEHICLE_FIELD_MAP = {
   soldGross: 'sold_gross',
 };
 
+// Numeric vehicles columns — coerce so a cleared/stray-character input doesn't
+// reach Postgres as '' (invalid input syntax for type numeric).
+const NUMERIC_FIELDS = new Set([
+  'purchase_price', 'overhead_costs', 'floor_price', 'opening_bid', 'list_price',
+  'winning_bid', 'sold_price', 'sold_gross',
+]);
+
 function toSnakeCase(fields) {
   const out = {};
   for (const [k, v] of Object.entries(fields)) {
-    out[VEHICLE_FIELD_MAP[k] || k] = v;
+    const key = VEHICLE_FIELD_MAP[k] || k;
+    out[key] = NUMERIC_FIELDS.has(key) ? (v === '' || v == null ? null : parseFloat(v)) : v;
   }
   return out;
 }
