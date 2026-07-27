@@ -4,6 +4,7 @@ import { useData } from '../context/DataContext';
 import { useNavigate } from 'react-router-dom';
 import { StoreAvatar } from '../components/StoreAvatar';
 import { getAgeFlag } from '../components/VehicleCard';
+import MonthPaceChart, { computeMonthPace } from '../components/MonthPaceChart';
 
 function AgedInventorySummary({ vehicles, navigate }) {
   const aging    = vehicles.filter(v => getAgeFlag(v)?.label === 'Aging').length;
@@ -42,6 +43,38 @@ function AgedInventorySummary({ vehicles, navigate }) {
       </div>
       <div style={{ marginLeft: 'auto', fontSize: 12, color: '#9ca3af', flexShrink: 0 }}>
         View in Acquisitions →
+      </div>
+    </div>
+  );
+}
+
+function DeskPaceSummary({ vehicles, orgSettings, navigate }) {
+  const monthlyOverhead = orgSettings?.monthlyOverhead ?? 60000;
+  const verified = vehicles.filter(v => v.status === 'sold' && v.soldPrice != null);
+  const { ahead, actualToday, unitsMTD } = computeMonthPace(verified, monthlyOverhead);
+
+  return (
+    <div
+      onClick={() => navigate('/performance')}
+      style={{
+        background: '#fff', border: `1px solid ${ahead ? '#bbf7d0' : '#fecaca'}`, borderRadius: 12,
+        padding: '14px 20px', marginBottom: 20, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+      }}
+    >
+      <div style={{ flexShrink: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: ahead ? '#065f46' : '#991b1b', marginBottom: 2 }}>
+          {ahead ? 'Ahead of pace' : 'Behind pace'} to cover overhead this month
+        </div>
+        <div style={{ fontSize: 12, color: '#6b7280' }}>
+          ${Math.round(actualToday).toLocaleString()} made so far · {unitsMTD} sold this month
+        </div>
+      </div>
+      <div style={{ width: 160, flexShrink: 0 }}>
+        <MonthPaceChart vehicles={verified} monthlyOverhead={monthlyOverhead} height={44} compact />
+      </div>
+      <div style={{ marginLeft: 'auto', fontSize: 12, color: '#9ca3af', flexShrink: 0 }}>
+        Full desk performance →
       </div>
     </div>
   );
@@ -348,7 +381,7 @@ function TriStateDashboard({ data, navigate, role }) {
 
   return (
     <>
-      <AuctionBanner auction={data.auction} navigate={navigate} role={role} />
+      <DeskPaceSummary vehicles={data.vehicles} orgSettings={data.orgSettings} navigate={navigate} />
       <AgedInventorySummary vehicles={data.vehicles} navigate={navigate} />
 
       {/* Open arbitrations alert */}
@@ -415,7 +448,6 @@ function GMDashboard({ data, navigate, role }) {
 
   return (
     <>
-      <AuctionBanner auction={data.auction} navigate={navigate} role={role} />
       <AgedInventorySummary vehicles={data.vehicles} navigate={navigate} />
 
       <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', marginBottom: 12 }}>Store performance</div>

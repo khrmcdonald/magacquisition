@@ -3,9 +3,9 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import {
-  LayoutGrid, Gavel, Car, Truck, LayoutDashboard, BarChart2,
-  Trophy, Download, HelpCircle, Settings, SlidersHorizontal, FileText, Bell, Award, Wrench, ScrollText, Tag,
-  LogOut, User,
+  LayoutGrid, Car, Truck, LayoutDashboard, BarChart2,
+  Download, HelpCircle, Settings, FileText, Bell, Wrench, ScrollText, Tag,
+  LogOut, User, TrendingUp,
 } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -14,52 +14,6 @@ function getGreeting(name) {
   const h = new Date().getHours();
   const salutation = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
   return `${salutation}, ${name}`;
-}
-
-// ─── Auction Status Bar ───────────────────────────────────────────────────────
-
-function AuctionStatusBar({ auction }) {
-  const [now, setNow] = React.useState(new Date());
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  const getCountdown = () => {
-    if (!auction.closeDate) return null;
-    const diff = new Date(auction.closeDate) - now;
-    if (diff <= 0) return 'Closing...';
-    const d = Math.floor(diff / 86400000);
-    const h = Math.floor((diff % 86400000) / 3600000);
-    const m = Math.floor((diff % 3600000) / 60000);
-    const s = Math.floor((diff % 60000) / 1000);
-    if (d > 0) return `${d}d ${h}h remaining`;
-    if (h > 0) return `${h}h ${m}m remaining`;
-    return `${m}m ${s}s remaining`;
-  };
-
-  return (
-    <div style={{
-      background: auction.isOpen ? '#f1bb25' : '#e5e7eb',
-      color: auction.isOpen ? '#1a3d76' : '#6b7280',
-      padding: '6px 16px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      fontSize: 12,
-      fontWeight: 700,
-      flexShrink: 0,
-    }}>
-      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ width: 7, height: 7, borderRadius: '50%', background: auction.isOpen ? '#1a3d76' : '#9ca3af', display: 'inline-block' }} />
-        {auction.isOpen ? 'AUCTION OPEN' : 'AUCTION CLOSED'}
-        {auction.label ? ` · ${auction.label}` : ''}
-      </span>
-      {auction.isOpen && auction.closeDate && (
-        <span style={{ fontWeight: 600, opacity: 0.85 }}>{getCountdown()}</span>
-      )}
-    </div>
-  );
 }
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
@@ -100,16 +54,13 @@ export default function Layout() {
   // ── Page title ──────────────────────────────────────────────────────────────
   const PAGE_TITLES = {
     '/dashboard': 'Dashboard',
-    '/auction': 'Auction Floor',
     '/acquisitions': 'Acquisitions',
-    '/manage': 'Manage Auction',
     '/repairs': 'Repairs',
     '/transport': 'Transport & Title',
     '/overview': 'GM Overview',
-    '/wins': 'My Wins',
+    '/performance': 'Desk Performance',
     '/admin': 'Admin',
     '/history': 'History',
-    '/leaderboard': 'Leaderboard',
     '/export': 'Accounting Export',
     '/inventory': 'Inventory',
     '/help': 'Help',
@@ -131,7 +82,6 @@ export default function Layout() {
       items: [
         { to: '/dashboard', label: 'Dashboard',    Icon: LayoutDashboard, roles: ALL },
         { to: '/inventory', label: 'Inventory',    Icon: LayoutGrid,      roles: ALL, badge: activeListings || null },
-        { to: '/auction',   label: 'Auction floor', Icon: Gavel,           roles: ALL },
       ],
     },
     {
@@ -141,15 +91,13 @@ export default function Layout() {
         { to: '/sold',         label: 'Sold',           Icon: Tag,         roles: MGRS },
         { to: '/transport',    label: 'Transport',      Icon: Truck,       roles: ALL },
         { to: '/titles',       label: 'Titles',         Icon: ScrollText,  roles: ALL },
-        { to: '/manage',       label: 'Manage auction', Icon: SlidersHorizontal, roles: MGRS },
-        { to: '/wins',         label: 'My wins',        Icon: Trophy,   roles: ['bidder'] },
       ],
     },
     {
       label: 'Reporting',
       items: [
         { to: '/overview',    label: 'GM overview',  Icon: BarChart2, roles: ['gm', 'admin', 'wholesale'] },
-        { to: '/leaderboard', label: 'Leaderboard',  Icon: Award,     roles: ALL },
+        { to: '/performance', label: 'Desk Performance', Icon: TrendingUp, roles: ['wholesale', 'admin'] },
         { to: '/history',     label: 'History',      Icon: FileText,  roles: ALL },
         { to: '/export',      label: 'Export',       Icon: Download,  roles: MGRS },
       ],
@@ -286,9 +234,6 @@ export default function Layout() {
           </div>
         </div>
       </header>
-
-      {/* AUCTION STATUS BAR */}
-      <AuctionStatusBar auction={data.auction} />
 
       {/* BODY */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
