@@ -118,8 +118,10 @@ export default function Inventory() {
       const today = new Date().toISOString().split('T')[0];
       const buyer = data.profiles?.find(p => p.id === user?.id);
       const buyerName = buyer?.name || user?.email || 'Online Purchase';
-      const cost = (parseFloat(buyTarget.purchase_price) || 0) + (parseFloat(buyTarget.overhead_costs) || 0) + (parseFloat(buyTarget.total_repair_costs) || 0);
-      const gross = price != null && cost > 0 ? price - cost : null;
+      // Gross = sale price − purchase price only — overhead/recon/repair
+      // costs and the $350 reserve fee are tracked separately, not deducted here.
+      const purchase = parseFloat(buyTarget.purchase_price) || 0;
+      const gross = price != null && purchase > 0 ? price - purchase : null;
       await updateVehicle(buyTarget.id, {
         status: 'sold',
         soldPrice: price,

@@ -1613,8 +1613,11 @@ export default function Acquisitions() {
     if (!sellPrice || !sellDate || !sellTo.trim()) return;
     setSellSaving(true);
     const price = parseFloat(sellPrice);
-    const cost = sellModal.totalCost ? parseFloat(sellModal.totalCost) : null;
-    const gross = cost != null ? price - cost : null;
+    // Gross = sale price − purchase price, full stop. Not total cost basis —
+    // overhead/recon/repair costs and the $350 reserve fee are separate
+    // ledgers, not deductions from gross.
+    const purchase = sellModal.purchasePrice != null ? parseFloat(sellModal.purchasePrice) : null;
+    const gross = purchase != null ? price - purchase : null;
     try {
       await updateVehicle(sellModal.id, {
         status: 'sold',

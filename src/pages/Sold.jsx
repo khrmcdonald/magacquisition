@@ -58,8 +58,10 @@ export default function Sold() {
     if (!editPrice || !editDate || !editTo.trim()) return;
     setEditSaving(true);
     const price = parseFloat(editPrice);
-    const cost = editModal.totalCost ? parseFloat(editModal.totalCost) : null;
-    const gross = cost != null ? price - cost : null;
+    // Gross = sale price − purchase price only — see Acquisitions/Inventory
+    // for the same rule; overhead/recon/repair/reserve fee are separate.
+    const purchase = editModal.purchasePrice != null ? parseFloat(editModal.purchasePrice) : null;
+    const gross = purchase != null ? price - purchase : null;
     try {
       await updateVehicle(editModal.id, {
         soldPrice: price,
