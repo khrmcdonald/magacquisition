@@ -46,12 +46,36 @@ export default function Sold() {
   const [editDate, setEditDate] = useState('');
   const [editTo, setEditTo] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+  const [undoConfirm, setUndoConfirm] = useState(false);
+  const [undoing, setUndoing] = useState(false);
 
   const openEdit = (v) => {
     setEditModal(v);
     setEditPrice(v.soldPrice != null ? String(v.soldPrice) : '');
     setEditDate(v.soldDate || '');
     setEditTo(v.soldTo || '');
+    setUndoConfirm(false);
+  };
+
+  const handleUndoSale = async () => {
+    setUndoing(true);
+    try {
+      await updateVehicle(editModal.id, {
+        status: 'ready',
+        soldPrice: null,
+        soldDate: null,
+        soldTo: null,
+        soldToAddress: null,
+        transportDriver: null,
+        soldGross: null,
+      });
+      showToast('Sale undone — vehicle is back in Ready inventory.', 'success');
+      setEditModal(null);
+    } catch (err) {
+      showToast('Failed: ' + err.message, 'error');
+    }
+    setUndoing(false);
+    setUndoConfirm(false);
   };
 
   const handleEditSave = async () => {
@@ -252,8 +276,8 @@ export default function Sold() {
               </div>
               {(() => {
                 const price = parseFloat(editPrice);
-                const cost = editModal?.totalCost ? parseFloat(editModal.totalCost) : null;
-                const gross = (!isNaN(price) && cost != null) ? price - cost : null;
+                const purchase = editModal?.purchasePrice != null ? parseFloat(editModal.purchasePrice) : null;
+                const gross = (!isNaN(price) && purchase != null) ? price - purchase : null;
                 if (gross == null) return null;
                 return (
                   <div style={{ background: gross >= 0 ? '#f0fdf4' : '#fef2f2', border: `1px solid ${gross >= 0 ? '#86efac' : '#fecaca'}`, borderRadius: 8, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -263,16 +287,34 @@ export default function Sold() {
                 );
               })()}
             </div>
-            <div className="modal-footer">
-              <button className="btn-secondary" onClick={() => setEditModal(null)}>Cancel</button>
-              <button
-                className="btn-navy"
-                onClick={handleEditSave}
-                disabled={editSaving || !editPrice || !editDate || !editTo.trim()}
-                style={{ opacity: (!editPrice || !editDate || !editTo.trim()) ? 0.45 : 1 }}
-              >
-                {editSaving ? 'Saving…' : 'Save Changes'}
-              </button>
+            <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
+              {undoConfirm ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, color: '#991b1b', fontWeight: 600 }}>Undo this sale?</span>
+                  <button className="btn-secondary" onClick={() => setUndoConfirm(false)} disabled={undoing} style={{ padding: '7px 12px', fontSize: 12 }}>No</button>
+                  <button className="btn-danger" onClick={handleUndoSale} disabled={undoing} style={{ padding: '7px 12px', fontSize: 12 }}>
+                    {undoing ? 'Undoing…' : 'Yes, undo sale'}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setUndoConfirm(true)}
+                  style={{ background: 'none', border: 'none', color: '#991b1b', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '7px 0' }}
+                >
+                  Undo sale — return to inventory
+                </button>
+              )}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="btn-secondary" onClick={() => setEditModal(null)}>Cancel</button>
+                <button
+                  className="btn-navy"
+                  onClick={handleEditSave}
+                  disabled={editSaving || !editPrice || !editDate || !editTo.trim()}
+                  style={{ opacity: (!editPrice || !editDate || !editTo.trim()) ? 0.45 : 1 }}
+                >
+                  {editSaving ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
