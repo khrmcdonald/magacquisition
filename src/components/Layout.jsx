@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import {
-  LayoutGrid, Car, Truck, LayoutDashboard, BarChart2,
+  LayoutGrid, Car, Truck, LayoutDashboard,
   Download, HelpCircle, Settings, FileText, Bell, Wrench, ScrollText, Tag,
   LogOut, User, TrendingUp,
 } from 'lucide-react';
@@ -57,7 +57,6 @@ export default function Layout() {
     '/acquisitions': 'Acquisitions',
     '/repairs': 'Repairs',
     '/transport': 'Transport & Title',
-    '/overview': 'GM Overview',
     '/performance': 'Desk Performance',
     '/admin': 'Admin',
     '/history': 'History',
@@ -73,8 +72,8 @@ export default function Layout() {
   const activeListings = data.vehicles.filter(v => v.status === 'in_auction').length;
   const pendingAcq = data.vehicles.filter(v => ['intake', 'recon'].includes(v.status)).length;
 
-  const ALL = ['bidder', 'wholesale', 'gm', 'admin'];
-  const MGRS = ['wholesale', 'gm', 'admin'];
+  const ALL = ['wholesale', 'admin'];
+  const MGRS = ['wholesale', 'admin'];
 
   const SECTIONS = [
     {
@@ -96,7 +95,6 @@ export default function Layout() {
     {
       label: 'Reporting',
       items: [
-        { to: '/overview',    label: 'GM overview',  Icon: BarChart2, roles: ['gm', 'admin', 'wholesale'] },
         { to: '/performance', label: 'Desk Performance', Icon: TrendingUp, roles: ['wholesale', 'admin'] },
         { to: '/history',     label: 'History',      Icon: FileText,  roles: ALL },
         { to: '/export',      label: 'Export',       Icon: Download,  roles: MGRS },
@@ -211,7 +209,7 @@ export default function Layout() {
                   </div>
                 </div>
                 {/* Menu items */}
-                {['admin', 'wholesale', 'gm'].includes(role) && (
+                {['admin', 'wholesale'].includes(role) && (
                   <button
                     onClick={() => { navigate('/admin'); setUserMenuOpen(false); }}
                     style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: 'none', border: 'none', fontSize: 13, color: '#374151', cursor: 'pointer', textAlign: 'left' }}

@@ -5,7 +5,6 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase, uploadVehiclePhoto } from '../lib/supabase';
 import { VehicleCard, isTitleIn } from '../components/VehicleCard';
 import RepairOrdersModal from '../components/RepairOrdersModal';
-import ArbitrationResolveModal from '../components/ArbitrationResolveModal';
 import VehicleDetailModal from '../components/VehicleDetailModal';
 import { useToast } from '../components/Toast';
 import { printTransportOrder } from '../lib/transportOrder';
@@ -505,6 +504,13 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
     title_electronic: false, pickup_address: '',
     needsTransport: false, transportScheduledAt: '',
     datePurchased: initial.datePurchased || '',
+    originCountry: initial.originCountry || 'US',
+    purchasePriceCad: initial.purchasePriceCad || '',
+    exchangeRate: initial.exchangeRate || '',
+    bondReference: initial.bondReference || '',
+    bondExpiration: initial.bondExpiration || '',
+    crossingNotes: '',
+    isTrade: !!initial.isTrade,
   } : {
     vin: '', year: '', make: '', model: '', trim: '', mileage: '', color: '',
     interior_color: '', engine: '',
@@ -518,6 +524,9 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
     lienholder: '', payoff_amount: '', cashiers_check: false,
     title_electronic: false, pickup_address: '',
     needsTransport: false, transportScheduledAt: '',
+    originCountry: 'US', purchasePriceCad: '', exchangeRate: '',
+    bondReference: '', bondExpiration: '', crossingNotes: '',
+    isTrade: false,
   });
   const [dupVehicle, setDupVehicle] = useState(null);
   const [addingAddress, setAddingAddress] = useState(false);
@@ -801,42 +810,53 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
         />
       </div>
 
-      {/* Location */}
-      <div className="form-group">
-        <label>Current location</label>
-        {addingLocation ? (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              autoFocus
-              value={newLocationName}
-              onChange={e => setNewLocationName(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') { e.preventDefault(); handleAddLocation(); }
-                if (e.key === 'Escape') { setAddingLocation(false); setNewLocationName(''); }
-              }}
-              placeholder="Location name…"
-              style={{ flex: 1, padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13 }}
-            />
-            <button type="button" onClick={handleAddLocation} disabled={!newLocationName.trim() || savingLocation}
-              style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              {savingLocation ? '…' : 'Save'}
-            </button>
-            <button type="button" onClick={() => { setAddingLocation(false); setNewLocationName(''); }}
-              style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, cursor: 'pointer', color: '#6b7280' }}>
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <select value={form.currentLocation || ''} onChange={e => {
-            if (e.target.value === '__add_new__') { setAddingLocation(true); }
-            else set('currentLocation', e.target.value);
-          }}>
-            <option value="">Select location…</option>
-            {locations.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-            <option value="__add_new__">+ New location…</option>
-          </select>
-        )}
+      {/* Trade / no-arrival deal */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16, padding: '10px 14px', background: form.isTrade ? '#fffbeb' : 'transparent', border: form.isTrade ? '1px solid #fde68a' : 'none', borderRadius: 8 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Trade / no-arrival deal</div>
+          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>Bought and sold without the vehicle physically arriving — skips location, transport, and photos</div>
+        </div>
+        <YesNoToggle value={form.isTrade} onChange={v => set('isTrade', v)} />
       </div>
+
+      {/* Location */}
+      {!form.isTrade && (
+        <div className="form-group">
+          <label>Current location</label>
+          {addingLocation ? (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                autoFocus
+                value={newLocationName}
+                onChange={e => setNewLocationName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') { e.preventDefault(); handleAddLocation(); }
+                  if (e.key === 'Escape') { setAddingLocation(false); setNewLocationName(''); }
+                }}
+                placeholder="Location name…"
+                style={{ flex: 1, padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13 }}
+              />
+              <button type="button" onClick={handleAddLocation} disabled={!newLocationName.trim() || savingLocation}
+                style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {savingLocation ? '…' : 'Save'}
+              </button>
+              <button type="button" onClick={() => { setAddingLocation(false); setNewLocationName(''); }}
+                style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, cursor: 'pointer', color: '#6b7280' }}>
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <select value={form.currentLocation || ''} onChange={e => {
+              if (e.target.value === '__add_new__') { setAddingLocation(true); }
+              else set('currentLocation', e.target.value);
+            }}>
+              <option value="">Select location…</option>
+              {locations.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+              <option value="__add_new__">+ New location…</option>
+            </select>
+          )}
+        </div>
+      )}
 
       {/* ── Deal Record Fields ─────────────────────────────────────────────── */}
       {sectionLabel('Deal Record')}
@@ -893,7 +913,71 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
         )}
       </div>
 
+      {/* ── International Purchase ───────────────────────────────────────── */}
+      {sectionLabel('International Purchase')}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Purchased from Canada?</div>
+        <YesNoToggle value={form.originCountry === 'CA'} onChange={v => set('originCountry', v ? 'CA' : 'US')} />
+      </div>
+      {form.originCountry === 'CA' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-group">
+            <label>Purchase price (CAD)</label>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }}>$</span>
+              <input
+                type="number"
+                value={form.purchasePriceCad}
+                onChange={e => {
+                  const cad = e.target.value;
+                  set('purchasePriceCad', cad);
+                  if (cad && form.exchangeRate) set('purchasePrice', (parseFloat(cad) * parseFloat(form.exchangeRate)).toFixed(2));
+                }}
+                placeholder="0"
+                style={{ paddingLeft: 24 }}
+              />
+            </div>
+          </div>
+          <div className="form-group">
+            <label>Exchange rate (CAD → USD)</label>
+            <input
+              type="number"
+              step="0.0001"
+              value={form.exchangeRate}
+              onChange={e => {
+                const rate = e.target.value;
+                set('exchangeRate', rate);
+                if (rate && form.purchasePriceCad) set('purchasePrice', (parseFloat(form.purchasePriceCad) * parseFloat(rate)).toFixed(2));
+              }}
+              placeholder="e.g. 0.73"
+            />
+          </div>
+          {form.purchasePriceCad && form.exchangeRate && (
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label>USD equivalent — auto-filled into Purchase Price above, still editable there</label>
+              <div style={{ padding: '9px 12px', borderRadius: 6, fontWeight: 700, fontSize: 14, background: '#f0f4fb', color: '#0d2550', width: 'fit-content' }}>
+                ${(parseFloat(form.purchasePriceCad) * parseFloat(form.exchangeRate)).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              </div>
+            </div>
+          )}
+          <div className="form-group">
+            <label>Bond reference</label>
+            <input type="text" value={form.bondReference} onChange={e => set('bondReference', e.target.value)} placeholder="Bond #" />
+          </div>
+          <div className="form-group">
+            <label>Bond expiration</label>
+            <input type="date" value={form.bondExpiration} onChange={e => set('bondExpiration', e.target.value)} />
+          </div>
+          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+            <label>Crossing point / customs notes</label>
+            <input type="text" value={form.crossingNotes} onChange={e => set('crossingNotes', e.target.value)} placeholder="e.g. Crossed at Sarnia, cleared by ABC Customs Brokers" />
+          </div>
+        </div>
+      )}
+
       {/* ── Transport ─────────────────────────────────────────────────────── */}
+      {!form.isTrade && (
+      <>
       {sectionLabel('Transport')}
       {existingTransport ? (
         <div style={{ background: '#f0fdf4', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '12px 16px', fontSize: 13, color: '#065f46' }}>
@@ -953,8 +1037,12 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
       )}
       </>
       )}
+      </>
+      )}
 
       {/* ── Photos ────────────────────────────────────────────────────────── */}
+      {!form.isTrade && (
+      <>
       {sectionLabel('Photos')}
       <div className="form-group">
         <input ref={fileRef} type="file" accept="image/*" multiple onChange={handlePhoto} style={{ display: 'none' }} />
@@ -1012,6 +1100,8 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
           </>
         )}
       </div>
+      </>
+      )}
 
       <div className="modal-footer" style={{ padding: '16px 0 0', borderTop: 'none' }}>
         <button type="button" className="btn-secondary" onClick={onCancel}>Cancel</button>
@@ -1252,7 +1342,7 @@ function InspectionModal({ vehicle, inspectors, addInspector, onSave, onClose })
 export default function Acquisitions() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { data, addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, addLocation, addInspector, addRepairOrder, addPickupAddress, logMileage, addTransport, addDestination } = useData();
+  const { data, addVehicle, updateVehicle, deleteVehicle, addLocation, addInspector, addRepairOrder, addPickupAddress, logMileage, addTransport, addDestination } = useData();
   const buyers = (data.profiles || []).filter(p => p.buyer_number);
   const destinations = data.destinations || [];
   const { showToast } = useToast();
@@ -1264,7 +1354,6 @@ export default function Acquisitions() {
       showToast(newStatus === 'clear' ? '✓ Title marked IN' : 'Title marked OUT', newStatus === 'clear' ? 'success' : 'info');
     } catch (e) { showToast('Failed: ' + e.message, 'error'); }
   };
-  const [resolveModal, setResolveModal] = useState(null);
   const [repairModal, setRepairModal] = useState(null);
   const [inspectionModal, setInspectionModal] = useState(null);
   const [detailModal, setDetailModal] = useState(null);
@@ -1354,11 +1443,11 @@ export default function Acquisitions() {
       });
   }, [data.vehicles]);
 
-  if (user.role !== 'wholesale' && user.role !== 'gm' && user.role !== 'admin') {
-    return <Navigate to="/auction" replace />;
+  if (user.role !== 'wholesale' && user.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
   }
 
-  const isReadOnly = user.role === 'gm';
+  const isReadOnly = false;
 
   // Map DB tables to option arrays
   const sourceOptions = (data.acquisition_sources || []).map(s => ({ value: s.id, label: s.name }));
@@ -1414,7 +1503,7 @@ export default function Acquisitions() {
     const {
       seller_name, buyer_id: formBuyerId, purchase_amount, lienholder, payoff_amount,
       cashiers_check, title_electronic, pickup_address, source_id,
-      needsTransport, transportScheduledAt, vendorNotes,
+      needsTransport, transportScheduledAt, vendorNotes, crossingNotes,
       ...vehicleFields
     } = vehicleData;
 
@@ -1503,7 +1592,7 @@ export default function Acquisitions() {
               store_name: 'Intake',
               winning_bid: null,
               status: 'awarded',
-              notes: pickup_address || null,
+              notes: [pickup_address, crossingNotes ? `Crossing: ${crossingNotes}` : null].filter(Boolean).join(' — ') || null,
               scheduled_date: transportScheduledAt ? new Date(transportScheduledAt).toISOString() : null,
               steps: { awarded: new Date().toISOString() },
             });
@@ -1554,26 +1643,6 @@ export default function Acquisitions() {
       showToast(`${failures.length} of ${vehicles.length} failed. First error: ${failures[0]}`, 'error');
     } else {
       showToast(`Imported ${vehicles.length} vehicles.`, 'success');
-    }
-  };
-
-  const [listModal, setListModal] = useState(null); // vehicle to list
-  const [openingBidInput, setOpeningBidInput] = useState('');
-
-  const handleList = (v) => {
-    setOpeningBidInput(v.openingBid ? String(v.openingBid) : '');
-    setListModal(v);
-  };
-
-  const handleListConfirm = async () => {
-    const amt = parseFloat(openingBidInput);
-    if (!amt || amt < 100) return;
-    try {
-      await listVehicle(listModal.id, amt);
-      showToast('Vehicle listed in auction.', 'success');
-      setListModal(null);
-    } catch (err) {
-      showToast('Failed to list: ' + (err.message || JSON.stringify(err)), 'error');
     }
   };
 
@@ -1903,7 +1972,7 @@ export default function Acquisitions() {
               <VehicleCard
                 key={v.id}
                 vehicle={v}
-                showAge={['wholesale', 'gm', 'admin'].includes(user.role)}
+                showAge={['wholesale', 'admin'].includes(user.role)}
                 showTitleStatus={true}
                 showKeys={true}
                 onTitleToggle={!isReadOnly ? () => toggleTitleStatus(v) : undefined}
@@ -1939,12 +2008,6 @@ export default function Acquisitions() {
                         {v.status === 'recon' && (
                           <button onClick={() => handleStatusChange(v, 'ready')} style={{ width: '100%', background: '#f0fdf4', color: '#15803d', border: '1.5px solid #86efac', borderRadius: 7, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✓ Mark Ready</button>
                         )}
-                        {v.status === 'ready' && data.auction.isOpen && (
-                          <button onClick={() => handleList(v)} style={{ width: '100%', background: '#0d2550', color: '#fff', border: 'none', borderRadius: 7, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>List in Auction</button>
-                        )}
-                        {v.status === 'in_auction' && (
-                          <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { showToast('Failed: ' + err.message, 'error'); } }} style={{ width: '100%', background: '#fefce8', color: '#854d0e', border: '1.5px solid #fde047', borderRadius: 7, padding: '8px 0', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove from Auction</button>
-                        )}
                         {['intake','inspection','recon','ready','no_sale'].includes(v.status) && (
                           <button onClick={() => openSellModal(v)} style={{ width: '100%', background: '#f9fafb', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 7, padding: '6px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Mark as Sold</button>
                         )}
@@ -1972,7 +2035,7 @@ export default function Acquisitions() {
               <VehicleCard
                 key={v.id}
                 variant="list"
-                showAge={['wholesale', 'gm', 'admin'].includes(user.role)}
+                showAge={['wholesale', 'admin'].includes(user.role)}
                 showDatePurchased={true}
                 showTitleStatus={true}
                 showKeys={true}
@@ -2093,12 +2156,6 @@ export default function Acquisitions() {
                         <button onClick={() => handleStatusChange(v, 'ready')} style={{ background: '#d1fae5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>✓ Mark Ready</button>
                       )}
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        {v.status === 'ready' && data.auction.isOpen && (
-                          <button onClick={() => handleList(v)} style={{ background: '#0d2550', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>List now</button>
-                        )}
-                        {v.status === 'in_auction' && (
-                          <button onClick={async () => { try { await unlistVehicle(v.id); } catch (err) { showToast('Failed to remove: ' + err.message, 'error'); } }} style={{ background: '#fef3c7', color: '#92400e', border: 'none', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
-                        )}
                         <button onClick={() => setDetailModal(v)} data-tooltip="Details" style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>🔍</button>
                         <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} data-tooltip="Edit" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>✏️</button>
                         {['intake', 'inspection', 'recon', 'ready', 'no_sale'].includes(v.status) && (
@@ -2111,31 +2168,12 @@ export default function Acquisitions() {
                   )}
                 </div>
 
-                {/* Notes / arbitration */}
-                {(v.notes || v.arbitration?.status === 'open' || v.arbitration?.status === 'resolved') && (
+                {/* Notes */}
+                {v.notes && (
                   <div style={{ padding: '0 16px 12px' }}>
-                    {v.notes && (
-                      <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#374151', marginBottom: (v.arbitration?.status) ? 8 : 0 }}>
-                        <strong>Notes:</strong> {v.notes}
-                      </div>
-                    )}
-                    {v.arbitration?.status === 'open' && (
-                      <div style={{ background: '#fee2e2', border: '2px solid #fca5a5', borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-                        <div>
-                          <div style={{ fontWeight: 700, color: '#991b1b', fontSize: 13, marginBottom: 2 }}>⚠ Arbitration filed by {v.arbitration.storeName}</div>
-                          <div style={{ fontSize: 12, color: '#7f1d1d' }}>{v.arbitration.issueType}{v.arbitration.details ? ` — ${v.arbitration.details}` : ''}</div>
-                          <div style={{ fontSize: 10, color: '#991b1b', marginTop: 4, opacity: 0.7 }}>Filed {new Date(v.arbitration.filedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                        </div>
-                        {!isReadOnly && (
-                          <button onClick={() => setResolveModal(v)} style={{ background: '#991b1b', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Resolve</button>
-                        )}
-                      </div>
-                    )}
-                    {v.arbitration?.status === 'resolved' && (
-                      <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#065f46' }}>
-                        ✓ Arbitration resolved — {v.arbitration.resolution}
-                      </div>
-                    )}
+                    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#374151' }}>
+                      <strong>Notes:</strong> {v.notes}
+                    </div>
                   </div>
                 )}
               </VehicleCard>
@@ -2185,70 +2223,12 @@ export default function Acquisitions() {
 
       {detailModal && <VehicleDetailModal vehicle={detailModal} onClose={() => setDetailModal(null)} />}
 
-      {/* Resolve arbitration modal */}
-      {resolveModal && (
-        <ArbitrationResolveModal vehicle={resolveModal} onClose={() => setResolveModal(null)} />
-      )}
-
       {/* Upload modal */}
       {showUpload && (
         <ExcelUploadModal
           onClose={() => setShowUpload(false)}
           onImport={(vehicles) => { handleBulkImport(vehicles); }}
         />
-      )}
-
-      {/* List for Auction modal */}
-      {listModal && (
-        <div className="modal-overlay" onClick={() => setListModal(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
-            <div className="modal-header" style={{ background: '#0d2550', borderRadius: '12px 12px 0 0' }}>
-              <div>
-                <h2 style={{ color: '#fff', fontSize: 17 }}>List for Auction</h2>
-                <p style={{ color: 'rgba(255,255,255,.65)', fontSize: 13, marginTop: 2 }}>
-                  {listModal.year} {listModal.make} {listModal.model}
-                </p>
-              </div>
-              <button onClick={() => setListModal(null)} style={{ background: 'rgba(255,255,255,.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 18, cursor: 'pointer' }}>×</button>
-            </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label>Opening bid *</label>
-                <p style={{ fontSize: 12, color: '#6b7280', marginTop: -4, marginBottom: 8 }}>
-                  The minimum first bid. Bidders will see this — floor price stays hidden.
-                </p>
-                <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontWeight: 700, color: '#374151' }}>$</span>
-                  <input
-                    type="number"
-                    value={openingBidInput}
-                    onChange={e => setOpeningBidInput(e.target.value)}
-                    placeholder="e.g. 14000"
-                    min="100"
-                    autoFocus
-                    style={{ paddingLeft: 26, width: '100%', boxSizing: 'border-box' }}
-                    onKeyDown={e => e.key === 'Enter' && handleListConfirm()}
-                  />
-                </div>
-                {listModal.floorPrice && (
-                  <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>
-                    Floor price: ${parseFloat(listModal.floorPrice).toLocaleString()} (hidden from bidders)
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-secondary" onClick={() => setListModal(null)}>Cancel</button>
-              <button
-                className="btn-navy"
-                onClick={handleListConfirm}
-                disabled={!openingBidInput || parseFloat(openingBidInput) < 100}
-              >
-                List Vehicle
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* ── Detail panel ──────────────────────────────────────────────────────── */}
@@ -2419,13 +2399,6 @@ export default function Acquisitions() {
                   </>
                 )}
 
-                {/* Arbitration */}
-                {pv.arbitration?.status === 'open' && (
-                  <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 6, padding: '8px 12px', fontSize: 12, color: '#991b1b', marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>⚠ Arbitration filed</span>
-                    {!isReadOnly && <button onClick={() => { setResolveModal(pv); closePanel(); }} style={{ background: '#991b1b', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer' }}>Resolve</button>}
-                  </div>
-                )}
               </div>
             </div>
 

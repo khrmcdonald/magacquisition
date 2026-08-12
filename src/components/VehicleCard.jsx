@@ -18,7 +18,7 @@ export function useCountdown(targetDate, active) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// ── Teal countdown pill (exported for use in AuctionFloor, Inventory) ─────────
+// ── Teal countdown pill (exported for use in Inventory) ───────────────────────
 export function AuctionCountdownPill({ closeDate }) {
   const countdown = useCountdown(closeDate, !!closeDate);
   if (!countdown) return null;

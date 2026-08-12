@@ -3,6 +3,7 @@ import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from './Toast';
 import { isTitleIn, getKeysCount } from './VehicleCard';
+import { uploadVehicleAttachment } from '../lib/supabase';
 
 const TRANSPORT_STEPS = [
   { key: 'awarded',       label: 'Awarded' },
@@ -51,11 +52,15 @@ const RO_STATUS = {
 const INP = { padding: '7px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13, width: '100%', boxSizing: 'border-box' };
 
 export default function VehicleDetailModal({ vehicle, onClose }) {
-  const { data, updateVehicle, addRepairOrder, updateRepairOrder, deleteRepairOrder, repairOrders, repairVendors, addRepairOrderLine, deleteRepairOrderLine, getMileageHistory } = useData();
+  const {
+    data, updateVehicle, addRepairOrder, updateRepairOrder, deleteRepairOrder, repairOrders, repairVendors,
+    addRepairOrderLine, deleteRepairOrderLine, getMileageHistory,
+    getVehicleAttachments, addVehicleAttachment, deleteVehicleAttachment,
+  } = useData();
   const { user } = useAuth();
   const { showToast } = useToast();
-  const isBidder = user?.role === 'bidder';
-  const isWholesale = ['wholesale', 'gm', 'admin'].includes(user?.role);
+  const isBidder = false;
+  const isWholesale = ['wholesale', 'admin'].includes(user?.role);
 
   const [photoIdx, setPhotoIdx] = useState(0);
   const [titleSaving, setTitleSaving] = useState(false);
@@ -69,10 +74,45 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
   const [newLineDesc, setNewLineDesc] = useState('');
   const [newLineCost, setNewLineCost] = useState('');
   const [mileageHistory, setMileageHistory] = useState([]);
+  const [attachments, setAttachments] = useState([]);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [newDocType, setNewDocType] = useState('');
 
   useEffect(() => {
     if (isWholesale) getMileageHistory(vehicle.id).then(setMileageHistory);
+    getVehicleAttachments(vehicle.id).then(setAttachments);
   }, [vehicle.id]); // eslint-disable-line
+
+  const handleAttachmentUpload = async (file) => {
+    if (!file) return;
+    setUploadingAttachment(true);
+    try {
+      const vin6 = (lv.vin || '').slice(-6) || 'unknown';
+      const fileUrl = await uploadVehicleAttachment(file, vin6);
+      const saved = await addVehicleAttachment({
+        vehicleId: vehicle.id,
+        docType: newDocType.trim() || 'Document',
+        fileUrl,
+        fileName: file.name,
+        uploadedBy: user?.name || user?.email || null,
+      });
+      setAttachments(prev => [saved, ...prev]);
+      setNewDocType('');
+      showToast('Attachment uploaded', 'success');
+    } catch (e) {
+      showToast('Upload failed: ' + e.message, 'error');
+    }
+    setUploadingAttachment(false);
+  };
+
+  const handleAttachmentDelete = async (id) => {
+    try {
+      await deleteVehicleAttachment(id);
+      setAttachments(prev => prev.filter(a => a.id !== id));
+    } catch (e) {
+      showToast('Failed to remove: ' + e.message, 'error');
+    }
+  };
 
   // Always read from live state so mutations reflect immediately
   const lv = (data.vehicles || []).find(v => v.id === vehicle.id) || vehicle;
@@ -227,6 +267,75 @@ export default function VehicleDetailModal({ vehicle, onClose }) {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* International — Canada purchases only */}
+          {lv.originCountry === 'CA' && (
+            <div style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: 18, marginBottom: 18 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 18, marginBottom: 10 }}>International</div>
+              <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase' }}>Origin</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Canada</div>
+                </div>
+                {lv.purchasePriceCad != null && (
+                  <div>
+                    <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase' }}>CAD Price</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>${parseFloat(lv.purchasePriceCad).toLocaleString()}{lv.exchangeRate ? ` @ ${lv.exchangeRate}` : ''}</div>
+                  </div>
+                )}
+                {lv.bondReference && (
+                  <div>
+                    <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase' }}>Bond Reference</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{lv.bondReference}</div>
+                  </div>
+                )}
+                {lv.bondExpiration && (
+                  <div>
+                    <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase' }}>Bond Expires</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{new Date(lv.bondExpiration + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Attachments — Canada purchases, or any vehicle that already has some */}
+          {(lv.originCountry === 'CA' || attachments.length > 0) && (
+            <div style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: 18, marginBottom: 18 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 18, marginBottom: 10 }}>Attachments</div>
+              {attachments.length === 0 ? (
+                <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 10 }}>No documents attached yet</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                  {attachments.map(a => (
+                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '6px 10px' }}>
+                      <span style={{ background: '#e8eef5', color: '#1a3d76', padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{a.docType || 'Document'}</span>
+                      <a href={a.fileUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#0d2550', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.fileName || 'View file'}</a>
+                      <button onClick={() => handleAttachmentDelete(a.id)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 16, padding: '0 2px', flexShrink: 0 }} onMouseEnter={e => e.currentTarget.style.color = '#ef4444'} onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="text"
+                  value={newDocType}
+                  onChange={e => setNewDocType(e.target.value)}
+                  placeholder="Doc type (e.g. Bill of Sale)"
+                  style={{ ...INP, width: 200 }}
+                />
+                <label style={{ background: '#0d2550', color: '#fff', borderRadius: 6, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: uploadingAttachment ? 'default' : 'pointer', opacity: uploadingAttachment ? 0.7 : 1 }}>
+                  {uploadingAttachment ? 'Uploading…' : '+ Add file'}
+                  <input
+                    type="file"
+                    style={{ display: 'none' }}
+                    disabled={uploadingAttachment}
+                    onChange={e => { handleAttachmentUpload(e.target.files[0]); e.target.value = ''; }}
+                  />
+                </label>
+              </div>
             </div>
           )}
 

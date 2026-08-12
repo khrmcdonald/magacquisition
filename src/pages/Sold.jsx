@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/Toast';
 import { printTransportOrder } from '../lib/transportOrder';
@@ -36,6 +37,7 @@ function exportCSV(rows, dateFrom, dateTo) {
 export default function Sold() {
   const { data, updateVehicle } = useData();
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -297,12 +299,20 @@ export default function Sold() {
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={() => setUndoConfirm(true)}
-                  style={{ background: 'none', border: 'none', color: '#991b1b', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '7px 0' }}
-                >
-                  Undo sale — return to inventory
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                  <button
+                    onClick={() => setUndoConfirm(true)}
+                    style={{ background: 'none', border: 'none', color: '#991b1b', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                  >
+                    Undo sale — return to inventory
+                  </button>
+                  <button
+                    onClick={() => navigate('/performance', { state: { prefillVehicleId: editModal.id } })}
+                    style={{ background: 'none', border: 'none', color: '#0d2550', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                  >
+                    File reserve claim →
+                  </button>
+                </div>
               )}
               <div style={{ display: 'flex', gap: 10 }}>
                 <button className="btn-secondary" onClick={() => setEditModal(null)}>Cancel</button>
@@ -342,8 +352,9 @@ function SoldCard({ vehicle: v, onEdit, onPrint }) {
 
       {/* Main info */}
       <div style={{ flex: 1, padding: '14px 18px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4, minWidth: 0 }}>
-        <div style={{ fontWeight: 800, fontSize: 16, color: '#111827' }}>
+        <div style={{ fontWeight: 800, fontSize: 16, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
           {v.year} {v.make} {v.model}{v.trim ? ` ${v.trim}` : ''}
+          {v.isTrade && <span style={{ background: '#fef3c7', color: '#92400e', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>TRADE</span>}
         </div>
         <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#6b7280', letterSpacing: '.04em' }}>{v.vin || '—'}</div>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 2 }}>

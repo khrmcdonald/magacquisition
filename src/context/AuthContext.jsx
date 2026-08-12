@@ -10,7 +10,7 @@ function fallbackProfile(supabaseUser) {
     id: supabaseUser.id,
     email: supabaseUser.email,
     name: supabaseUser.email,
-    role: 'bidder', // safe minimum — never fall back to elevated roles
+    role: 'wholesale', // safe minimum — never fall back to elevated roles
     org_id: 'bf236d2b-4693-4606-bf3d-ece1767690ab',
     color: '#1a3d76',
   };

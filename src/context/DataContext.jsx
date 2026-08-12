@@ -70,34 +70,12 @@ function mapVehicle(r) {
     soldToAddress: r.sold_to_address || null,
     transportDriver: r.transport_driver || null,
     soldGross: r.sold_gross || null,
-  };
-}
-
-function mapBid(r) {
-  return {
-    id: r.id,
-    vehicleId: r.vehicle_id,
-    storeId: r.user_id,
-    locationId: r.location_id,
-    amount: r.amount,
-    auctionId: r.auction_id,
-    placedAt: r.placed_at,
-    updatedAt: r.updated_at,
-  };
-}
-
-function mapAuction(r) {
-  return {
-    id: r.id,
-    isOpen: r.status === 'open',
-    openDate: r.open_at,
-    closeDate: r.close_at,
-    label: r.label,
-    closedDate: r.closed_at,
-    vehicleCount: r.vehicle_count ?? null,
-    awardedCount: r.awarded_count ?? null,
-    noSaleCount: r.no_sale_count ?? null,
-    totalVolume: r.total_volume ?? null,
+    originCountry: r.origin_country || 'US',
+    isTrade: !!r.is_trade,
+    purchasePriceCad: r.purchase_price_cad || null,
+    exchangeRate: r.exchange_rate || null,
+    bondReference: r.bond_reference || null,
+    bondExpiration: r.bond_expiration || null,
   };
 }
 
@@ -160,6 +138,18 @@ function mapReserveClaim(r) {
   };
 }
 
+function mapVehicleAttachment(r) {
+  return {
+    id: r.id,
+    vehicleId: r.vehicle_id,
+    docType: r.doc_type,
+    fileUrl: r.file_url,
+    fileName: r.file_name,
+    uploadedBy: r.uploaded_by,
+    createdAt: r.created_at,
+  };
+}
+
 // Map camelCase vehicle fields back to snake_case for Supabase writes
 // Only real, writable vehicles table columns. Verified against schema.
 const VEHICLE_FIELD_MAP = {
@@ -191,6 +181,12 @@ const VEHICLE_FIELD_MAP = {
   soldToAddress: 'sold_to_address',
   transportDriver: 'transport_driver',
   soldGross: 'sold_gross',
+  originCountry: 'origin_country',
+  isTrade: 'is_trade',
+  purchasePriceCad: 'purchase_price_cad',
+  exchangeRate: 'exchange_rate',
+  bondReference: 'bond_reference',
+  bondExpiration: 'bond_expiration',
 };
 
 // Numeric vehicles columns — coerce so a cleared/stray-character input doesn't
@@ -198,6 +194,7 @@ const VEHICLE_FIELD_MAP = {
 const NUMERIC_FIELDS = new Set([
   'purchase_price', 'overhead_costs', 'floor_price', 'opening_bid', 'list_price',
   'winning_bid', 'sold_price', 'sold_gross',
+  'purchase_price_cad', 'exchange_rate',
 ]);
 
 function toSnakeCase(fields) {
@@ -212,8 +209,6 @@ function toSnakeCase(fields) {
 // ── Provider ──────────────────────────────────────────────────────────────
 export function DataProvider({ children }) {
   const [vehicles, setVehicles] = useState([]);
-  const [auctions, setAuctions] = useState([]);
-  const [bids, setBids] = useState([]);
   const [locations, setLocations] = useState([]);
   const [acquisitionSources, setAcquisitionSources] = useState([]);
   const [buyers, setBuyers] = useState([]);
@@ -226,8 +221,6 @@ export function DataProvider({ children }) {
   const [inspectors, setInspectors] = useState([]);
   const [pickupAddresses, setPickupAddresses] = useState([]);
   const [destinations, setDestinations] = useState([]);
-  const [badges, setBadges] = useState({});
-  const [storePhotos, setStorePhotos] = useState({});
   const [orgSettings, setOrgSettings] = useState({});
   const [reserveClaims, setReserveClaims] = useState([]);
   const [fetchError, setFetchError] = useState(null);
@@ -235,10 +228,8 @@ export function DataProvider({ children }) {
   // ── Initial data fetch ───────────────────────────────────────────────────
   useEffect(() => {
     async function fetchAll() {
-      const [vehiclesRes, auctionsRes, bidsRes, locationsRes, sourcesRes, transportRes, repairOrdersRes, repairVendorsRes, buyersRes, inspectorsRes, pickupAddressesRes, destinationsRes, mileageRes, orgSettingsRes, reserveClaimsRes] = await Promise.all([
+      const [vehiclesRes, locationsRes, sourcesRes, transportRes, repairOrdersRes, repairVendorsRes, buyersRes, inspectorsRes, pickupAddressesRes, destinationsRes, mileageRes, orgSettingsRes, reserveClaimsRes] = await Promise.all([
         supabase.from('vehicles').select('*').eq('org_id', ORG_ID),
-        supabase.from('auctions').select('*').eq('org_id', ORG_ID),
-        supabase.from('bids').select('*'),
         supabase.from('locations').select('*').or(`org_id.eq.${ORG_ID},org_id.is.null`),
         supabase.from('acquisition_sources').select('*').eq('org_id', ORG_ID),
         supabase.from('transport').select('*').eq('org_id', ORG_ID),
@@ -257,8 +248,6 @@ export function DataProvider({ children }) {
         setLoading(false);
         return;
       }
-      if (auctionsRes.error)      console.warn('auctions fetch error:',      auctionsRes.error?.message);
-      if (bidsRes.error)          console.warn('bids fetch error:',          bidsRes.error?.message);
       if (locationsRes.error)     console.warn('locations fetch error:',     locationsRes.error?.message);
       if (sourcesRes.error)       console.warn('sources fetch error:',       sourcesRes.error?.message);
       if (transportRes.error)     console.warn('transport fetch error:',     transportRes.error?.message);
@@ -278,8 +267,6 @@ export function DataProvider({ children }) {
         setBuyers(buyersRes.data.filter(p => p.role === 'wholesale'));
         setProfiles(buyersRes.data);
       }
-      if (auctionsRes.data)      setAuctions(auctionsRes.data.map(mapAuction));
-      if (bidsRes.data)          setBids(bidsRes.data.map(mapBid));
       if (locationsRes.data)     setLocations(locationsRes.data);
       if (sourcesRes.data)       setAcquisitionSources(sourcesRes.data);
       if (transportRes.data)     setTransport(transportRes.data.map(mapTransport));
@@ -316,35 +303,6 @@ export function DataProvider({ children }) {
       })
       .subscribe();
 
-    const auctionsSub = supabase
-      .channel('auctions-changes')
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'auctions',
-        filter: `org_id=eq.${ORG_ID}`,
-      }, ({ eventType, new: row, old }) => {
-        setAuctions(prev => {
-          if (eventType === 'INSERT') return [...prev, mapAuction(row)];
-          if (eventType === 'UPDATE') return prev.map(a => a.id === row.id ? mapAuction(row) : a);
-          if (eventType === 'DELETE') return prev.filter(a => a.id !== old.id);
-          return prev;
-        });
-      })
-      .subscribe();
-
-    const bidsSub = supabase
-      .channel('bids-changes')
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'bids',
-      }, ({ eventType, new: row, old }) => {
-        setBids(prev => {
-          if (eventType === 'INSERT') return [...prev, mapBid(row)];
-          if (eventType === 'UPDATE') return prev.map(b => b.id === row.id ? mapBid(row) : b);
-          if (eventType === 'DELETE') return prev.filter(b => b.id !== old.id);
-          return prev;
-        });
-      })
-      .subscribe();
-
     const transportSub = supabase
       .channel('transport-changes')
       .on('postgres_changes', {
@@ -362,35 +320,22 @@ export function DataProvider({ children }) {
 
     return () => {
       supabase.removeChannel(vehiclesSub);
-      supabase.removeChannel(auctionsSub);
-      supabase.removeChannel(bidsSub);
       supabase.removeChannel(transportSub);
     };
   }, []);
 
   // ── Derived backward-compatible `data` object ────────────────────────────
-  const currentAuction = auctions.find(a => a.isOpen) || null;
-
+  // `auction`/`bids`/`auctionHistory` are static empties — the bidding/auction
+  // system was retired, but a few read-only UI spots still reference these
+  // shapes defensively (e.g. Inventory's bid-count badge).
   const data = {
-    auction: currentAuction
-      ? { isOpen: true, id: currentAuction.id, openDate: currentAuction.openDate, closeDate: currentAuction.closeDate, label: currentAuction.label }
-      : { isOpen: false, openDate: null, closeDate: null, label: '' },
+    auction: { isOpen: false, openDate: null, closeDate: null, label: '' },
     vehicles,
-    bids,
+    bids: [],
     transport,
     repairOrders,
     repairVendors,
-    auctionHistory: auctions
-      .filter(a => !a.isOpen)
-      .map(a => ({
-        id: a.id, label: a.label,
-        openDate: a.openDate, closedDate: a.closedDate,
-        vehicleCount: a.vehicleCount, awardedCount: a.awardedCount,
-        noSaleCount: a.noSaleCount, totalVolume: a.totalVolume,
-      })),
-    badges,
-    storePhotos,
-    auctions,
+    auctionHistory: [],
     locations,
     acquisition_sources: acquisitionSources,
     buyers,
@@ -400,143 +345,6 @@ export function DataProvider({ children }) {
     destinations,
     orgSettings,
     reserveClaims,
-  };
-
-  // ── Auction mutations ─────────────────────────────────────────────────────
-  const addAuction = async (auction) => {
-    const { data: row, error } = await supabase
-      .from('auctions')
-      .insert({ org_id: ORG_ID, ...auction })
-      .select()
-      .single();
-    if (error) throw error;
-    return row;
-  };
-
-  const updateAuction = async (id, updates) => {
-    const { error } = await supabase.from('auctions').update(updates).eq('id', id);
-    if (error) throw error;
-  };
-
-  const setAuction = async (fields) => {
-    if (!currentAuction) return;
-    const mapped = {};
-    if ('isOpen' in fields) mapped.status = fields.isOpen ? 'open' : 'closed';
-    if ('closeDate' in fields) mapped.close_at = fields.closeDate;
-    if ('label' in fields) mapped.label = fields.label;
-    await updateAuction(currentAuction.id, mapped);
-  };
-
-  const openAuction = async (closeDate, label) => {
-    const row = await addAuction({
-      status: 'open',
-      open_at: new Date().toISOString(),
-      close_at: closeDate,
-      label: label || '',
-    });
-    if (row) setAuctions(prev => [...prev, mapAuction(row)]);
-  };
-
-  const closeAuction = async () => {
-    if (!currentAuction) return;
-    const now = new Date().toISOString();
-    const activeVehicles = vehicles.filter(v => v.status === 'in_auction');
-
-    let awardedCount = 0;
-    let noSaleCount = 0;
-    let totalVolume = 0;
-    const newTransport = [];
-    const vehicleUpdates = [];
-
-    for (const v of activeVehicles) {
-      const vehicleBids = bids.filter(b => b.vehicleId === v.id);
-      if (vehicleBids.length === 0) {
-        noSaleCount++;
-        vehicleUpdates.push(
-          supabase.from('vehicles').update({ status: 'no_sale' }).eq('id', v.id)
-        );
-      } else {
-        const winner = [...vehicleBids].sort((a, b) => b.amount - a.amount)[0];
-        if (v.floorPrice && winner.amount < parseFloat(v.floorPrice)) {
-          noSaleCount++;
-          vehicleUpdates.push(
-            supabase.from('vehicles').update({ status: 'no_sale' }).eq('id', v.id)
-          );
-        } else {
-          const winnerLoc = locations.find(l => l.id === winner.locationId);
-          const winnerLocName = winnerLoc?.name || '—';
-          awardedCount++;
-          totalVolume += winner.amount;
-          vehicleUpdates.push(
-            supabase.from('vehicles').update({
-              status: 'awarded',
-              winner_id: winner.storeId,
-              winner_name: winnerLocName,
-              winning_bid: winner.amount,
-              awarded_at: now,
-            }).eq('id', v.id)
-          );
-          if (!transport.find(t => t.vehicleId === v.id && t.storeName !== 'Intake')) {
-            newTransport.push({
-              vehicleId: v.id,
-              vehicleName: `${v.year} ${v.make} ${v.model}`,
-              storeId: winner.storeId,
-              locationId: winner.locationId,
-              storeName: winnerLocName,
-              winningBid: winner.amount,
-              status: 'awarded',
-              steps: { awarded: now, dispatched: null, inTransit: null, arrived: null, titleReceived: null },
-            });
-          }
-        }
-      }
-    }
-
-    await Promise.all(vehicleUpdates);
-    await updateAuction(currentAuction.id, {
-      status: 'closed',
-      closed_at: now,
-      vehicle_count: activeVehicles.length,
-      awarded_count: awardedCount,
-      no_sale_count: noSaleCount,
-      total_volume: totalVolume,
-    });
-    setAuctions(prev => prev.map(a => a.id === currentAuction.id ? {
-      ...a, isOpen: false, closedDate: now,
-      vehicleCount: activeVehicles.length,
-      awardedCount, noSaleCount, totalVolume,
-    } : a));
-
-    // Update vehicle statuses in local state
-    setVehicles(prev => prev.map(v => {
-      if (v.status !== 'in_auction') return v;
-      const vehicleBids = bids.filter(b => b.vehicleId === v.id);
-      if (!vehicleBids.length) return { ...v, status: 'no_sale' };
-      const winner = [...vehicleBids].sort((a, b) => b.amount - a.amount)[0];
-      if (v.floorPrice && winner.amount < parseFloat(v.floorPrice)) return { ...v, status: 'no_sale' };
-      const winnerLoc = locations.find(l => l.id === winner.locationId);
-      return { ...v, status: 'awarded', winnerId: winner.storeId, winnerName: winnerLoc?.name || '—', winningBid: winner.amount, awardedAt: now };
-    }));
-
-    if (newTransport.length) {
-      const { data: insertedTransport, error: transportErr } = await supabase
-        .from('transport')
-        .insert(newTransport.map(t => ({
-          id: crypto.randomUUID(),
-          org_id: ORG_ID,
-          vehicle_id: t.vehicleId,
-          vehicle_name: t.vehicleName,
-          store_id: t.storeId,
-          location_id: t.locationId,
-          store_name: t.storeName,
-          winning_bid: t.winningBid,
-          status: t.status,
-          steps: t.steps,
-        })))
-        .select();
-      if (transportErr) console.error('Transport insert error:', transportErr);
-      if (insertedTransport) setTransport(prev => [...prev, ...insertedTransport.map(mapTransport)]);
-    }
   };
 
   // ── Vehicle mutations ─────────────────────────────────────────────────────
@@ -571,6 +379,12 @@ export function DataProvider({ children }) {
       disclosure_notes:    vehicle.notes            || null,
       photos:              Array.isArray(vehicle.photos) ? vehicle.photos : [],
       keys:                vehicle.keys             || null,
+      origin_country:      vehicle.originCountry    || 'US',
+      is_trade:            !!vehicle.isTrade,
+      purchase_price_cad:  vehicle.purchasePriceCad ? parseFloat(vehicle.purchasePriceCad) : null,
+      exchange_rate:       vehicle.exchangeRate     ? parseFloat(vehicle.exchangeRate)      : null,
+      bond_reference:      vehicle.bondReference    || null,
+      bond_expiration:     vehicle.bondExpiration   || null,
     });
 
     const { data: row, error } = await supabase
@@ -602,17 +416,6 @@ export function DataProvider({ children }) {
     setVehicles(prev => prev.filter(v => v.id !== id));
   };
 
-  const listVehicle = async (id, openingBid) => {
-    await updateVehicle(id, { status: 'in_auction', openingBid: parseFloat(openingBid) || null });
-  };
-
-  const unlistVehicle = async (id) => {
-    await updateVehicle(id, { status: 'ready' });
-    const { error } = await supabase.from('bids').delete().eq('vehicle_id', id);
-    if (error) throw error;
-    setBids(prev => prev.filter(b => b.vehicleId !== id));
-  };
-
   const getMileage = async (vehicleId) => {
     const { data } = await supabase
       .from('mileage_log')
@@ -637,47 +440,6 @@ export function DataProvider({ children }) {
     if (error) throw error;
     setVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, mileage: val } : v));
   };
-
-  // ── Bid mutations ─────────────────────────────────────────────────────────
-  const addBid = async (bid) => {
-    const { data: row, error } = await supabase
-      .from('bids')
-      .insert({
-        vehicle_id: bid.vehicleId,
-        user_id: bid.userId,
-        location_id: bid.locationId,
-        amount: bid.amount,
-        auction_id: bid.auctionId,
-        placed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    setBids(prev => [...prev, mapBid(row)]);
-  };
-
-  // Backward-compat wrapper used by existing components
-  const placeBid = async (vehicleId, userId, locationId, amount) => {
-    await addBid({ vehicleId, userId, locationId, amount, auctionId: currentAuction?.id });
-    checkAndAwardBadges(locationId);
-  };
-
-  // ── Bid helpers ───────────────────────────────────────────────────────────
-  const getHighBid = (vehicleId) => {
-    const vBids = bids.filter(b => b.vehicleId === vehicleId);
-    if (!vBids.length) return null;
-    return Math.max(...vBids.map(b => b.amount));
-  };
-
-  const getMyBid = (vehicleId, storeId) => {
-    const mine = bids.filter(b => b.vehicleId === vehicleId && b.storeId === storeId);
-    if (!mine.length) return null;
-    return mine.reduce((top, b) => b.amount > top.amount ? b : top);
-  };
-
-  const getAllBidsForVehicle = (vehicleId) =>
-    [...bids.filter(b => b.vehicleId === vehicleId)].sort((a, b) => b.amount - a.amount);
 
   // ── Transport ─────────────────────────────────────────────────────────────
   const updateTransport = async (vehicleId, stepKey, notes) => {
@@ -840,6 +602,38 @@ export function DataProvider({ children }) {
     return data || [];
   };
 
+  // ── Attachments (fetched on-demand per vehicle, not eagerly for the org) ──
+  const getVehicleAttachments = async (vehicleId) => {
+    const { data } = await supabase
+      .from('vehicle_attachments')
+      .select('*')
+      .eq('vehicle_id', vehicleId)
+      .order('created_at', { ascending: false });
+    return (data || []).map(mapVehicleAttachment);
+  };
+
+  const addVehicleAttachment = async ({ vehicleId, docType, fileUrl, fileName, uploadedBy }) => {
+    const { data: row, error } = await supabase
+      .from('vehicle_attachments')
+      .insert({
+        org_id: ORG_ID,
+        vehicle_id: vehicleId,
+        doc_type: docType || null,
+        file_url: fileUrl,
+        file_name: fileName || null,
+        uploaded_by: uploadedBy || null,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return mapVehicleAttachment(row);
+  };
+
+  const deleteVehicleAttachment = async (id) => {
+    const { error } = await supabase.from('vehicle_attachments').delete().eq('id', id);
+    if (error) throw error;
+  };
+
   const deleteRepairOrderLine = async (lineId, repairOrderId) => {
     const { error } = await supabase.from('repair_order_lines').delete().eq('id', lineId);
     if (error) throw error;
@@ -852,108 +646,6 @@ export function DataProvider({ children }) {
       const updatedROs = repairOrders.map(r => r.id === repairOrderId ? { ...r, lines: newLines, totalCost: newTotal } : r);
       setRepairOrders(updatedROs);
       await syncVehicleRepairCosts(ro.vehicleId, updatedROs);
-    }
-  };
-
-  // ── Arbitration ───────────────────────────────────────────────────────────
-  const fileArbitration = async (vehicleId, storeId, storeName, issueType, details) => {
-    await updateVehicle(vehicleId, {
-      arbitration: {
-        status: 'open', storeId, storeName, issueType, details,
-        filedAt: new Date().toISOString(), resolution: null, resolvedAt: null,
-      },
-    });
-  };
-
-  const resolveArbitration = async (vehicleId, resolutionType, resolutionDetails, adjustmentAmount) => {
-    const vehicle = vehicles.find(v => v.id === vehicleId);
-    if (!vehicle) return;
-    const arbUpdate = {
-      ...vehicle.arbitration,
-      status: 'resolved',
-      resolution: resolutionType,
-      resolutionDetails: resolutionDetails || null,
-      adjustmentAmount: adjustmentAmount || null,
-      resolvedAt: new Date().toISOString(),
-    };
-    if (resolutionType === 'fix_it') {
-      await updateVehicle(vehicleId, { arbitration: arbUpdate, status: 'recon' });
-      const vin6 = (vehicle.vin || '').slice(-6) || null;
-      const desc = resolutionDetails || `Arbitration fix: ${vehicle.arbitration?.issueType || 'see claim'}`;
-      await addRepairOrder(vehicleId, vin6, null, desc);
-    } else {
-      await updateVehicle(vehicleId, { arbitration: arbUpdate });
-    }
-  };
-
-  // ── Store photos (in-memory — no Supabase table yet) ─────────────────────
-  const updateStorePhoto = (storeId, photoData) => {
-    setStorePhotos(prev => ({ ...prev, [storeId]: photoData }));
-  };
-
-  // ── Badges (in-memory) ────────────────────────────────────────────────────
-  const BADGE_DEFS = [
-    { id: 'first_bid',      label: 'First Pick',      icon: '🎯', desc: 'Placed your first ever bid' },
-    { id: 'quick_draw',     label: 'Quick Draw',      icon: '⚡', desc: 'Bid within 5 min of auction opening' },
-    { id: 'top_buyer',      label: 'Top Buyer',       icon: '👑', desc: 'Most cars won in a single auction' },
-    { id: 'sharp_shooter',  label: 'Sharp Shooter',   icon: '🔫', desc: 'Won a car at exactly the floor price' },
-    { id: 'hat_trick',      label: 'Hat Trick',       icon: '🎩', desc: 'Won 3+ cars in one auction' },
-    { id: 'big_spender',    label: 'Big Spender',     icon: '💰', desc: 'Won a car over $30,000' },
-    { id: 'loyal_bidder',   label: 'Loyal Bidder',    icon: '🤝', desc: 'Placed bids in 3+ auctions' },
-    { id: 'clean_sweep',    label: 'Clean Sweep',     icon: '🧹', desc: 'Won every car you bid on in an auction' },
-  ];
-
-  const winnerLocationId = (vehicleId) => {
-    const vBids = bids.filter(b => b.vehicleId === vehicleId);
-    if (!vBids.length) return null;
-    return vBids.reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null)?.locationId;
-  };
-
-  const computeBadges = (locationId) => {
-    const myBids = bids.filter(b => b.locationId === locationId);
-    const myWins = vehicles.filter(v => v.status === 'awarded' && winnerLocationId(v.id) === locationId);
-    const earned = [];
-
-    if (myBids.length > 0) earned.push('first_bid');
-    if (myWins.some(v => v.winningBid >= 30000)) earned.push('big_spender');
-    if (myWins.some(v => v.floorPrice && v.winningBid === parseFloat(v.floorPrice))) earned.push('sharp_shooter');
-
-    const winsByAuction = {};
-    myWins.forEach(v => {
-      const ah = auctions.find(a => a.closedDate && v.awardedAt
-        && new Date(v.awardedAt) <= new Date(a.closedDate)
-        && new Date(v.awardedAt) >= new Date(a.openDate || 0));
-      const key = ah?.id || 'misc';
-      winsByAuction[key] = (winsByAuction[key] || 0) + 1;
-    });
-    if (Object.values(winsByAuction).some(c => c >= 3)) earned.push('hat_trick');
-
-    const winsByLocation = {};
-    locations.forEach(l => {
-      winsByLocation[l.id] = vehicles.filter(v => v.status === 'awarded' && winnerLocationId(v.id) === l.id).length;
-    });
-    const maxWins = Math.max(0, ...Object.values(winsByLocation));
-    if (maxWins > 0 && winsByLocation[locationId] === maxWins) earned.push('top_buyer');
-
-    const auctionParticipation = new Set(myBids.map(b => b.auctionId || b.placedAt?.substring(0, 10)));
-    if (auctionParticipation.size >= 3) earned.push('loyal_bidder');
-
-    const myBidVehicleIds = new Set(myBids.map(b => b.vehicleId));
-    const myBidVehicles = vehicles.filter(v => myBidVehicleIds.has(v.id) && ['awarded', 'no_sale'].includes(v.status));
-    if (myBidVehicles.length > 0 && myBidVehicles.every(v => winnerLocationId(v.id) === locationId)) earned.push('clean_sweep');
-
-    return earned;
-  };
-
-  const checkAndAwardBadges = (locationId) => {
-    if (currentAuction?.openDate) {
-      const openTime = new Date(currentAuction.openDate);
-      if ((new Date() - openTime) < 5 * 60 * 1000) {
-        setBadges(prev => ({ ...prev, [locationId]: [...new Set([...(prev[locationId] || []), 'quick_draw'])] }));
-      }
-    }
-    if (bids.filter(b => b.locationId === locationId).length === 0) {
-      setBadges(prev => ({ ...prev, [locationId]: [...new Set([...(prev[locationId] || []), 'first_bid'])] }));
     }
   };
 
@@ -1050,7 +742,6 @@ export function DataProvider({ children }) {
     setProfiles(prev => prev.filter(p => p.id !== userId));
     setBuyers(prev => prev.filter(p => p.id !== userId));
     setVehicles(prev => prev.map(v => v.buyerId === userId ? { ...v, buyerId: null, buyerName: null } : v));
-    setBids(prev => prev.filter(b => b.userId !== userId));
   };
 
   const saveOrgSettings = async (settings) => {
@@ -1075,25 +766,16 @@ export function DataProvider({ children }) {
   return (
     <DataContext.Provider value={{
       data,
-      // Auction
-      setAuction, openAuction, closeAuction,
-      addAuction, updateAuction,
       // Vehicles
-      addVehicle, updateVehicle, deleteVehicle, listVehicle, unlistVehicle, getMileage, logMileage, setVehicles,
-      // Bids
-      placeBid, addBid,
-      getHighBid, getMyBid, getAllBidsForVehicle,
+      addVehicle, updateVehicle, deleteVehicle, getMileage, logMileage, setVehicles,
       // Transport
       addTransport, updateTransport, deleteTransport, closeArrivedTransport, updateTransportSchedule,
       // Repair orders
       repairOrders, repairVendors,
       addRepairOrder, updateRepairOrder, deleteRepairOrder,
       addRepairOrderLine, deleteRepairOrderLine, getMileageHistory,
+      getVehicleAttachments, addVehicleAttachment, deleteVehicleAttachment,
       addRepairVendor,
-      // Arbitration
-      fileArbitration, resolveArbitration,
-      // Photos & badges
-      updateStorePhoto, checkAndAwardBadges, computeBadges, BADGE_DEFS,
       // Inspectors
       addInspector,
       // Pickup addresses

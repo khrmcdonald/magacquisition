@@ -6,9 +6,7 @@ import heroImage from '../assets/gmc-hero.jpg';
 const ORG_ID = 'bf236d2b-4693-4606-bf3d-ece1767690ab';
 
 const ROLE_LABELS = {
-  bidder:    'Retail Store',
   wholesale: 'Wholesale',
-  gm:        'Group GM',
   admin:     'Admin',
 };
 

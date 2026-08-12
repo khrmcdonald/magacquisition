@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { StoreAvatar } from '../components/StoreAvatar';
 import { useData } from '../context/DataContext';
 import { VehicleCard } from '../components/VehicleCard';
 
@@ -98,11 +97,8 @@ export default function Transport() {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const isWholesale = user.role === 'wholesale' || user.role === 'admin';
-  const isGM = user.role === 'gm';
 
-  const allTransport = isWholesale || isGM
-    ? data.transport
-    : data.transport.filter(t => t.locationId === user.locationId);
+  const allTransport = data.transport;
 
   const isIntake = (t) => t.storeName === 'Intake';
 
@@ -410,7 +406,6 @@ export default function Transport() {
               <div>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 8 }}>Going To</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <StoreAvatar locationId={ptLocationId} size={24} />
                   <span style={{ fontSize: 14, fontWeight: 700, color: '#0d2550' }}>{ptStoreName}</span>
                 </div>
               </div>

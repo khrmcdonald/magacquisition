@@ -18,17 +18,12 @@ export default function Titles() {
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  const isWholesale = ['wholesale', 'gm', 'admin'].includes(user?.role);
-  const isBidder = user?.role === 'bidder';
+  const isWholesale = ['wholesale', 'admin'].includes(user?.role);
 
   const [filter, setFilter] = useState('out');
   const [saving, setSaving] = useState(null);
 
-  const allVehicles = (data.vehicles || []).filter(v => {
-    if (v.status === 'sold') return false;
-    if (isBidder) return v.status === 'awarded' && (v.winnerId === user.id || v.locationId === user.locationId);
-    return true;
-  });
+  const allVehicles = (data.vehicles || []).filter(v => v.status !== 'sold');
 
   const countOut = allVehicles.filter(v => !isTitleIn(v.titleStatus)).length;
   const countIn  = allVehicles.filter(v =>  isTitleIn(v.titleStatus)).length;

@@ -15,18 +15,18 @@ export default function Export() {
   const [exporting, setExporting] = useState(false);
   const [done, setDone] = useState(false);
 
-  if (user.role !== 'wholesale' && user.role !== 'gm' && user.role !== 'admin') {
+  if (user.role !== 'wholesale' && user.role !== 'admin') {
     return <Navigate to="/dashboard" replace />;
   }
 
   const vehicles = data.vehicles;
-  const awarded = vehicles.filter(v => v.status === 'awarded');
+  const sold = vehicles.filter(v => v.status === 'sold');
   const noSale = vehicles.filter(v => v.status === 'no_sale');
-  const active = vehicles.filter(v => !['awarded','no_sale'].includes(v.status));
+  const active = vehicles.filter(v => v.status !== 'sold');
 
   const totalInvested = vehicles.reduce((s, v) => s + fmt(v.totalCost), 0);
-  const totalRecovered = awarded.reduce((s, v) => s + (v.winningBid || 0), 0);
-  const totalMargin = totalRecovered - awarded.reduce((s, v) => s + fmt(v.totalCost), 0);
+  const totalRecovered = sold.reduce((s, v) => s + fmt(v.soldPrice), 0);
+  const totalMargin = sold.reduce((s, v) => s + fmt(v.soldGross), 0);
 
   const handleExport = () => {
     const XLSX = window.XLSX;
@@ -64,34 +64,34 @@ export default function Export() {
     wsInv['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 11 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 11 } }];
     XLSX.utils.book_append_sheet(wb, wsInv, '1. Current Inventory');
 
-    // ── Sheet 2: Auction Results (Awarded) ──
-    const awardRows = [
-      ['MAG ACQUISITION — AUCTION RESULTS (AWARDED)', '', '', '', '', '', '', '', '', ''],
+    // ── Sheet 2: Sold Vehicles ──
+    const soldCostTotal = sold.reduce((s,v)=>s+fmt(v.totalCost),0);
+    const soldRows = [
+      ['STOCKYARD — SOLD VEHICLES', '', '', '', '', '', '', '', '', ''],
       [`Exported: ${fmtDate(new Date().toISOString())}`, '', '', '', '', '', '', '', '', ''],
       [],
-      ['VIN', 'Year', 'Make', 'Model', 'Color', 'Mileage', 'Total Cost Basis', 'Floor Price', 'Winning Bid', 'Winner Store', 'Gross Margin $', 'Margin %', 'Award Date', 'Title Status'],
-      ...awarded.map(v => {
-        const margin = (v.winningBid || 0) - fmt(v.totalCost);
+      ['VIN', 'Year', 'Make', 'Model', 'Color', 'Mileage', 'Total Cost Basis', 'Sale Price', 'Buyer', 'Gross Margin $', 'Margin %', 'Sale Date', 'Title Status'],
+      ...sold.map(v => {
+        const margin = fmt(v.soldGross);
         const marginPct = fmt(v.totalCost) > 0 ? Math.round((margin / fmt(v.totalCost)) * 100) : 0;
         return [
           v.vin || '', v.year || '', v.make || '', v.model || '', v.color || '',
           v.mileage ? parseInt(v.mileage) : '',
-          fmt(v.totalCost), fmt(v.floorPrice), v.winningBid || 0,
-          v.winnerName || '', margin, `${marginPct}%`,
-          fmtDate(v.awardedAt), v.titleStatus || '',
+          fmt(v.totalCost), fmt(v.soldPrice),
+          v.soldTo || '', margin, `${marginPct}%`,
+          fmtDate(v.soldDate), v.titleStatus || '',
         ];
       }),
       [],
       ['', '', '', '', '', 'TOTALS →',
-        awarded.reduce((s,v)=>s+fmt(v.totalCost),0), '',
-        awarded.reduce((s,v)=>s+(v.winningBid||0),0), '',
-        totalMargin, `${awarded.length > 0 ? Math.round((totalMargin / awarded.reduce((s,v)=>s+fmt(v.totalCost),0)) * 100) : 0}%`,
+        soldCostTotal, totalRecovered, '',
+        totalMargin, `${soldCostTotal > 0 ? Math.round((totalMargin / soldCostTotal) * 100) : 0}%`,
       ],
     ];
-    const wsAward = XLSX.utils.aoa_to_sheet(awardRows);
-    wsAward['!cols'] = [22,6,10,14,10,10,16,12,14,14,14,10,14,14].map(w => ({ wch: w }));
-    wsAward['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } }];
-    XLSX.utils.book_append_sheet(wb, wsAward, '2. Auction Results');
+    const wsSold = XLSX.utils.aoa_to_sheet(soldRows);
+    wsSold['!cols'] = [22,6,10,14,10,10,16,14,14,14,10,14,14].map(w => ({ wch: w }));
+    wsSold['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } }];
+    XLSX.utils.book_append_sheet(wb, wsSold, '2. Sold Vehicles');
 
     // ── Sheet 3: No Sales ──
     const noSaleRows = [
@@ -112,11 +112,11 @@ export default function Export() {
     const titleRows = [
       ['MAG ACQUISITION — TITLE LEDGER', '', '', '', '', '', ''],
       [],
-      ['VIN', 'Year', 'Make', 'Model', 'Title Status', 'Title Notes', 'Vehicle Status', 'Winner Store', 'Date Added'],
+      ['VIN', 'Year', 'Make', 'Model', 'Title Status', 'Title Notes', 'Vehicle Status', 'Buyer', 'Date Added'],
       ...vehicles.map(v => [
         v.vin || '', v.year || '', v.make || '', v.model || '',
         v.titleStatus || 'pending', v.titleNotes || '',
-        v.status || '', v.winnerName || '',
+        v.status || '', v.soldTo || '',
         fmtDate(v.createdAt),
       ]),
     ];
@@ -128,11 +128,11 @@ export default function Export() {
     const transRows = [
       ['MAG ACQUISITION — TRANSPORT LOG', '', '', '', '', '', '', ''],
       [],
-      ['Vehicle', 'VIN', 'Destination Store', 'Winning Bid', 'Awarded', 'Dispatched', 'In Transit', 'Arrived', 'Title Received', 'Notes'],
+      ['Vehicle', 'VIN', 'Destination', 'Awarded', 'Dispatched', 'In Transit', 'Arrived', 'Title Received', 'Notes'],
       ...data.transport.map(t => {
         const v = vehicles.find(vv => vv.id === t.vehicleId);
         return [
-          t.vehicleName || '', v?.vin || '', t.storeName || '', t.winningBid || 0,
+          t.vehicleName || '', v?.vin || '', t.storeName || '',
           fmtDate(t.steps?.awarded), fmtDate(t.steps?.dispatched),
           fmtDate(t.steps?.inTransit), fmtDate(t.steps?.arrived),
           fmtDate(t.steps?.titleReceived), t.notes || '',
@@ -140,7 +140,7 @@ export default function Export() {
       }),
     ];
     const wsTrans = XLSX.utils.aoa_to_sheet(transRows);
-    wsTrans['!cols'] = [24,22,16,14,14,14,14,14,14,30].map(w => ({ wch: w }));
+    wsTrans['!cols'] = [24,22,16,14,14,14,14,14,30].map(w => ({ wch: w }));
     XLSX.utils.book_append_sheet(wb, wsTrans, '5. Transport Log');
 
     // ── Sheet 6: P&L Summary ──
@@ -151,35 +151,15 @@ export default function Export() {
       ['INVENTORY SUMMARY', ''],
       ['Total vehicles acquired', vehicles.length],
       ['Currently in stock', active.length],
-      ['Awarded / sold', awarded.length],
+      ['Sold', sold.length],
       ['No sale', noSale.length],
       [],
       ['FINANCIALS', ''],
       ['Total cost invested (all vehicles)', totalInvested],
-      ['Total cost (awarded only)', awarded.reduce((s,v)=>s+fmt(v.totalCost),0)],
-      ['Total winning bids received', totalRecovered],
+      ['Total cost (sold only)', soldCostTotal],
+      ['Total sale price received', totalRecovered],
       ['Gross margin $', totalMargin],
-      ['Gross margin %', awarded.reduce((s,v)=>s+fmt(v.totalCost),0) > 0 ? `${Math.round((totalMargin / awarded.reduce((s,v)=>s+fmt(v.totalCost),0)) * 100)}%` : '0%'],
-      [],
-      ['BY STORE', '', '', ''],
-      ['Store', 'Cars Won', 'Total Spend', 'Avg Per Car'],
-      ...(data.locations || []).filter(l => l.is_buyer_store).map(loc => {
-        const wins = awarded.filter(v => {
-          const vBids = data.bids.filter(b => b.vehicleId === v.id);
-          if (!vBids.length) return false;
-          const winner = vBids.reduce((top, b) => (!top || b.amount > top.amount) ? b : top, null);
-          return winner?.locationId === loc.id;
-        });
-        const spend = wins.reduce((s,v)=>s+(v.winningBid||0),0);
-        return [loc.name, wins.length, spend, wins.length > 0 ? Math.round(spend/wins.length) : 0];
-      }),
-      [],
-      ['AUCTION HISTORY', ''],
-      ['#', 'Label', 'Opened', 'Closed', 'Vehicles', 'Awarded', 'No Sale', 'Volume'],
-      ...(data.auctionHistory || []).map((h, i) => [
-        i+1, h.label || '', fmtDate(h.openDate), fmtDate(h.closedDate),
-        h.vehicleCount || 0, h.awardedCount || 0, h.noSaleCount || 0, h.totalVolume || 0,
-      ]),
+      ['Gross margin %', soldCostTotal > 0 ? `${Math.round((totalMargin / soldCostTotal) * 100)}%` : '0%'],
     ];
 
     const wsPL = XLSX.utils.aoa_to_sheet(plRows);
@@ -211,8 +191,8 @@ export default function Export() {
           <div className="stat-value">{active.length}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Awarded</div>
-          <div className="stat-value" style={{ color: '#065f46' }}>{awarded.length}</div>
+          <div className="stat-label">Sold</div>
+          <div className="stat-value" style={{ color: '#065f46' }}>{sold.length}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Total cost invested</div>
@@ -234,11 +214,11 @@ export default function Export() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
           {[
             ['1. Current Inventory', 'All vehicles in stock — VIN, specs, cost basis, floor price, status, location, title'],
-            ['2. Auction Results', 'Every awarded vehicle — winning bid, store, margin, award date'],
+            ['2. Sold Vehicles', 'Every sold vehicle — sale price, buyer, margin, sale date'],
             ['3. No Sales', 'Vehicles that didn\'t sell — cost basis and floor for reference'],
             ['4. Title Ledger', 'Title status on every vehicle — pending, in transit, on hand, liens'],
             ['5. Transport Log', 'Full delivery timeline — dispatched, in transit, arrived, title received dates'],
-            ['6. P&L Summary', 'Total invested, recovered, margin by store, auction history'],
+            ['6. P&L Summary', 'Total invested, recovered, and gross margin across all sold vehicles'],
           ].map(([title, desc]) => (
             <div key={title} style={{ background: '#f5f6f8', borderRadius: 10, padding: '14px 16px' }}>
               <div style={{ fontWeight: 700, fontSize: 13, color: '#0d2550', marginBottom: 4 }}>{title}</div>

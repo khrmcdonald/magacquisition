@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import MonthPaceChart, { computeMonthPace } from '../components/MonthPaceChart';
 
 const RESERVE_FEE = 350;
@@ -17,6 +17,7 @@ const daysBetween = (a, b) => {
 export default function Performance() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     data, saveOrgSettings, addReserveClaim, deleteReserveClaim,
   } = useData();
@@ -26,6 +27,11 @@ export default function Performance() {
   const [claimForm, setClaimForm] = useState({ vehicleId: '', amount: '', reason: '', claimDate: new Date().toISOString().slice(0, 10) });
   const [claimSaving, setClaimSaving] = useState(false);
   const [claimError, setClaimError] = useState(null);
+
+  useEffect(() => {
+    const prefillId = location.state?.prefillVehicleId;
+    if (prefillId) setClaimForm(f => ({ ...f, vehicleId: prefillId }));
+  }, [location.state]);
 
   if (user.role !== 'wholesale' && user.role !== 'admin') {
     return <Navigate to="/dashboard" replace />;
@@ -371,6 +377,48 @@ export default function Performance() {
             </table>
           )}
         </div>
+      </div>
+
+      {/* All vehicles */}
+      <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', margin: '28px 0 12px' }}>All vehicles</div>
+      <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 12px', lineHeight: 1.5, maxWidth: 720 }}>
+        Every vehicle in the system regardless of status — the full picture behind the numbers above.
+      </p>
+      <div className="card table-wrap" style={{ padding: 0 }}>
+        {vehicles.length === 0 ? (
+          <div className="empty-state"><p>No vehicles yet</p></div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Vehicle</th><th>Condition</th><th>Miles</th><th>Status</th><th>Cost basis</th>
+              </tr>
+            </thead>
+            <tbody>
+              {vehicles.map(v => {
+                const statusMap = {
+                  intake: { label: 'Intake', bg: '#f3f4f6', color: '#6b7280' },
+                  recon: { label: 'In Recon', bg: '#fef3c7', color: '#92400e' },
+                  ready: { label: 'Ready', bg: '#d1fae5', color: '#065f46' },
+                  sold: { label: 'Sold', bg: '#d1fae5', color: '#065f46' },
+                };
+                const st = statusMap[v.status] || statusMap.intake;
+                return (
+                  <tr key={v.id}>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{v.year} {v.make} {v.model}</div>
+                      <div style={{ fontSize: 12, color: '#6b7280' }}>{v.trim} · {v.color}</div>
+                    </td>
+                    <td><span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{v.condition}</span></td>
+                    <td>{v.mileage ? `${parseInt(v.mileage).toLocaleString()} mi` : '—'}</td>
+                    <td><span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{st.label}</span></td>
+                    <td style={{ fontWeight: 600, color: '#1a3d76' }}>{v.totalCost ? fmt$(v.totalCost) : '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

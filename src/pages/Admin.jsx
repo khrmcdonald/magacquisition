@@ -2,14 +2,11 @@ import React, { useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { Navigate } from 'react-router-dom';
-import { StoreAvatar } from '../components/StoreAvatar';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/Toast';
 
 const ROLE_OPTIONS = [
-  { value: 'bidder',    label: 'Retail Store (Bidder)' },
   { value: 'wholesale', label: 'Wholesale' },
-  { value: 'gm',        label: 'Group GM' },
   { value: 'admin',     label: 'Admin' },
 ];
 
@@ -17,9 +14,7 @@ const ORG_ID = 'bf236d2b-4693-4606-bf3d-ece1767690ab';
 
 function InviteUserCard() {
   const { user } = useAuth();
-  const { data } = useData();
-  const [role, setRole] = useState('bidder');
-  const [locationId, setLocationId] = useState('');
+  const [role, setRole] = useState('wholesale');
   const [loading, setLoading] = useState(false);
   const [generatedLink, setGeneratedLink] = useState('');
   const [copied, setCopied] = useState(false);
@@ -41,7 +36,6 @@ function InviteUserCard() {
 
   const handleGenerate = async (e) => {
     e.preventDefault();
-    if (role === 'bidder' && !locationId) return;
     setLoading(true);
     setGeneratedLink('');
     try {
@@ -50,7 +44,6 @@ function InviteUserCard() {
         .insert({
           org_id: ORG_ID,
           role,
-          location_id: role === 'bidder' ? locationId : null,
           created_by: user.id,
         })
         .select()
@@ -77,7 +70,7 @@ function InviteUserCard() {
     if (generatedLink.includes(id)) setGeneratedLink('');
   };
 
-  const ROLE_LABELS = { bidder: 'Retail Store', wholesale: 'Wholesale', gm: 'Group GM', admin: 'Admin' };
+  const ROLE_LABELS = { wholesale: 'Wholesale', admin: 'Admin' };
 
   return (
     <div className="card" style={{ padding: 0, marginBottom: 24 }}>
@@ -93,30 +86,16 @@ function InviteUserCard() {
             <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>Role</div>
             <select
               value={role}
-              onChange={e => { setRole(e.target.value); setLocationId(''); }}
+              onChange={e => setRole(e.target.value)}
               style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, background: '#fff', boxSizing: 'border-box' }}
             >
               {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
-          {role === 'bidder' && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>Store *</div>
-              <select
-                value={locationId}
-                onChange={e => setLocationId(e.target.value)}
-                required
-                style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, background: '#fff', boxSizing: 'border-box' }}
-              >
-                <option value="">Select store…</option>
-                {(data.locations || []).filter(l => l.is_buyer_store).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
-            </div>
-          )}
         </div>
 
         <div>
-          <button type="submit" disabled={loading || (role === 'bidder' && !locationId)} className="btn-navy" style={{ padding: '9px 22px', fontSize: 13, opacity: loading ? .7 : 1 }}>
+          <button type="submit" disabled={loading} className="btn-navy" style={{ padding: '9px 22px', fontSize: 13, opacity: loading ? .7 : 1 }}>
             {loading ? 'Generating…' : 'Generate invite link'}
           </button>
         </div>
@@ -198,7 +177,7 @@ function TeamMembersCard({ profiles, onUpdateProfile, onDeleteUser, roleLabel })
     setDeleting(null);
   };
 
-  const startEdit = (p) => setEditing({ id: p.id, name: p.name || '', role: p.role || 'bidder', buyer_number: p.buyer_number || '' });
+  const startEdit = (p) => setEditing({ id: p.id, name: p.name || '', role: p.role || 'wholesale', buyer_number: p.buyer_number || '' });
 
   const handleSave = async () => {
     if (!editing) return;
@@ -290,9 +269,8 @@ function TeamMembersCard({ profiles, onUpdateProfile, onDeleteUser, roleLabel })
 
 export default function Admin() {
   const { user } = useAuth();
-  const { data, updateStorePhoto, addAcquisitionSource, deleteAcquisitionSource, addLocation, deleteLocation, updateProfile, deleteUser, saveOrgSettings } = useData();
+  const { data, addAcquisitionSource, deleteAcquisitionSource, addLocation, deleteLocation, updateProfile, deleteUser, saveOrgSettings } = useData();
   const { showToast } = useToast();
-  const fileRefs = useRef({});
   const logoRef = useRef(null);
 
   // Sources state
@@ -395,37 +373,12 @@ export default function Admin() {
 
   if (user.role !== 'admin') return <Navigate to="/" replace />;
 
-  const roleLabel = { bidder: 'Retail Store', wholesale: 'Wholesale', gm: 'Group GM', admin: 'Admin' };
-  const roleBadge = { bidder: 'badge-blue', wholesale: 'badge-navy', gm: 'badge-gold', admin: 'badge-gray' };
-
-  const handlePhoto = (storeId, file) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const size = Math.min(img.width, img.height);
-        canvas.width = 200;
-        canvas.height = 200;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img,
-          (img.width - size) / 2, (img.height - size) / 2,
-          size, size, 0, 0, 200, 200
-        );
-        updateStorePhoto(storeId, canvas.toDataURL('image/jpeg', 0.85));
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const photoEligible = (role) => ['bidder', 'wholesale', 'gm'].includes(role);
+  const roleLabel = { wholesale: 'Wholesale', admin: 'Admin' };
+  const roleBadge = { wholesale: 'badge-navy', admin: 'badge-gray' };
 
   const TABS = [
     { key: 'org',    label: 'Organization' },
     { key: 'acq',    label: 'Acquisitions' },
-    { key: 'stores', label: 'Retail Stores' },
     { key: 'users',  label: 'Users' },
   ];
 
@@ -502,38 +455,6 @@ export default function Admin() {
                 <button type="submit" disabled={savingLocation || !newLocation.trim()} className="btn-navy" style={{ padding: '9px 18px', fontSize: 13, opacity: savingLocation ? 0.7 : 1 }}>{savingLocation ? 'Adding…' : '+ Add'}</button>
               </form>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── RETAIL STORES TAB ── */}
-      {activeTab === 'stores' && (
-        <div className="card" style={{ padding: 0 }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>Retail Stores</h2>
-            <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>Store profiles and headshots — appears throughout the app</p>
-          </div>
-          <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {(data.locations || []).filter(l => l.is_buyer_store).map(loc => (
-              <div key={loc.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px', background: '#f9fafb', borderRadius: 10, border: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
-                <div style={{ position: 'relative', flexShrink: 0 }}>
-                  <StoreAvatar locationId={loc.id} size={52} />
-                  <button onClick={() => fileRefs.current[loc.id]?.click()} title="Upload photo" style={{ position: 'absolute', bottom: -4, right: -4, width: 22, height: 22, borderRadius: '50%', background: '#1a3d76', border: '2px solid #fff', color: '#f1bb25', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, lineHeight: 1 }}>+</button>
-                  <input type="file" accept="image/*" style={{ display: 'none' }} ref={el => fileRefs.current[loc.id] = el} onChange={e => { handlePhoto(loc.id, e.target.files[0]); e.target.value = ''; }} />
-                </div>
-                <div style={{ flex: 1, minWidth: 140 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{loc.name}</div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4, flexWrap: 'wrap' }}>
-                    <span style={{ fontFamily: 'monospace', fontSize: 11, background: '#e8eef5', color: '#1a3d76', padding: '2px 8px', borderRadius: 4 }}>{loc.short_code || '—'}</span>
-                    <span className="badge badge-blue">Retail Store</span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button onClick={() => fileRefs.current[loc.id]?.click()} className="btn-secondary" style={{ padding: '6px 14px', fontSize: 13 }}>{data.storePhotos?.[loc.id] ? 'Change photo' : 'Upload photo'}</button>
-                  {data.storePhotos?.[loc.id] && <button onClick={() => updateStorePhoto(loc.id, null)} style={{ background: '#fee2e2', color: '#991b1b', border: 'none', padding: '6px 12px', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>Remove</button>}
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       )}

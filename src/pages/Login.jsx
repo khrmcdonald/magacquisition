@@ -18,9 +18,7 @@ export default function Login() {
     setLoading(true);
     const user = await login(email.trim(), password);
     if (user) {
-      if (user.role === 'wholesale' || user.role === 'admin') navigate('/dashboard');
-      else if (user.role === 'gm') navigate('/overview');
-      else navigate('/auction');
+      navigate('/dashboard');
     } else {
       setError('Invalid email or password. Please try again.');
     }
