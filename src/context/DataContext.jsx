@@ -197,11 +197,20 @@ const NUMERIC_FIELDS = new Set([
   'purchase_price_cad', 'exchange_rate',
 ]);
 
+// Date-typed vehicles columns — coerce '' to null so an unset date field
+// (e.g. bond_expiration on non-Canada units) doesn't reach Postgres as ''
+// (invalid input syntax for type date).
+const DATE_FIELDS = new Set([
+  'date_purchased', 'sold_date', 'bond_expiration',
+]);
+
 function toSnakeCase(fields) {
   const out = {};
   for (const [k, v] of Object.entries(fields)) {
     const key = VEHICLE_FIELD_MAP[k] || k;
-    out[key] = NUMERIC_FIELDS.has(key) ? (v === '' || v == null ? null : parseFloat(v)) : v;
+    if (NUMERIC_FIELDS.has(key)) out[key] = (v === '' || v == null) ? null : parseFloat(v);
+    else if (DATE_FIELDS.has(key)) out[key] = (v === '' || v == null) ? null : v;
+    else out[key] = v;
   }
   return out;
 }
