@@ -153,6 +153,21 @@ export function KeysPill({ vehicle, style }) {
   );
 }
 
+export function CanadaBadge({ style }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 3,
+      background: '#dc2626', color: '#fff',
+      fontSize: 10, fontWeight: 800, letterSpacing: '.03em',
+      padding: '2px 7px', borderRadius: 5,
+      verticalAlign: 'middle',
+      ...style,
+    }}>
+      🇨🇦 CANADA
+    </span>
+  );
+}
+
 const STATUS_ACCENT = {
   intake:     '#f59e0b',
   no_sale:    '#94a3b8',
@@ -265,6 +280,7 @@ export function VehicleCard({
               {vehicle.trim
                 ? <span style={{ fontWeight: 400, color: '#6b7280', fontSize: 13 }}> · {vehicle.trim}</span>
                 : null}
+              {vehicle.originCountry === 'CA' && <CanadaBadge style={{ marginLeft: 8 }} />}
             </div>
             <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
               {[
@@ -375,6 +391,7 @@ export function VehicleCard({
           onMouseLeave={onTitleClick ? () => setTitleHovered(false) : undefined}
         >
           {vehicle.year} {vehicle.make} {vehicle.model}
+          {vehicle.originCountry === 'CA' && <CanadaBadge style={{ marginLeft: 6 }} />}
         </div>
 
         {/* Trim */}
