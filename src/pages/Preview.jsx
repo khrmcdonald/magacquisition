@@ -47,7 +47,8 @@ export default function Preview() {
   const incomingVehicles = vehicles.filter(v => v.status !== 'ready' && v.is_incoming);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: 'system-ui, -apple-system, sans-serif', display: 'flex' }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
       {/* Header */}
       <div style={{ background: '#0d2550', padding: '20px 32px', display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 2px 10px rgba(13,37,80,0.15)' }}>
         <div>
@@ -56,7 +57,7 @@ export default function Preview() {
         </div>
       </div>
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 20px', paddingRight: panel ? 480 : 20, transition: 'padding-right 0.3s' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 20px' }}>
         {loading && (
           <div style={{ textAlign: 'center', padding: 80, color: '#9ca3af', fontSize: 15 }}>Loading inventory…</div>
         )}
@@ -121,13 +122,14 @@ export default function Preview() {
       <div style={{ textAlign: 'center', padding: '32px 20px 48px', color: '#9ca3af', fontSize: 12 }}>
         This inventory is for authorized dealer partners only. Pricing not shown.
       </div>
+      </div>
 
       {/* Detail panel */}
       {panel && (
         <div style={{
-          position: 'fixed', top: 0, right: 0, width: 440, height: '100vh',
+          width: 440, flexShrink: 0, position: 'sticky', top: 0, height: '100vh',
           background: '#fff', boxShadow: '-6px 0 32px rgba(0,0,0,0.12)',
-          zIndex: 400, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}>
           {/* Panel header */}
           <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, background: '#0d2550' }}>
@@ -146,7 +148,7 @@ export default function Preview() {
           </div>
 
           {/* Scrollable body */}
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
             {/* Photo gallery */}
             {(() => {
               const photos = Array.isArray(panel.photos) ? panel.photos : [];
@@ -226,9 +228,9 @@ export default function Preview() {
                   {panel.buyer_responsibility_notes}
                 </div>
               )}
-            </div>
 
-            <TrustFooter />
+              <TrustBadges />
+            </div>
           </div>
         </div>
       )}
@@ -250,19 +252,18 @@ function PhotoPlaceholder({ size = 52 }) {
   );
 }
 
-function TrustFooter() {
+function TrustBadges() {
   const items = [
-    'Title verified before every sale',
-    'Multi-point inspection on all units',
-    'Dealer-only wholesale pricing',
+    { icon: '📄', label: 'Title Verified' },
+    { icon: '🔍', label: 'Multi-Point Inspected' },
+    { icon: '🤝', label: 'Wholesale, Dealers Only' },
   ];
   return (
-    <div style={{ marginTop: 'auto', padding: '18px 20px', background: '#f8fafc', borderTop: '1px solid #eef2f7' }}>
-      <div style={{ fontSize: 10.5, fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>The Tri-State Standard</div>
-      {items.map(t => (
-        <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7, fontSize: 12.5, color: '#374151' }}>
-          <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#d1fae5', color: '#065f46', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>✓</span>
-          {t}
+    <div style={{ marginTop: 14, padding: '14px 10px', background: '#f8fafc', border: '1px solid #eef2f7', borderRadius: 10, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+      {items.map(it => (
+        <div key={it.label} style={{ textAlign: 'center', padding: '0 4px' }}>
+          <div style={{ fontSize: 17, marginBottom: 4 }}>{it.icon}</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', lineHeight: 1.3 }}>{it.label}</div>
         </div>
       ))}
     </div>
