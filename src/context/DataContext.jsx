@@ -77,7 +77,6 @@ function mapVehicle(r) {
     exchangeRate: r.exchange_rate || null,
     bondReference: r.bond_reference || null,
     bondExpiration: r.bond_expiration || null,
-    isIncoming: !!r.is_incoming,
   };
 }
 
@@ -190,7 +189,6 @@ const VEHICLE_FIELD_MAP = {
   exchangeRate: 'exchange_rate',
   bondReference: 'bond_reference',
   bondExpiration: 'bond_expiration',
-  isIncoming: 'is_incoming',
 };
 
 // Numeric vehicles columns — coerce so a cleared/stray-character input doesn't
@@ -399,7 +397,6 @@ export function DataProvider({ children }) {
       exchange_rate:       vehicle.exchangeRate     ? parseFloat(vehicle.exchangeRate)      : null,
       bond_reference:      vehicle.bondReference    || null,
       bond_expiration:     vehicle.bondExpiration   || null,
-      is_incoming:         !!vehicle.isIncoming,
     });
 
     const { data: row, error } = await supabase

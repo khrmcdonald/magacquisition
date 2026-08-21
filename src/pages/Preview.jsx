@@ -15,10 +15,9 @@ export default function Preview() {
     async function load() {
       const { data: rows, error: err } = await supabase
         .from('vehicles')
-        .select('id, status, is_incoming, year, make, model, trim, color, interior_color, vin, photos, buyer_name, condition, engine, title_status, disclosure_notes, buyer_responsibility_notes, keys')
+        .select('id, status, year, make, model, trim, color, interior_color, vin, photos, buyer_name, condition, engine, title_status, disclosure_notes, buyer_responsibility_notes, keys')
         .eq('org_id', ORG_ID)
-        .or('status.eq.ready,is_incoming.eq.true')
-        .neq('status', 'sold')
+        .in('status', ['ready', 'incoming'])
         .order('created_at', { ascending: false });
 
       if (err) { setError(err.message); setLoading(false); return; }
@@ -44,7 +43,7 @@ export default function Preview() {
   const closePanel = () => setPanel(null);
 
   const readyVehicles = vehicles.filter(v => v.status === 'ready');
-  const incomingVehicles = vehicles.filter(v => v.status !== 'ready' && v.is_incoming);
+  const incomingVehicles = vehicles.filter(v => v.status === 'incoming');
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: 'system-ui, -apple-system, sans-serif', display: 'flex' }}>

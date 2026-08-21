@@ -13,10 +13,12 @@ const CONDITIONS = ['Excellent', 'Good', 'Fair', 'Poor'];
 
 
 const AUCTION_STATUSES = [
+  { value: 'incoming',     label: 'Incoming',        bg: '#dbeafe', color: '#1d4ed8' },
   { value: 'intake',       label: 'Intake',          bg: '#f3f4f6', color: '#6b7280' },
   { value: 'arbitration',  label: 'Arbitration',     bg: '#fff7ed', color: '#c2410c' },
   { value: 'recon',        label: 'In Recon',        bg: '#fef3c7', color: '#92400e' },
   { value: 'ready',        label: 'Ready to List',   bg: '#d1fae5', color: '#065f46' },
+  { value: 'pre_sold',     label: 'Pre-Sold',        bg: '#ede9fe', color: '#6d28d9' },
 ];
 
 function InlineSelect({ options, current, onChange, minWidth, label, compact }) {
@@ -123,28 +125,6 @@ function VehicleStatusDropdown({ vehicle, onChange, compact }) {
     return <span style={{ background: s.bg, color: s.color, padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>{s.label}</span>;
   }
   return <InlineSelect options={AUCTION_STATUSES} current={vehicle.status} onChange={onChange} minWidth={150} label="Vehicle status" compact={compact} />;
-}
-
-function IncomingToggle({ vehicle, onChange, compact }) {
-  const active = !!vehicle.isIncoming;
-  return (
-    <button
-      onClick={e => { e.stopPropagation(); onChange(!active); }}
-      title={active ? 'Showing on Preview as Incoming — click to remove' : 'Show on Preview as Incoming (before it physically arrives)'}
-      style={{
-        background: active ? '#3b82f6' : '#fff',
-        color: active ? '#fff' : '#9ca3af',
-        border: `1.5px solid ${active ? '#3b82f6' : '#d1d5db'}`,
-        borderRadius: 20, padding: compact ? '2px 8px' : '5px 12px',
-        fontSize: compact ? 10 : 11, fontWeight: 700, cursor: 'pointer',
-        display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap',
-        boxShadow: active ? '0 2px 6px rgba(59,130,246,0.3)' : 'none',
-        transition: 'all 0.15s',
-      }}
-    >
-      🚚 {active ? 'Incoming' : 'Mark Incoming'}
-    </button>
-  );
 }
 
 
@@ -548,7 +528,7 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
     needsTransport: false, transportScheduledAt: '',
     originCountry: 'US', purchasePriceCad: '', exchangeRate: '',
     bondReference: '', bondExpiration: '', crossingNotes: '',
-    isTrade: false, isIncoming: false,
+    isTrade: false,
   });
   const [dupVehicle, setDupVehicle] = useState(null);
   const [addingAddress, setAddingAddress] = useState(false);
@@ -852,15 +832,6 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
         <YesNoToggle value={form.isTrade} onChange={v => set('isTrade', v)} />
       </div>
 
-      {/* Incoming — advertise before physical arrival */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16, padding: '10px 14px', background: form.isIncoming ? '#eff6ff' : 'transparent', border: form.isIncoming ? '1px solid #bfdbfe' : 'none', borderRadius: 8 }}>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Show as "Incoming" on Preview</div>
-          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>Vehicle hasn't physically arrived yet — lists on the public preview page under Incoming, separate from Ready Now</div>
-        </div>
-        <YesNoToggle value={form.isIncoming} onChange={v => set('isIncoming', v)} />
-      </div>
-
       {/* Location */}
       {!form.isTrade && (
         <div className="form-group">
@@ -1154,11 +1125,13 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
 }
 
 const STATUS_LABELS = {
+  incoming:   { label: 'Incoming',        color: '#1d4ed8', bg: '#dbeafe', accent: '#3b82f6' },
   intake:       { label: 'Intake',       color: '#6b7280', bg: '#f3f4f6', accent: '#9ca3af' },
   arbitration:  { label: 'Arbitration',  color: '#c2410c', bg: '#fff7ed', accent: '#f97316' },
   inspection:   { label: 'Inspection',   color: '#92400e', bg: '#fef3c7', accent: '#f59e0b' },
   recon:        { label: 'In Recon',     color: '#92400e', bg: '#fef3c7', accent: '#e8b84b' },
   ready:      { label: 'Ready to List',   color: '#065f46', bg: '#d1fae5', accent: '#10b981' },
+  pre_sold:   { label: 'Pre-Sold',        color: '#6d28d9', bg: '#ede9fe', accent: '#8b5cf6' },
   in_auction: { label: 'Live in Auction', color: '#1e40af', bg: '#dbeafe', accent: '#3b82f6' },
   awarded:    { label: 'Awarded',         color: '#065f46', bg: '#d1fae5', accent: '#0d2550' },
   no_sale:    { label: 'No Sale',         color: '#991b1b', bg: '#fee2e2', accent: '#ef4444' },
@@ -2022,16 +1995,9 @@ export default function Acquisitions() {
                 showCostBasis={!!v.totalCost}
                 costBasis={v.totalCost}
                 badge={
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                    {!isReadOnly
-                      ? <VehicleStatusDropdown vehicle={v} compact onChange={async (val) => { try { await updateVehicle(v.id, { status: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
-                      : <span style={{ background: st.bg, color: st.color, padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 700, letterSpacing: '.02em' }}>{st.label}</span>
-                    }
-                    {!isReadOnly && v.status !== 'sold'
-                      ? <IncomingToggle vehicle={v} compact onChange={async (val) => { try { await updateVehicle(v.id, { isIncoming: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
-                      : (v.isIncoming && <span style={{ background: '#3b82f6', color: '#fff', padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 700, letterSpacing: '.02em' }}>🚚 Incoming</span>)
-                    }
-                  </div>
+                  !isReadOnly
+                    ? <VehicleStatusDropdown vehicle={v} compact onChange={async (val) => { try { await updateVehicle(v.id, { status: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
+                    : <span style={{ background: st.bg, color: st.color, padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 700, letterSpacing: '.02em' }}>{st.label}</span>
                 }
                 pricePill={null}
                 highlighted={panelVehicle?.id === v.id}
@@ -2039,6 +2005,9 @@ export default function Acquisitions() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {!isReadOnly && (
                       <>
+                        {v.status === 'incoming' && (
+                          <button onClick={() => handleStatusChange(v, 'intake')} style={{ width: '100%', background: '#eff6ff', color: '#1d4ed8', border: '1.5px solid #bfdbfe', borderRadius: 7, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✓ Mark Arrived</button>
+                        )}
                         {(v.status === 'intake' || v.status === 'no_sale') && (
                           <>
                             <button onClick={() => handleStatusChange(v, 'inspection')} style={{ width: '100%', background: '#fff7ed', color: '#9a3412', border: '1.5px solid #fdba74', borderRadius: 7, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>→ Inspection</button>
@@ -2057,7 +2026,7 @@ export default function Acquisitions() {
                         {v.status === 'recon' && (
                           <button onClick={() => handleStatusChange(v, 'ready')} style={{ width: '100%', background: '#f0fdf4', color: '#15803d', border: '1.5px solid #86efac', borderRadius: 7, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✓ Mark Ready</button>
                         )}
-                        {['intake','inspection','recon','ready','no_sale'].includes(v.status) && (
+                        {['intake','inspection','recon','ready','pre_sold','no_sale'].includes(v.status) && (
                           <button onClick={() => openSellModal(v)} style={{ width: '100%', background: '#f9fafb', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 7, padding: '6px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Mark as Sold</button>
                         )}
                       </>
@@ -2093,15 +2062,9 @@ export default function Acquisitions() {
                 vehicle={v}
                 mileage={v.mileage ?? mileageMap[v.id] ?? null}
                 badge={
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
-                      {st.label}
-                    </span>
-                    {!isReadOnly && v.status !== 'sold'
-                      ? <IncomingToggle vehicle={v} onChange={async (val) => { try { await updateVehicle(v.id, { isIncoming: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
-                      : (v.isIncoming && <span style={{ background: '#3b82f6', color: '#fff', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>🚚 Incoming</span>)
-                    }
-                  </div>
+                  <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
+                    {st.label}
+                  </span>
                 }
                 pricePill={null}
               >
@@ -2194,6 +2157,9 @@ export default function Acquisitions() {
                   {!isReadOnly && (
                     <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
                       {/* Stage advancement */}
+                      {v.status === 'incoming' && (
+                        <button onClick={() => handleStatusChange(v, 'intake')} style={{ background: '#dbeafe', color: '#1d4ed8', border: '1.5px solid #bfdbfe', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>✓ Mark Arrived</button>
+                      )}
                       {(v.status === 'intake' || v.status === 'no_sale') && (
                         <div style={{ display: 'flex', gap: 5 }}>
                           <button onClick={() => handleStatusChange(v, 'inspection')} style={{ background: '#fef3c7', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>→ Inspect</button>
@@ -2213,7 +2179,7 @@ export default function Acquisitions() {
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                         <button onClick={() => setDetailModal(v)} data-tooltip="Details" style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>🔍</button>
                         <button onClick={() => { setEditing(v); setSaveError(null); setShowForm(true); }} data-tooltip="Edit" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>✏️</button>
-                        {['intake', 'inspection', 'recon', 'ready', 'no_sale'].includes(v.status) && (
+                        {['intake', 'inspection', 'recon', 'ready', 'pre_sold', 'no_sale'].includes(v.status) && (
                           <button onClick={() => setRepairModal(v)} data-tooltip="Repairs" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>🔧</button>
                         )}
                         <button onClick={() => handlePrintBuySheet(v)} data-tooltip="Buy sheet" style={{ background: '#F8F9FA', border: '1px solid #e5e7eb', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 15 }}>🧾</button>
@@ -2322,16 +2288,10 @@ export default function Acquisitions() {
                 </div>
                 <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, marginTop: 1 }}>{pv.trim || pv.vin || ''}</div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                {!isReadOnly
-                  ? <VehicleStatusDropdown vehicle={pv} onChange={async (val) => { try { await updateVehicle(pv.id, { status: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
-                  : <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{st.label}</span>
-                }
-                {!isReadOnly && pv.status !== 'sold'
-                  ? <IncomingToggle vehicle={pv} compact onChange={async (val) => { try { await updateVehicle(pv.id, { isIncoming: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
-                  : (pv.isIncoming && <span style={{ background: '#3b82f6', color: '#fff', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>🚚 Incoming</span>)
-                }
-              </div>
+              {!isReadOnly
+                ? <VehicleStatusDropdown vehicle={pv} onChange={async (val) => { try { await updateVehicle(pv.id, { status: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
+                : <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{st.label}</span>
+              }
             </div>
 
             {/* Scrollable body */}
