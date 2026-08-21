@@ -202,16 +202,16 @@ export default function Preview() {
 
               {/* Specs */}
               {[
-                panel.mileage != null && ['Mileage', `${parseInt(panel.mileage).toLocaleString()} mi`],
-                panel.color && ['Exterior Color', panel.color],
-                panel.interior_color && ['Interior Color', panel.interior_color],
-                panel.condition && ['Condition', panel.condition.charAt(0).toUpperCase() + panel.condition.slice(1)],
-                panel.engine && ['Engine', panel.engine],
-                panel.buyer_name && ['Buyer Rep', panel.buyer_name],
-              ].filter(Boolean).map(([label, value]) => (
+                ['Mileage', panel.mileage != null ? `${parseInt(panel.mileage).toLocaleString()} mi` : null],
+                ['Exterior Color', panel.color || null],
+                ['Interior Color', panel.interior_color || null],
+                ['Condition', panel.condition ? panel.condition.charAt(0).toUpperCase() + panel.condition.slice(1) : null],
+                ['Engine', panel.engine || null],
+                ['Buyer Rep', panel.buyer_name || null],
+              ].map(([label, value]) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingBottom: 6, borderBottom: '1px solid #f3f4f6' }}>
                   <span style={{ fontSize: 12, color: '#6b7280' }}>{label}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{value}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: value ? '#111827' : '#c7cbd1', fontStyle: value ? 'normal' : 'italic' }}>{value || '—'}</span>
                 </div>
               ))}
 
@@ -347,36 +347,18 @@ function VehiclePreviewCard({ vehicle: v, variant = 'ready', active, onView }) {
           <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#374151', background: '#f3f4f6', padding: '3px 7px', borderRadius: 4, display: 'inline-block', letterSpacing: '.05em', alignSelf: 'flex-start' }}>
             VIN: {v.vin || '—'}
           </div>
-          {v.mileage != null && (
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#6b7280' }}>Mileage</span>
-              <span style={{ fontWeight: 600 }}>{parseInt(v.mileage).toLocaleString()} mi</span>
+          {[
+            ['Mileage', v.mileage != null ? `${parseInt(v.mileage).toLocaleString()} mi` : null],
+            ['Color', v.color ? `${v.color}${v.interior_color ? ` / ${v.interior_color}` : ''}` : null],
+            ['Condition', v.condition || null],
+            ['Engine', v.engine || null],
+            ['Buyer', v.buyer_name || null, '#0d2550'],
+          ].map(([label, value, color]) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#6b7280' }}>{label}</span>
+              <span style={{ fontWeight: 600, color: value ? (color || '#111827') : '#c7cbd1', fontStyle: value ? 'normal' : 'italic' }}>{value || '—'}</span>
             </div>
-          )}
-          {v.color && (
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#6b7280' }}>Color</span>
-              <span style={{ fontWeight: 600 }}>{v.color}{v.interior_color ? ` / ${v.interior_color}` : ''}</span>
-            </div>
-          )}
-          {v.condition && (
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#6b7280' }}>Condition</span>
-              <span style={{ fontWeight: 600 }}>{v.condition}</span>
-            </div>
-          )}
-          {v.engine && (
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#6b7280' }}>Engine</span>
-              <span style={{ fontWeight: 600 }}>{v.engine}</span>
-            </div>
-          )}
-          {v.buyer_name && (
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#6b7280' }}>Buyer</span>
-              <span style={{ fontWeight: 600, color: '#0d2550' }}>{v.buyer_name}</span>
-            </div>
-          )}
+          ))}
         </div>
 
         <div style={{ marginBottom: 12 }}>
