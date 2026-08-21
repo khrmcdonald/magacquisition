@@ -227,8 +227,6 @@ export default function Preview() {
                   {panel.buyer_responsibility_notes}
                 </div>
               )}
-
-              <TrustBadges />
             </div>
           </div>
         </div>
@@ -247,24 +245,6 @@ function PhotoPlaceholder({ size = 52 }) {
         fontSize: size * 0.5, filter: 'grayscale(15%)',
       }}>🚗</div>
       <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>Photo coming soon</span>
-    </div>
-  );
-}
-
-function TrustBadges() {
-  const items = [
-    { icon: '📄', label: 'Title Verified' },
-    { icon: '🔍', label: 'Multi-Point Inspected' },
-    { icon: '🤝', label: 'Wholesale, Dealers Only' },
-  ];
-  return (
-    <div style={{ marginTop: 14, padding: '14px 10px', background: '#f8fafc', border: '1px solid #eef2f7', borderRadius: 10, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
-      {items.map(it => (
-        <div key={it.label} style={{ textAlign: 'center', padding: '0 4px' }}>
-          <div style={{ fontSize: 17, marginBottom: 4 }}>{it.icon}</div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', lineHeight: 1.3 }}>{it.label}</div>
-        </div>
-      ))}
     </div>
   );
 }
