@@ -215,28 +215,49 @@ export default function Preview() {
                 </div>
               ))}
 
-              {panel.disclosure_notes && (
-                <div style={{ marginTop: 10, fontSize: 12, color: '#065f46', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 6, padding: '8px 10px', lineHeight: 1.5 }}>
-                  <div style={{ fontWeight: 800, fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 3 }}>We're Fixing</div>
-                  {panel.disclosure_notes}
-                </div>
-              )}
-              {panel.buyer_responsibility_notes && (
-                <div style={{ marginTop: 8, fontSize: 12, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '8px 10px', lineHeight: 1.5 }}>
-                  <div style={{ fontWeight: 800, fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 3 }}>⚠ Buyer's Responsibility</div>
-                  {panel.buyer_responsibility_notes}
-                </div>
-              )}
-              {panel.general_notes && (
-                <div style={{ marginTop: 8, fontSize: 12, color: '#374151', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 10px', lineHeight: 1.5 }}>
-                  <div style={{ fontWeight: 800, fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 3 }}>Notes</div>
-                  {panel.general_notes}
-                </div>
-              )}
+              <div style={{ marginTop: 10 }}>
+                <NotesPanel vehicle={panel} />
+              </div>
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+const NOTE_FIELDS = [
+  { key: 'disclosure_notes', label: "We're Fixing", color: '#059669', bg: '#ecfdf5', border: '#a7f3d0' },
+  { key: 'buyer_responsibility_notes', label: "Buyer's Responsibility", color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
+  { key: 'general_notes', label: 'Notes', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+];
+
+function NotesPanel({ vehicle, compact }) {
+  return (
+    <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+      {NOTE_FIELDS.map((f, i) => {
+        const value = vehicle[f.key];
+        return (
+          <div key={f.key} style={{
+            padding: compact ? '6px 9px' : '8px 10px',
+            background: value ? f.bg : '#fafafa',
+            borderTop: i > 0 ? `1px solid ${value ? f.border : '#eef0f2'}` : 'none',
+          }}>
+            <div style={{
+              fontSize: compact ? 9 : 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em',
+              color: value ? f.color : '#b0b5bd', marginBottom: value ? 2 : 0,
+            }}>
+              {f.label}
+            </div>
+            <div style={{
+              fontSize: compact ? 11 : 12, lineHeight: 1.45,
+              color: value ? '#374151' : '#c7cbd1', fontStyle: value ? 'normal' : 'italic',
+            }}>
+              {value || '—'}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -358,21 +379,9 @@ function VehiclePreviewCard({ vehicle: v, variant = 'ready', active, onView }) {
           )}
         </div>
 
-        {v.disclosure_notes && (
-          <div style={{ fontSize: 11, color: '#065f46', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 6, padding: '6px 8px', marginBottom: 6, lineHeight: 1.4 }}>
-            <span style={{ fontWeight: 800 }}>We're Fixing:</span> {v.disclosure_notes}
-          </div>
-        )}
-        {v.buyer_responsibility_notes && (
-          <div style={{ fontSize: 11, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '6px 8px', marginBottom: 6, lineHeight: 1.4 }}>
-            <span style={{ fontWeight: 800 }}>⚠ Buyer's Responsibility:</span> {v.buyer_responsibility_notes}
-          </div>
-        )}
-        {v.general_notes && (
-          <div style={{ fontSize: 11, color: '#374151', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '6px 8px', marginBottom: 12, lineHeight: 1.4 }}>
-            <span style={{ fontWeight: 800 }}>Notes:</span> {v.general_notes}
-          </div>
-        )}
+        <div style={{ marginBottom: 12 }}>
+          <NotesPanel vehicle={v} compact />
+        </div>
 
         <button
           onClick={onView}
