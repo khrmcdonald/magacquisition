@@ -15,7 +15,7 @@ export default function Preview() {
     async function load() {
       const { data: rows, error: err } = await supabase
         .from('vehicles')
-        .select('id, status, year, make, model, trim, color, interior_color, vin, photos, buyer_name, condition, engine, title_status, disclosure_notes, buyer_responsibility_notes, keys')
+        .select('id, status, year, make, model, trim, color, interior_color, vin, photos, buyer_name, condition, engine, title_status, disclosure_notes, buyer_responsibility_notes, general_notes, keys')
         .eq('org_id', ORG_ID)
         .in('status', ['ready', 'incoming'])
         .order('created_at', { ascending: false });
@@ -227,6 +227,12 @@ export default function Preview() {
                   {panel.buyer_responsibility_notes}
                 </div>
               )}
+              {panel.general_notes && (
+                <div style={{ marginTop: 8, fontSize: 12, color: '#374151', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 10px', lineHeight: 1.5 }}>
+                  <div style={{ fontWeight: 800, fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 3 }}>Notes</div>
+                  {panel.general_notes}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -358,8 +364,13 @@ function VehiclePreviewCard({ vehicle: v, variant = 'ready', active, onView }) {
           </div>
         )}
         {v.buyer_responsibility_notes && (
-          <div style={{ fontSize: 11, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '6px 8px', marginBottom: 12, lineHeight: 1.4 }}>
+          <div style={{ fontSize: 11, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '6px 8px', marginBottom: 6, lineHeight: 1.4 }}>
             <span style={{ fontWeight: 800 }}>⚠ Buyer's Responsibility:</span> {v.buyer_responsibility_notes}
+          </div>
+        )}
+        {v.general_notes && (
+          <div style={{ fontSize: 11, color: '#374151', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '6px 8px', marginBottom: 12, lineHeight: 1.4 }}>
+            <span style={{ fontWeight: 800 }}>Notes:</span> {v.general_notes}
           </div>
         )}
 

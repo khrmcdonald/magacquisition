@@ -516,7 +516,7 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
   } : {
     vin: '', year: '', make: '', model: '', trim: '', mileage: '', color: '',
     interior_color: '', engine: '',
-    source_id: '', purchasePrice: '', condition: 'Good', notes: '', buyerNotes: '',
+    source_id: '', purchasePrice: '', condition: 'Good', notes: '', buyerNotes: '', generalNotes: '',
     overheadCosts: '', floorPrice: '', listPrice: '', photos: [],
     titleStatus: 'pending', currentLocation: '',
     keys: { available: 0, total: 2 },
@@ -818,6 +818,17 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
           value={form.buyerNotes || ''}
           onChange={e => set('buyerNotes', e.target.value)}
           placeholder="Anything disclosed as-is, on the buyer once sold — known issues not being fixed."
+          rows={3}
+          style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
+        />
+      </div>
+
+      <div className="form-group">
+        <label>General Notes <span style={{ fontWeight: 400, color: '#9ca3af' }}>(shown on vehicle cards & preview)</span></label>
+        <textarea
+          value={form.generalNotes || ''}
+          onChange={e => set('generalNotes', e.target.value)}
+          placeholder="Anything worth knowing about this vehicle that isn't a fix or a buyer disclosure — history, standout features, etc."
           rows={3}
           style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
         />
@@ -2424,6 +2435,13 @@ export default function Acquisitions() {
                   <>
                     {sectionHdr("Buyer's Responsibility")}
                     <div style={{ fontSize: 13, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '8px 10px', lineHeight: 1.5 }}>{pv.buyerNotes}</div>
+                  </>
+                )}
+
+                {pv.generalNotes && (
+                  <>
+                    {sectionHdr('General Notes')}
+                    <div style={{ fontSize: 13, color: '#374151', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 10px', lineHeight: 1.5 }}>{pv.generalNotes}</div>
                   </>
                 )}
 

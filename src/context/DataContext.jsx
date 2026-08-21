@@ -44,6 +44,7 @@ function mapVehicle(r) {
     listPrice: r.list_price,
     notes: r.disclosure_notes,
     buyerNotes: r.buyer_responsibility_notes || null,
+    generalNotes: r.general_notes || null,
     photos: Array.isArray(r.photos) ? r.photos : [],
     currentLocation: r.current_location_id,
     titleStatus: r.title_status || 'pending',
@@ -163,6 +164,7 @@ const VEHICLE_FIELD_MAP = {
   source_id: 'source_id',
   notes: 'disclosure_notes',     // app uses 'notes', DB column is 'disclosure_notes'
   buyerNotes: 'buyer_responsibility_notes',
+  generalNotes: 'general_notes',
   photos: 'photos',
   currentLocation: 'current_location_id',
   titleStatus: 'title_status', titleElectronic: 'title_electronic',
@@ -389,6 +391,7 @@ export function DataProvider({ children }) {
       buyer_name:          vehicle.buyer_name       || null,
       disclosure_notes:    vehicle.notes            || null,
       buyer_responsibility_notes: vehicle.buyerNotes || null,
+      general_notes:       vehicle.generalNotes     || null,
       photos:              Array.isArray(vehicle.photos) ? vehicle.photos : [],
       keys:                vehicle.keys             || null,
       origin_country:      vehicle.originCountry    || 'US',
