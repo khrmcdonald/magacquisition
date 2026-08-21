@@ -43,6 +43,7 @@ function mapVehicle(r) {
     openingBid: r.opening_bid ? parseFloat(r.opening_bid) : null,
     listPrice: r.list_price,
     notes: r.disclosure_notes,
+    buyerNotes: r.buyer_responsibility_notes || null,
     photos: Array.isArray(r.photos) ? r.photos : [],
     currentLocation: r.current_location_id,
     titleStatus: r.title_status || 'pending',
@@ -76,6 +77,7 @@ function mapVehicle(r) {
     exchangeRate: r.exchange_rate || null,
     bondReference: r.bond_reference || null,
     bondExpiration: r.bond_expiration || null,
+    isIncoming: !!r.is_incoming,
   };
 }
 
@@ -161,6 +163,7 @@ const VEHICLE_FIELD_MAP = {
   sourceId: 'source_id',
   source_id: 'source_id',
   notes: 'disclosure_notes',     // app uses 'notes', DB column is 'disclosure_notes'
+  buyerNotes: 'buyer_responsibility_notes',
   photos: 'photos',
   currentLocation: 'current_location_id',
   titleStatus: 'title_status', titleElectronic: 'title_electronic',
@@ -187,6 +190,7 @@ const VEHICLE_FIELD_MAP = {
   exchangeRate: 'exchange_rate',
   bondReference: 'bond_reference',
   bondExpiration: 'bond_expiration',
+  isIncoming: 'is_incoming',
 };
 
 // Numeric vehicles columns — coerce so a cleared/stray-character input doesn't
@@ -386,6 +390,7 @@ export function DataProvider({ children }) {
       buyer_id:            vehicle.buyer_id         || null,
       buyer_name:          vehicle.buyer_name       || null,
       disclosure_notes:    vehicle.notes            || null,
+      buyer_responsibility_notes: vehicle.buyerNotes || null,
       photos:              Array.isArray(vehicle.photos) ? vehicle.photos : [],
       keys:                vehicle.keys             || null,
       origin_country:      vehicle.originCountry    || 'US',
@@ -394,6 +399,7 @@ export function DataProvider({ children }) {
       exchange_rate:       vehicle.exchangeRate     ? parseFloat(vehicle.exchangeRate)      : null,
       bond_reference:      vehicle.bondReference    || null,
       bond_expiration:     vehicle.bondExpiration   || null,
+      is_incoming:         !!vehicle.isIncoming,
     });
 
     const { data: row, error } = await supabase

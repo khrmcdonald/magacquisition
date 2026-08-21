@@ -15,9 +15,10 @@ export default function Preview() {
     async function load() {
       const { data: rows, error: err } = await supabase
         .from('vehicles')
-        .select('id, year, make, model, trim, color, interior_color, vin, photos, buyer_name, condition, engine, title_status, disclosure_notes, keys')
+        .select('id, status, is_incoming, year, make, model, trim, color, interior_color, vin, photos, buyer_name, condition, engine, title_status, disclosure_notes, buyer_responsibility_notes, keys')
         .eq('org_id', ORG_ID)
-        .eq('status', 'ready')
+        .or('status.eq.ready,is_incoming.eq.true')
+        .neq('status', 'sold')
         .order('created_at', { ascending: false });
 
       if (err) { setError(err.message); setLoading(false); return; }
@@ -42,13 +43,16 @@ export default function Preview() {
   const openPanel = (v) => { setPanel(v); setPanelPhotoIdx(0); };
   const closePanel = () => setPanel(null);
 
+  const readyVehicles = vehicles.filter(v => v.status === 'ready');
+  const incomingVehicles = vehicles.filter(v => v.status !== 'ready' && v.is_incoming);
+
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {/* Header */}
-      <div style={{ background: '#0d2550', padding: '20px 32px', display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div style={{ background: '#0d2550', padding: '20px 32px', display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 2px 10px rgba(13,37,80,0.15)' }}>
         <div>
           <div style={{ color: '#f1bb25', fontWeight: 900, fontSize: 22, letterSpacing: '.04em' }}>TRI-STATE AUTO</div>
-          <div style={{ color: 'rgba(255,255,255,.55)', fontSize: 13, marginTop: 2 }}>Available Inventory — Ready to List</div>
+          <div style={{ color: 'rgba(255,255,255,.55)', fontSize: 13, marginTop: 2 }}>Available &amp; Incoming Inventory</div>
         </div>
       </div>
 
@@ -61,29 +65,56 @@ export default function Preview() {
             Could not load inventory. Please try again later.
           </div>
         )}
-        {!loading && !error && vehicles.length === 0 && (
+        {!loading && !error && readyVehicles.length === 0 && incomingVehicles.length === 0 && (
           <div style={{ textAlign: 'center', padding: 80, color: '#9ca3af' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>🚗</div>
             <div style={{ fontSize: 18, fontWeight: 700, color: '#374151', marginBottom: 6 }}>No vehicles available right now</div>
             <div style={{ fontSize: 14 }}>Check back soon — new inventory is added regularly.</div>
           </div>
         )}
-        {!loading && !error && vehicles.length > 0 && (
-          <>
-            <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 20, fontWeight: 600 }}>
-              {vehicles.length} vehicle{vehicles.length !== 1 ? 's' : ''} available
-            </div>
+
+        {!loading && !error && readyVehicles.length > 0 && (
+          <div style={{ marginBottom: incomingVehicles.length > 0 ? 44 : 0 }}>
+            <SectionHeader
+              dotColor="#10b981"
+              title="Ready Now"
+              count={readyVehicles.length}
+              subtitle="In stock and available today"
+            />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
-              {vehicles.map(v => (
+              {readyVehicles.map(v => (
                 <VehiclePreviewCard
                   key={v.id}
                   vehicle={v}
+                  variant="ready"
                   active={panel?.id === v.id}
                   onView={() => panel?.id === v.id ? closePanel() : openPanel(v)}
                 />
               ))}
             </div>
-          </>
+          </div>
+        )}
+
+        {!loading && !error && incomingVehicles.length > 0 && (
+          <div>
+            <SectionHeader
+              dotColor="#3b82f6"
+              title="Incoming"
+              count={incomingVehicles.length}
+              subtitle="Purchased and on the way — not yet available for pickup"
+            />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
+              {incomingVehicles.map(v => (
+                <VehiclePreviewCard
+                  key={v.id}
+                  vehicle={v}
+                  variant="incoming"
+                  active={panel?.id === v.id}
+                  onView={() => panel?.id === v.id ? closePanel() : openPanel(v)}
+                />
+              ))}
+            </div>
+          </div>
         )}
       </div>
 
@@ -107,21 +138,25 @@ export default function Preview() {
               </div>
               <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, marginTop: 1 }}>{panel.trim || panel.vin || ''}</div>
             </div>
-            <span style={{ background: '#d1fae5', color: '#065f46', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>Ready to List</span>
+            {panel.status === 'ready' ? (
+              <span style={{ background: '#d1fae5', color: '#065f46', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>Ready Now</span>
+            ) : (
+              <span style={{ background: '#dbeafe', color: '#1d4ed8', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>Incoming</span>
+            )}
           </div>
 
           {/* Scrollable body */}
-          <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 40 }}>
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             {/* Photo gallery */}
             {(() => {
               const photos = Array.isArray(panel.photos) ? panel.photos : [];
               return (
                 <>
-                  <div style={{ position: 'relative', background: '#f5f7fa', height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ position: 'relative', background: 'linear-gradient(180deg, #f8fafc, #eef2f7)', height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {photos.length > 0 ? (
                       <img src={photos[panelPhotoIdx] || photos[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      <span style={{ fontSize: 56, opacity: 0.1 }}>🚗</span>
+                      <PhotoPlaceholder size={64} />
                     )}
                     {photos.length > 1 && (
                       <>
@@ -180,11 +215,20 @@ export default function Preview() {
               ))}
 
               {panel.disclosure_notes && (
-                <div style={{ marginTop: 10, fontSize: 12, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '8px 10px', lineHeight: 1.5 }}>
-                  ⚠ {panel.disclosure_notes}
+                <div style={{ marginTop: 10, fontSize: 12, color: '#065f46', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 6, padding: '8px 10px', lineHeight: 1.5 }}>
+                  <div style={{ fontWeight: 800, fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 3 }}>We're Fixing</div>
+                  {panel.disclosure_notes}
+                </div>
+              )}
+              {panel.buyer_responsibility_notes && (
+                <div style={{ marginTop: 8, fontSize: 12, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '8px 10px', lineHeight: 1.5 }}>
+                  <div style={{ fontWeight: 800, fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 3 }}>⚠ Buyer's Responsibility</div>
+                  {panel.buyer_responsibility_notes}
                 </div>
               )}
             </div>
+
+            <TrustFooter />
           </div>
         </div>
       )}
@@ -192,18 +236,64 @@ export default function Preview() {
   );
 }
 
-function VehiclePreviewCard({ vehicle: v, active, onView }) {
+function PhotoPlaceholder({ size = 52 }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+      <div style={{
+        width: size, height: size, borderRadius: '50%',
+        background: 'linear-gradient(135deg, #e2e8f0, #f1f5f9)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: size * 0.5, filter: 'grayscale(15%)',
+      }}>🚗</div>
+      <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>Photo coming soon</span>
+    </div>
+  );
+}
+
+function TrustFooter() {
+  const items = [
+    'Title verified before every sale',
+    'Multi-point inspection on all units',
+    'Dealer-only wholesale pricing',
+  ];
+  return (
+    <div style={{ marginTop: 'auto', padding: '18px 20px', background: '#f8fafc', borderTop: '1px solid #eef2f7' }}>
+      <div style={{ fontSize: 10.5, fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>The Tri-State Standard</div>
+      {items.map(t => (
+        <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7, fontSize: 12.5, color: '#374151' }}>
+          <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#d1fae5', color: '#065f46', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>✓</span>
+          {t}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function VehiclePreviewCard({ vehicle: v, variant = 'ready', active, onView }) {
   const photos = Array.isArray(v.photos) ? v.photos : [];
   const [photoIdx, setPhotoIdx] = useState(0);
+  const [hovered, setHovered] = useState(false);
+  const isIncoming = variant === 'incoming';
+  const accent = isIncoming ? '#3b82f6' : '#0d2550';
 
   return (
-    <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: active ? '0 0 0 2.5px #0d2550' : '0 1px 4px rgba(0,0,0,0.08)', border: `1px solid ${active ? '#0d2550' : '#e5e7eb'}`, transition: 'box-shadow 0.15s' }}>
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: '#fff', borderRadius: 12, overflow: 'hidden',
+        boxShadow: active ? `0 0 0 2.5px ${accent}` : (hovered ? '0 8px 20px rgba(15,23,42,0.10)' : '0 1px 4px rgba(0,0,0,0.08)'),
+        border: `1.5px solid ${active ? accent : (isIncoming ? '#dbeafe' : '#e5e7eb')}`,
+        borderTop: `3px solid ${accent}`,
+        transform: hovered && !active ? 'translateY(-3px)' : 'none',
+        transition: 'box-shadow 0.18s, transform 0.18s',
+      }}>
       {/* Photo */}
-      <div style={{ position: 'relative', height: 190, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'relative', height: 190, background: 'linear-gradient(180deg, #f8fafc, #eef2f7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {photos.length > 0 ? (
           <img src={photos[photoIdx]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
-          <span style={{ fontSize: 52, opacity: 0.12 }}>🚗</span>
+          <PhotoPlaceholder />
         )}
         {photos.length > 1 && (
           <>
@@ -212,7 +302,15 @@ function VehiclePreviewCard({ vehicle: v, active, onView }) {
             <div style={{ position: 'absolute', bottom: 7, right: 9, background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20 }}>{photoIdx + 1}/{photos.length}</div>
           </>
         )}
-        <div style={{ position: 'absolute', top: 9, left: 9, background: '#d1fae5', color: '#065f46', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, letterSpacing: '.03em' }}>Ready to List</div>
+        <div style={{
+          position: 'absolute', top: 9, left: 9,
+          background: isIncoming ? '#3b82f6' : '#d1fae5',
+          color: isIncoming ? '#fff' : '#065f46',
+          fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, letterSpacing: '.03em',
+          boxShadow: isIncoming ? '0 2px 6px rgba(59,130,246,0.35)' : 'none',
+        }}>
+          {isIncoming ? '🚚 Incoming' : 'Ready Now'}
+        </div>
       </div>
 
       {/* Info */}
@@ -222,19 +320,21 @@ function VehiclePreviewCard({ vehicle: v, active, onView }) {
         </div>
         {v.trim && <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 6 }}>{v.trim}</div>}
 
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-          <span style={{
-            background: isTitleIn(v.title_status) ? '#d1fae5' : '#fee2e2',
-            color: isTitleIn(v.title_status) ? '#065f46' : '#991b1b',
-            border: `1px solid ${isTitleIn(v.title_status) ? '#6ee7b7' : '#fca5a5'}`,
-            padding: '1px 7px', borderRadius: 20, fontSize: 10, fontWeight: 700,
-          }}>
-            {isTitleIn(v.title_status) ? 'Title IN' : 'Title OUT'}
-          </span>
-          <span style={{ color: '#6b7280', fontSize: 11, fontWeight: 600 }}>
-            🔑 {getKeysCount(v).available}/{getKeysCount(v).total}
-          </span>
-        </div>
+        {!isIncoming && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{
+              background: isTitleIn(v.title_status) ? '#d1fae5' : '#fee2e2',
+              color: isTitleIn(v.title_status) ? '#065f46' : '#991b1b',
+              border: `1px solid ${isTitleIn(v.title_status) ? '#6ee7b7' : '#fca5a5'}`,
+              padding: '1px 7px', borderRadius: 20, fontSize: 10, fontWeight: 700,
+            }}>
+              {isTitleIn(v.title_status) ? 'Title IN' : 'Title OUT'}
+            </span>
+            <span style={{ color: '#6b7280', fontSize: 11, fontWeight: 600 }}>
+              🔑 {getKeysCount(v).available}/{getKeysCount(v).total}
+            </span>
+          </div>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, marginBottom: 12 }}>
           <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#374151', background: '#f3f4f6', padding: '3px 7px', borderRadius: 4, display: 'inline-block', letterSpacing: '.05em', alignSelf: 'flex-start' }}>
@@ -273,18 +373,36 @@ function VehiclePreviewCard({ vehicle: v, active, onView }) {
         </div>
 
         {v.disclosure_notes && (
+          <div style={{ fontSize: 11, color: '#065f46', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 6, padding: '6px 8px', marginBottom: 6, lineHeight: 1.4 }}>
+            <span style={{ fontWeight: 800 }}>We're Fixing:</span> {v.disclosure_notes}
+          </div>
+        )}
+        {v.buyer_responsibility_notes && (
           <div style={{ fontSize: 11, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '6px 8px', marginBottom: 12, lineHeight: 1.4 }}>
-            ⚠ {v.disclosure_notes}
+            <span style={{ fontWeight: 800 }}>⚠ Buyer's Responsibility:</span> {v.buyer_responsibility_notes}
           </div>
         )}
 
         <button
           onClick={onView}
-          style={{ width: '100%', padding: '9px 0', borderRadius: 8, border: `1.5px solid ${active ? '#0d2550' : '#0d2550'}`, background: active ? '#0d2550' : '#fff', color: active ? '#fff' : '#0d2550', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
+          style={{ width: '100%', padding: '9px 0', borderRadius: 8, border: `1.5px solid ${accent}`, background: active ? accent : '#fff', color: active ? '#fff' : accent, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
         >
           {active ? '← Close' : 'View Details'}
         </button>
       </div>
+    </div>
+  );
+}
+
+function SectionHeader({ dotColor, title, count, subtitle }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+        <span style={{ width: 9, height: 9, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+        <h2 style={{ fontSize: 17, fontWeight: 800, color: '#111827', margin: 0 }}>{title}</h2>
+        <span style={{ fontSize: 13, color: '#9ca3af', fontWeight: 600 }}>{count}</span>
+      </div>
+      {subtitle && <div style={{ fontSize: 12.5, color: '#9ca3af', marginTop: 3, marginLeft: 19 }}>{subtitle}</div>}
     </div>
   );
 }

@@ -514,7 +514,7 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
   } : {
     vin: '', year: '', make: '', model: '', trim: '', mileage: '', color: '',
     interior_color: '', engine: '',
-    source_id: '', purchasePrice: '', condition: 'Good', notes: '',
+    source_id: '', purchasePrice: '', condition: 'Good', notes: '', buyerNotes: '',
     overheadCosts: '', floorPrice: '', listPrice: '', photos: [],
     titleStatus: 'pending', currentLocation: '',
     keys: { available: 0, total: 2 },
@@ -526,7 +526,7 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
     needsTransport: false, transportScheduledAt: '',
     originCountry: 'US', purchasePriceCad: '', exchangeRate: '',
     bondReference: '', bondExpiration: '', crossingNotes: '',
-    isTrade: false,
+    isTrade: false, isIncoming: false,
   });
   const [dupVehicle, setDupVehicle] = useState(null);
   const [addingAddress, setAddingAddress] = useState(false);
@@ -800,11 +800,22 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
 
       {/* Notes */}
       <div className="form-group">
-        <label>Notes <span style={{ fontWeight: 400, color: '#9ca3af' }}>(shown on vehicle cards & preview)</span></label>
+        <label>We're Fixing <span style={{ fontWeight: 400, color: '#9ca3af' }}>(shown on vehicle cards & preview)</span></label>
         <textarea
           value={form.notes || ''}
           onChange={e => set('notes', e.target.value)}
-          placeholder="Anything buyers or other stores should know — condition callouts, missing parts, etc."
+          placeholder="Anything Tri-State is handling before this goes out — dents, dings, recon items, etc."
+          rows={3}
+          style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
+        />
+      </div>
+
+      <div className="form-group">
+        <label>Buyer's Responsibility <span style={{ fontWeight: 400, color: '#9ca3af' }}>(shown on vehicle cards & preview)</span></label>
+        <textarea
+          value={form.buyerNotes || ''}
+          onChange={e => set('buyerNotes', e.target.value)}
+          placeholder="Anything disclosed as-is, on the buyer once sold — known issues not being fixed."
           rows={3}
           style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
         />
@@ -817,6 +828,15 @@ function VehicleForm({ initial, onSave, onCancel, sources = [], locations = [], 
           <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>Bought and sold without the vehicle physically arriving — skips location, transport, and photos</div>
         </div>
         <YesNoToggle value={form.isTrade} onChange={v => set('isTrade', v)} />
+      </div>
+
+      {/* Incoming — advertise before physical arrival */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16, padding: '10px 14px', background: form.isIncoming ? '#eff6ff' : 'transparent', border: form.isIncoming ? '1px solid #bfdbfe' : 'none', borderRadius: 8 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Show as "Incoming" on Preview</div>
+          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>Vehicle hasn't physically arrived yet — lists on the public preview page under Incoming, separate from Ready Now</div>
+        </div>
+        <YesNoToggle value={form.isIncoming} onChange={v => set('isIncoming', v)} />
       </div>
 
       {/* Location */}
@@ -2394,8 +2414,15 @@ export default function Acquisitions() {
                 {/* Notes */}
                 {pv.notes && (
                   <>
-                    {sectionHdr('Disclosure Notes')}
-                    <div style={{ fontSize: 13, color: '#374151', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '8px 10px', lineHeight: 1.5 }}>{pv.notes}</div>
+                    {sectionHdr("We're Fixing")}
+                    <div style={{ fontSize: 13, color: '#065f46', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 6, padding: '8px 10px', lineHeight: 1.5 }}>{pv.notes}</div>
+                  </>
+                )}
+
+                {pv.buyerNotes && (
+                  <>
+                    {sectionHdr("Buyer's Responsibility")}
+                    <div style={{ fontSize: 13, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '8px 10px', lineHeight: 1.5 }}>{pv.buyerNotes}</div>
                   </>
                 )}
 
