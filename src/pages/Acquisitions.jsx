@@ -125,6 +125,28 @@ function VehicleStatusDropdown({ vehicle, onChange, compact }) {
   return <InlineSelect options={AUCTION_STATUSES} current={vehicle.status} onChange={onChange} minWidth={150} label="Vehicle status" compact={compact} />;
 }
 
+function IncomingToggle({ vehicle, onChange, compact }) {
+  const active = !!vehicle.isIncoming;
+  return (
+    <button
+      onClick={e => { e.stopPropagation(); onChange(!active); }}
+      title={active ? 'Showing on Preview as Incoming — click to remove' : 'Show on Preview as Incoming (before it physically arrives)'}
+      style={{
+        background: active ? '#3b82f6' : '#fff',
+        color: active ? '#fff' : '#9ca3af',
+        border: `1.5px solid ${active ? '#3b82f6' : '#d1d5db'}`,
+        borderRadius: 20, padding: compact ? '2px 8px' : '5px 12px',
+        fontSize: compact ? 10 : 11, fontWeight: 700, cursor: 'pointer',
+        display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap',
+        boxShadow: active ? '0 2px 6px rgba(59,130,246,0.3)' : 'none',
+        transition: 'all 0.15s',
+      }}
+    >
+      🚚 {active ? 'Incoming' : 'Mark Incoming'}
+    </button>
+  );
+}
+
 
 const TITLE_CUSTODY_STEPS = [
   { key: 'pending',         label: 'Pending',         short: 'Pending'  },
@@ -2000,9 +2022,16 @@ export default function Acquisitions() {
                 showCostBasis={!!v.totalCost}
                 costBasis={v.totalCost}
                 badge={
-                  !isReadOnly
-                    ? <VehicleStatusDropdown vehicle={v} compact onChange={async (val) => { try { await updateVehicle(v.id, { status: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
-                    : <span style={{ background: st.bg, color: st.color, padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 700, letterSpacing: '.02em' }}>{st.label}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                    {!isReadOnly
+                      ? <VehicleStatusDropdown vehicle={v} compact onChange={async (val) => { try { await updateVehicle(v.id, { status: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
+                      : <span style={{ background: st.bg, color: st.color, padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 700, letterSpacing: '.02em' }}>{st.label}</span>
+                    }
+                    {!isReadOnly && v.status !== 'sold'
+                      ? <IncomingToggle vehicle={v} compact onChange={async (val) => { try { await updateVehicle(v.id, { isIncoming: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
+                      : (v.isIncoming && <span style={{ background: '#3b82f6', color: '#fff', padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 700, letterSpacing: '.02em' }}>🚚 Incoming</span>)
+                    }
+                  </div>
                 }
                 pricePill={null}
                 highlighted={panelVehicle?.id === v.id}
@@ -2064,9 +2093,15 @@ export default function Acquisitions() {
                 vehicle={v}
                 mileage={v.mileage ?? mileageMap[v.id] ?? null}
                 badge={
-                  <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
-                    {st.label}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
+                      {st.label}
+                    </span>
+                    {!isReadOnly && v.status !== 'sold'
+                      ? <IncomingToggle vehicle={v} onChange={async (val) => { try { await updateVehicle(v.id, { isIncoming: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
+                      : (v.isIncoming && <span style={{ background: '#3b82f6', color: '#fff', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>🚚 Incoming</span>)
+                    }
+                  </div>
                 }
                 pricePill={null}
               >
@@ -2287,10 +2322,16 @@ export default function Acquisitions() {
                 </div>
                 <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, marginTop: 1 }}>{pv.trim || pv.vin || ''}</div>
               </div>
-              {!isReadOnly
-                ? <VehicleStatusDropdown vehicle={pv} onChange={async (val) => { try { await updateVehicle(pv.id, { status: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
-                : <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{st.label}</span>
-              }
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                {!isReadOnly
+                  ? <VehicleStatusDropdown vehicle={pv} onChange={async (val) => { try { await updateVehicle(pv.id, { status: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
+                  : <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{st.label}</span>
+                }
+                {!isReadOnly && pv.status !== 'sold'
+                  ? <IncomingToggle vehicle={pv} compact onChange={async (val) => { try { await updateVehicle(pv.id, { isIncoming: val }); } catch (err) { showToast('Status update failed: ' + err.message, 'error'); } }} />
+                  : (pv.isIncoming && <span style={{ background: '#3b82f6', color: '#fff', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>🚚 Incoming</span>)
+                }
+              </div>
             </div>
 
             {/* Scrollable body */}
